@@ -1,0 +1,275 @@
+{
+ "races": [
+  {
+   "id": "aadb85b07588",
+   "status": "finished",
+   "start": {
+    "title": "Alexandre Pantoja",
+    "description": "Brazilian mixed martial artist (born 1990)",
+    "input": "Alexandre Pantoja",
+    "links": 157
+   },
+   "target": {
+    "title": "Neatsville, Kentucky",
+    "description": "Unincorporated community in Kentucky, US",
+    "input": "Neatsville, Kentucky"
+   },
+   "rules": {
+    "max_hops": 12,
+    "strikes": 2,
+    "time_limit_s": 120,
+    "max_links": 0
+   },
+   "created_at": "2026-09-22T06:30:48+00:00",
+   "started_ms": 1790058648500,
+   "finished_at": "2026-09-22T06:31:06+00:00",
+   "ranking": [],
+   "winner": null,
+   "lanes": [
+    {
+     "index": 0,
+     "key": "typesafe:jev-1.13.0",
+     "label": "jev-1.13.0",
+     "provider": "typesafe",
+     "model_id": "jev-1.13.0",
+     "kind": "judgment",
+     "thinking": null,
+     "thinking_request": null,
+     "status": "dnf",
+     "note": "out of hops — all 12 used",
+     "page": "William Shakespeare",
+     "hops": 12,
+     "strikes": 0,
+     "revisits": 0,
+     "fouls": {
+      "off_page": 0,
+      "teleport": 0,
+      "no_pick": 0
+     },
+     "tokens_in": 186732,
+     "tokens_out": 0,
+     "cost": 0.007842744,
+     "cost_estimated": true,
+     "think_ms": 4922,
+     "elapsed_ms": 9904,
+     "turn_started_ms": null,
+     "finish_order": null,
+     "rank": null
+    },
+    {
+     "index": 1,
+     "key": "anthropic:claude-haiku-4-5-20251001",
+     "label": "claude-haiku-4-5-20251001",
+     "provider": "anthropic",
+     "model_id": "claude-haiku-4-5-20251001",
+     "kind": "text",
+     "thinking": "high",
+     "thinking_request": null,
+     "status": "dq",
+     "note": "disqualified — 2 fouls",
+     "page": "Unincorporated area",
+     "hops": 10,
+     "strikes": 2,
+     "revisits": 1,
+     "fouls": {
+      "off_page": 1,
+      "teleport": 1,
+      "no_pick": 0
+     },
+     "tokens_in": 49671,
+     "tokens_out": 624,
+     "cost": 0.05279100000000001,
+     "cost_estimated": true,
+     "think_ms": 16133,
+     "elapsed_ms": 17846,
+     "turn_started_ms": null,
+     "finish_order": null,
+     "rank": null
+    }
+   ]
+  },
+  {
+   "id": "04b3fc22887c",
+   "status": "finished",
+   "start": {
+    "title": "Zach Cregger",
+    "description": "American actor, comedian, and filmmaker (born 1981)",
+    "input": "Zach Cregger",
+    "links": 134
+   },
+   "target": {
+    "title": "Resident Evil: Welcome to Raccoon City",
+    "description": "2021 film by Johannes Roberts",
+    "input": "Resident Evil: Welcome to Raccoon City"
+   },
+   "rules": {
+    "max_hops": 12,
+    "strikes": 2,
+    "time_limit_s": 120,
+    "max_links": 0
+   },
+   "created_at": "2026-09-22T06:30:37+00:00",
+   "started_ms": 1790058637566,
+   "finished_at": "2026-09-22T06:30:40+00:00",
+   "ranking": [
+    0,
+    1
+   ],
+   "winner": 0,
+   "lanes": [
+    {
+     "index": 0,
+     "key": "typesafe:jev-1.13.0",
+     "label": "jev-1.13.0",
+     "provider": "typesafe",
+     "model_id": "jev-1.13.0",
+     "kind": "judgment",
+     "thinking": null,
+     "thinking_request": null,
+     "status": "finished",
+     "note": null,
+     "page": "Resident Evil: Welcome to Raccoon City",
+     "hops": 2,
+     "strikes": 0,
+     "revisits": 0,
+     "fouls": {
+      "off_page": 0,
+      "teleport": 0,
+      "no_pick": 0
+     },
+     "tokens_in": 15151,
+     "tokens_out": 0,
+     "cost": 0.000636342,
+     "cost_estimated": true,
+     "think_ms": 672,
+     "elapsed_ms": 1563,
+     "turn_started_ms": null,
+     "finish_order": 1,
+     "rank": 1
+    },
+    {
+     "index": 1,
+     "key": "anthropic:claude-haiku-4-5-20251001",
+     "label": "claude-haiku-4-5-20251001",
+     "provider": "anthropic",
+     "model_id": "claude-haiku-4-5-20251001",
+     "kind": "text",
+     "thinking": "high",
+     "thinking_request": null,
+     "status": "finished",
+     "note": null,
+     "page": "Resident Evil: Welcome to Raccoon City",
+     "hops": 2,
+     "strikes": 0,
+     "revisits": 0,
+     "fouls": {
+      "off_page": 0,
+      "teleport": 0,
+      "no_pick": 0
+     },
+     "tokens_in": 3549,
+     "tokens_out": 80,
+     "cost": 0.003949,
+     "cost_estimated": true,
+     "think_ms": 2334,
+     "elapsed_ms": 2714,
+     "turn_started_ms": null,
+     "finish_order": 2,
+     "rank": 2
+    }
+   ]
+  },
+  {
+   "id": "ae3a0f936a4c",
+   "status": "finished",
+   "start": {
+    "title": "Jehovah's Witnesses",
+    "description": "Restorationist Christian denomination",
+    "input": "Jehovah's Witnesses",
+    "links": 784
+   },
+   "target": {
+    "title": "XXXXX (album)",
+    "description": "2026 studio album by Arca",
+    "input": "XXXXX (album)"
+   },
+   "rules": {
+    "max_hops": 12,
+    "strikes": 2,
+    "time_limit_s": 120,
+    "max_links": 0
+   },
+   "created_at": "2026-09-22T06:29:58+00:00",
+   "started_ms": 1790058598499,
+   "finished_at": "2026-09-22T06:30:09+00:00",
+   "ranking": [
+    1,
+    0
+   ],
+   "winner": 1,
+   "lanes": [
+    {
+     "index": 0,
+     "key": "typesafe:jev-1.13.0",
+     "label": "jev-1.13.0",
+     "provider": "typesafe",
+     "model_id": "jev-1.13.0",
+     "kind": "judgment",
+     "thinking": null,
+     "thinking_request": null,
+     "status": "finished",
+     "note": null,
+     "page": "XXXXX (album)",
+     "hops": 10,
+     "strikes": 0,
+     "revisits": 0,
+     "fouls": {
+      "off_page": 0,
+      "teleport": 0,
+      "no_pick": 0
+     },
+     "tokens_in": 92487,
+     "tokens_out": 0,
+     "cost": 0.003884454,
+     "cost_estimated": true,
+     "think_ms": 3947,
+     "elapsed_ms": 7805,
+     "turn_started_ms": null,
+     "finish_order": 1,
+     "rank": 2
+    },
+    {
+     "index": 1,
+     "key": "anthropic:claude-haiku-4-5-20251001",
+     "label": "claude-haiku-4-5-20251001",
+     "provider": "anthropic",
+     "model_id": "claude-haiku-4-5-20251001",
+     "kind": "text",
+     "thinking": "high",
+     "thinking_request": null,
+     "status": "finished",
+     "note": null,
+     "page": "XXXXX (album)",
+     "hops": 5,
+     "strikes": 0,
+     "revisits": 0,
+     "fouls": {
+      "off_page": 0,
+      "teleport": 0,
+      "no_pick": 0
+     },
+     "tokens_in": 13852,
+     "tokens_out": 499,
+     "cost": 0.016347,
+     "cost_estimated": true,
+     "think_ms": 10352,
+     "elapsed_ms": 11237,
+     "turn_started_ms": null,
+     "finish_order": 2,
+     "rank": 1
+    }
+   ]
+  }
+ ],
+ "running": []
+}

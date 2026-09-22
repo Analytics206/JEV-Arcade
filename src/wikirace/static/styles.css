@@ -1,0 +1,750 @@
+/* WikiRace — one stylesheet: tokens, base, the component kit, then the view.
+ *
+ * Dark only, by deliberate choice: the page is a neon track, so there is no light
+ * palette to fall back to. Every colour is a token below; nothing hard-codes a
+ * literal in a component. Fonts are the system's own — nothing is downloaded. */
+
+/* ── Tokens ────────────────────────────────────────────────────────────────── */
+
+:root {
+  color-scheme: dark;
+
+  /* Ground */
+  --void:      #04050a;
+  --void-2:    #080b14;
+
+  /* Panels: opaque enough for dense tables. */
+  --panel:     rgba(12, 17, 30, 0.66);
+
+  /* Edges */
+  --edge:      rgba(62, 244, 255, 0.18);
+  --edge-soft: rgba(62, 244, 255, 0.10);
+  --edge-hot:  rgba(62, 244, 255, 0.55);
+  --rule:      rgba(125, 139, 166, 0.14);
+
+  /* Accents */
+  --cy:  #3ef4ff;   /* primary — active tab, links, hairlines */
+  --vi:  #7c6af7;   /* secondary controls */
+  --mg:  #ff3ea5;   /* live / streaming only — never decorative */
+
+  /* Semantic state — deliberately separate from the accent hues */
+  --ok:   #3ef5a0;
+  --err:  #ff4d6a;
+  --warn: #ffb545;
+
+  /* Washes */
+  --cy-dim: rgba(62, 244, 255, 0.12);
+  --vi-dim: rgba(124, 106, 247, 0.14);
+  --mg-dim: rgba(255, 62, 165, 0.13);
+  --ok-dim: rgba(62, 245, 160, 0.13);
+  --err-dim: rgba(255, 77, 106, 0.13);
+  --am-dim: rgba(255, 181, 69, 0.13);
+
+  /* Text — blue-biased toward the accent rather than neutral grey */
+  --txt:    #dbe6f5;
+  --dim:    #7d8ba6;
+  --dimmer: #4d5871;
+
+  /* Racer identity — four categorical slots, in this order, validated for this
+   * surface (dataviz validator, dark band, adjacent pairs: worst CVD ΔE 17.3,
+   * normal-vision 24.6, all >= 3:1). Deliberately NOT the neon accents: those sit
+   * far above the dark lightness band and blue/violet collapse under
+   * deuteranopia. Identity only — never state; fouls and finishes wear the
+   * semantic colours with a glyph. Blue and violet are the closest pair, which is
+   * why they are slots 1 and 3 and never neighbours. */
+  --lane-1: #3987e5;
+  --lane-2: #c98500;
+  --lane-3: #9085e9;
+  --lane-4: #199e70;
+  /* Text set inside a lane-coloured fill: every slot clears it at ink. */
+  --lane-ink: #04050a;
+
+  /* Type: the system's own faces. Display is the body face worn uppercase and
+   * tracked out, which is what made the headings read as headings anyway. */
+  --display: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --body:    system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --mono:    ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+
+  /* Scale */
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-6: 32px;
+
+  --fs-micro: 9.5px;
+  --fs-label: 10px;
+  --fs-xs:    11px;
+  --fs-sm:    12px;
+  --fs-md:    13px;
+  --fs-base:  14px;
+  --fs-lg:    17px;
+
+  --z-scanline: 90;
+}
+
+/* ── Base ──────────────────────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+body {
+  font-family: var(--body);
+  font-size: var(--fs-base);
+  line-height: 1.55;
+  color: var(--txt);
+  background: var(--void);
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overflow: hidden; /* the page owns its own scroll regions */
+}
+
+/* The engineering grid and the accent bloom, painted once on the page ground so
+ * no panel has to carry its own backdrop. */
+.app-ground::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(1100px 620px at 50% 8%, rgba(62, 244, 255, 0.07), transparent 68%),
+    radial-gradient(760px 520px at 86% 70%, rgba(124, 106, 247, 0.06), transparent 70%),
+    linear-gradient(rgba(62, 244, 255, 0.03) 1px, transparent 1px) 0 0 / 64px 64px,
+    linear-gradient(90deg, rgba(62, 244, 255, 0.03) 1px, transparent 1px) 0 0 / 64px 64px,
+    var(--void);
+}
+
+/* One scanline overlay for the whole page — never one per panel. */
+.app-ground::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-scanline);
+  pointer-events: none;
+  background: repeating-linear-gradient(rgba(255, 255, 255, 0.022) 0 1px, transparent 1px 3px);
+  mix-blend-mode: overlay;
+}
+
+a {
+  color: var(--cy);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* Keyboard focus must always be visible. Pointer focus is not decorated. */
+:focus-visible {
+  outline: 1px solid var(--edge-hot);
+  outline-offset: 1px;
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* For words a screen reader needs and a sighted reader already sees in a shape. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Scrollbars, scoped to anything that scrolls inside the page. */
+.scroll-y {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule) transparent;
+}
+.scroll-y::-webkit-scrollbar {
+  width: 7px;
+}
+.scroll-y::-webkit-scrollbar-thumb {
+  background: var(--rule);
+  border-radius: 3px;
+}
+
+/* Wide content — tables — scrolls inside its own container so the page never
+ * scrolls sideways. */
+.scroll-x {
+  overflow-x: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ── The kit: status ───────────────────────────────────────────────────────── */
+
+.dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--dimmer);
+}
+.dot--ok { background: var(--ok); }
+.dot--err { background: var(--err); }
+.dot--off { background: none; box-shadow: inset 0 0 0 1.5px var(--dimmer); }
+.dot--live {
+  background: var(--mg);
+  box-shadow: 0 0 7px var(--mg);
+  animation: dot-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes dot-pulse {
+  50% { opacity: 0.35; }
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.05em;
+  padding: 2px 8px;
+  white-space: nowrap;
+  border: 1px solid var(--rule);
+  color: var(--dim);
+}
+.badge--ok { color: var(--ok); border-color: rgba(62, 245, 160, 0.32); background: var(--ok-dim); }
+.badge--warn { color: var(--warn); border-color: rgba(255, 181, 69, 0.32); background: var(--am-dim); }
+.badge--err { color: var(--err); border-color: rgba(255, 77, 106, 0.32); background: var(--err-dim); }
+.badge--live { color: var(--mg); border-color: rgba(255, 62, 165, 0.34); background: var(--mg-dim); }
+
+/* ── The kit: tabs and buttons ─────────────────────────────────────────────── */
+
+.tabs { display: flex; gap: 2px; margin-left: var(--sp-4); }
+.tabs__tab {
+  padding: 4px 11px; background: transparent; border: 1px solid transparent;
+  font-family: var(--display); font-weight: 600; font-size: var(--fs-label);
+  letter-spacing: .12em; text-transform: uppercase; color: var(--dim);
+  cursor: pointer;
+}
+.tabs__tab:hover { color: var(--txt); }
+.tabs__tab--on { color: var(--cy); background: var(--cy-dim); border-color: var(--edge); }
+
+.btn {
+  font-size: var(--fs-md);
+  font-weight: 500;
+  padding: 7px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  transition: background 0.14s, border-color 0.14s, opacity 0.14s;
+}
+.btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.btn--sm { font-size: var(--fs-sm); padding: 4px 10px; }
+
+.btn--primary { color: var(--void); background: var(--cy); border-color: var(--cy); font-weight: 600; }
+.btn--primary:hover:not(:disabled) { background: #7ff8ff; }
+
+.btn--secondary { color: var(--txt); background: rgba(124, 106, 247, 0.12); border-color: rgba(124, 106, 247, 0.32); }
+.btn--secondary:hover:not(:disabled) { background: rgba(124, 106, 247, 0.26); border-color: var(--vi); }
+
+.btn--danger { color: var(--err); background: var(--err-dim); border-color: rgba(255, 77, 106, 0.32); }
+.btn--danger:hover:not(:disabled) { background: rgba(255, 77, 106, 0.24); }
+
+.btn--ghost { color: var(--dim); background: none; border-color: var(--rule); }
+.btn--ghost:hover:not(:disabled) { color: var(--cy); border-color: var(--edge-hot); }
+
+/* ── The kit: layout ───────────────────────────────────────────────────────── */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  padding: 8px var(--sp-4);
+  border-bottom: 1px solid var(--edge);
+}
+
+.spacer { flex: 1; }
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  height: 100%;
+  min-height: 180px;
+  padding: var(--sp-6) var(--sp-4);
+  text-align: center;
+}
+.empty__icon { font-size: 30px; opacity: 0.5; }
+.empty__title { font-family: var(--display); font-weight: 600; font-size: var(--fs-lg); color: var(--txt); }
+.empty__desc { font-size: var(--fs-md); color: var(--dim); max-width: 46ch; text-wrap: pretty; }
+
+/* A titled surface. The gradient border rides border-box so the corner brackets
+ * can sit on top without the border being clipped by them. */
+.panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--panel), var(--panel)) padding-box,
+    linear-gradient(150deg, rgba(62, 244, 255, 0.4), rgba(124, 106, 247, 0.16) 46%, rgba(62, 244, 255, 0.07)) border-box;
+}
+/* HUD corner brackets — the notch, without clip-path eating the border. */
+.panel::before,
+.panel::after {
+  content: '';
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  pointer-events: none;
+  border-color: var(--cy);
+  opacity: 0.55;
+}
+.panel::before { top: -1px; right: -1px; border-top: 1px solid; border-right: 1px solid; }
+.panel::after { bottom: -1px; left: -1px; border-bottom: 1px solid; border-left: 1px solid; }
+
+.panel__hd {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-shrink: 0;
+  padding: 8px var(--sp-3);
+  border-bottom: 1px solid var(--edge);
+  background: rgba(62, 244, 255, 0.025);
+}
+.panel__title {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: var(--fs-label);
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+  color: var(--dim);
+  white-space: nowrap;
+}
+.panel__gap { flex: 1; }
+.panel__bd { flex: 1; min-height: 0; min-width: 0; padding: var(--sp-3); }
+.panel__bd--flush { padding: 0; }
+
+/* ── The page: a slim header, then the view ────────────────────────────────── */
+
+.app { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+/* The visible height on a phone, whose toolbars come and go. */
+@supports (height: 100dvh) {
+  .app { height: 100dvh; }
+}
+
+.app-hd { flex-shrink: 0; background: rgba(4, 5, 10, 0.6); }
+.app-hd__bar { gap: 6px var(--sp-3); }
+.app-brand {
+  display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
+  font-family: var(--display); font-size: var(--fs-lg); font-weight: 700; letter-spacing: .03em; color: var(--txt);
+}
+.app-brand:hover { color: var(--cy); text-decoration: none; }
+.app-tag {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--fs-sm); color: var(--dim);
+}
+
+/* ── The view: setup rail on the left, the track on the right ──────────────── */
+/* Racer identity is the --lane-N tokens plus the lane NUMBER; state is the
+ * semantic colours with a glyph. Text never wears a lane colour. */
+
+.wr__body { display: flex; flex: 1; min-height: 0; }
+.wr__setup { width: 348px; flex-shrink: 0; border-right: 1px solid var(--edge); }
+.wr__stage { flex: 1; min-width: 0; }
+.wr__history { flex: 1; min-height: 0; padding: var(--sp-4); }
+
+@media (max-width: 1100px) {
+  .wr__body { flex-direction: column; overflow-y: auto; }
+  .wr__setup { width: auto; border-right: 0; border-bottom: 1px solid var(--edge); overflow: visible; }
+  .wr__stage { overflow: visible; }
+  /* Stacked, the race someone opened comes first: it is what they came to watch. */
+  .wr__body.has-race .wr__stage { order: -1; border-bottom: 1px solid var(--edge); }
+  .wr__body.has-race .wr__setup { border-bottom: 0; }
+}
+
+/* ── Lane identity ─────────────────────────────────────────────────────────── */
+
+.wr-c1, .wr-f1, .wr-b1 { --lane: var(--lane-1); }
+.wr-c2, .wr-f2, .wr-b2 { --lane: var(--lane-2); }
+.wr-c3, .wr-f3, .wr-b3 { --lane: var(--lane-3); }
+.wr-c4, .wr-f4, .wr-b4 { --lane: var(--lane-4); }
+
+/* The lane number: the identity that is not colour alone. */
+.wr-num {
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  width: 18px; height: 18px; font-family: var(--mono); font-size: var(--fs-xs); font-weight: 700;
+  color: var(--lane-ink); background: var(--lane, var(--dim));
+}
+.wr-num--out { color: var(--txt); background: none; box-shadow: inset 0 0 0 1.5px var(--lane, var(--dim)); }
+.wr-linekey { display: inline-block; width: 16px; height: 2px; border-radius: 1px; background: var(--lane); flex-shrink: 0; }
+
+/* ── Shared bits ───────────────────────────────────────────────────────────── */
+
+.wr-h {
+  display: flex; align-items: baseline; gap: var(--sp-2); margin: var(--sp-4) 0 var(--sp-2);
+  font-family: var(--display); font-size: var(--fs-label); font-weight: 600; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--cy);
+}
+.wr-h:first-child { margin-top: 0; }
+.wr-lbl {
+  display: flex; flex-direction: column; gap: 3px; font-family: var(--mono); font-size: var(--fs-micro);
+  letter-spacing: .06em; text-transform: uppercase; color: var(--dim);
+}
+.wr-count { font-family: var(--mono); font-size: var(--fs-xs); color: var(--dim); letter-spacing: 0; text-transform: none; }
+.wr-muted { color: var(--dim); }
+.wr-hint { margin: var(--sp-2) 0 0; font-size: var(--fs-xs); line-height: 1.5; color: var(--dim); text-wrap: pretty; }
+.wr-bad { color: var(--err); font-size: var(--fs-sm); }
+.wr-ok { color: var(--ok); }
+.wr-note { font-size: var(--fs-xs); color: var(--dim); font-style: italic; }
+.wr-actions { display: flex; gap: var(--sp-2); justify-content: center; margin-top: var(--sp-3); }
+
+.wr-in, .wr-sel {
+  min-width: 0; padding: 5px 8px; font-size: var(--fs-sm); color: var(--txt);
+  background: var(--void-2); border: 1px solid var(--edge); outline: none; border-radius: 0;
+}
+.wr-in:focus, .wr-sel:focus { border-color: var(--edge-hot); }
+.wr-sel:disabled { opacity: .45; }
+.wr-sel option { background: var(--void-2); color: var(--txt); }
+.wr-sel option:disabled { color: var(--dimmer); }
+
+/* ── Setup ─────────────────────────────────────────────────────────────────── */
+
+.wr-setup { padding: var(--sp-4); }
+
+.wr-subject { display: flex; flex-direction: column; gap: 4px; }
+.wr-subject__row { display: flex; gap: 4px; }
+.wr-subject__row .wr-in { flex: 1; font-size: var(--fs-md); }
+.wr-subject__state { min-height: 18px; font-size: var(--fs-sm); line-height: 1.45; overflow-wrap: anywhere; }
+.wr-die {
+  width: 34px; flex-shrink: 0; cursor: pointer; font-size: 15px; line-height: 1;
+  background: var(--vi-dim); border: 1px solid rgba(124, 106, 247, 0.32);
+}
+.wr-die:hover { background: rgba(124, 106, 247, 0.26); border-color: var(--vi); }
+.wr-cands { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.wr-cand {
+  max-width: 100%; padding: 2px 7px; cursor: pointer; font-size: var(--fs-xs); color: var(--dim);
+  background: none; border: 1px dashed rgba(125, 139, 166, 0.4); overflow-wrap: anywhere; text-align: left;
+}
+.wr-cand:hover { color: var(--cy); border-color: var(--edge-hot); }
+
+.wr-swaprow { display: flex; justify-content: flex-end; margin: -2px 0 2px; }
+.wr-swap {
+  padding: 1px 8px; cursor: pointer; font-family: var(--mono); font-size: var(--fs-micro);
+  letter-spacing: .08em; text-transform: uppercase; color: var(--dim); background: none; border: 1px solid var(--rule);
+}
+.wr-swap:hover { color: var(--cy); border-color: var(--edge-hot); }
+
+.wr-dice { display: flex; gap: var(--sp-2); margin-top: var(--sp-3); }
+.wr-dice .wr-sel { flex: 1; }
+
+/* Who can race: a dot per provider — filled when it can, hollow when it cannot
+   (red when it is set up but not answering) — so the state is in the shape too. */
+.wr-provs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 11px; margin: 0 0 var(--sp-2); font-size: var(--fs-xs); }
+.wr-prov { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; color: var(--txt); cursor: default; }
+.wr-prov .dot { width: 7px; height: 7px; }
+.wr-prov--off, .wr-prov--err { color: var(--dim); }
+.wr-prov .dot--err { background: none; box-shadow: inset 0 0 0 1.5px var(--err); }
+/* The count and its re-read stay together, pushed right, wrapping as one. */
+.wr-provs__meta { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; white-space: nowrap; }
+.wr-reload { width: 22px; height: 22px; font-size: var(--fs-sm); line-height: 1; }
+.wr-reload:hover { color: var(--cy) !important; border-color: var(--edge-hot) !important; }
+.wr-warns {
+  list-style: none; margin: 0 0 var(--sp-2); padding: 5px 8px; font-size: var(--fs-xs); line-height: 1.45;
+  color: var(--warn); background: var(--am-dim); border: 1px solid rgba(255, 181, 69, 0.32); overflow-wrap: anywhere;
+}
+.wr-warns li + li { margin-top: 3px; }
+.wr-warns li::before { content: '⚠ '; }
+
+/* Two lines per racer: model ids run long ("minimax/minimax-m3 · thinking high")
+   and a clipped id is a guess about which model is racing. */
+.wr-lanerow { display: flex; align-items: flex-start; gap: 6px; margin-bottom: 8px; }
+.wr-lanerow > .wr-num { margin-top: 4px; }
+.wr-lanerow__pick { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.wr-lanerow .wr-sel { width: 100%; font-size: var(--fs-xs); padding: 4px 5px; }
+.wr-lanerow .wr-sel--thinking { width: auto; align-self: flex-start; max-width: 100%; color: var(--dim); }
+.wr-lanerow .wr-custom { width: 100%; font-family: var(--mono); font-size: var(--fs-xs); padding: 4px 6px; }
+.wr-lanerow__note { font-family: var(--mono); font-size: var(--fs-micro); color: var(--dim); padding: 2px 0 0 2px; }
+.wr-lanerow > .wr-x { margin-top: 2px; }
+.wr-x {
+  width: 22px; height: 22px; flex-shrink: 0; cursor: pointer; font-size: var(--fs-xs); color: var(--dim);
+  background: none; border: 1px solid var(--rule);
+}
+.wr-x:hover { color: var(--err); border-color: rgba(255, 77, 106, 0.5); }
+
+.wr-rulesgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); }
+.wr-rulesgrid .wr-in, .wr-rulesgrid .wr-sel { font-family: var(--body); font-size: var(--fs-sm); text-transform: none; letter-spacing: 0; }
+
+.wr-go { width: 100%; margin-top: var(--sp-4); font-family: var(--display); letter-spacing: .06em; }
+
+/* The way back to a race running elsewhere. */
+.wr-live {
+  display: inline-flex; align-items: center; gap: 6px; max-width: min(46ch, 100%); padding: 3px 10px; cursor: pointer;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--fs-xs); color: var(--mg); background: var(--mg-dim); border: 1px solid rgba(255, 62, 165, 0.34);
+}
+.wr-live:hover { border-color: var(--mg); }
+
+/* ── The track ─────────────────────────────────────────────────────────────── */
+
+.wr-track { display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-4); }
+.wr-track__hd { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
+.wr-track__ctl { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
+.wr-route { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; flex-wrap: wrap; }
+.wr-route__end { display: flex; flex-direction: column; gap: 1px; min-width: 0; max-width: 34ch; }
+.wr-route__end a { font-family: var(--display); font-size: var(--fs-lg); font-weight: 600; color: var(--txt); overflow-wrap: anywhere; }
+.wr-route__end a:hover { color: var(--cy); }
+.wr-route__desc { font-size: var(--fs-xs); color: var(--dim); }
+.wr-route__arrow { font-size: 22px; color: var(--cy); opacity: .7; }
+.wr-clock { font-family: var(--mono); font-size: 22px; font-weight: 600; color: var(--txt); min-width: 5ch; text-align: right; }
+.wr-rulesline { margin: 0; font-family: var(--mono); font-size: var(--fs-xs); color: var(--dim); }
+.wr-banner {
+  display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; padding: 6px var(--sp-3);
+  font-size: var(--fs-sm); color: var(--warn); background: var(--am-dim); border: 1px solid rgba(255, 181, 69, 0.32);
+}
+
+/* ── Race trace (chart) ────────────────────────────────────────────────────── */
+
+.wr-trace { display: flex; flex-direction: column; gap: 6px; }
+.wr-trace__legend { display: flex; flex-wrap: wrap; gap: 4px var(--sp-4); font-size: var(--fs-sm); color: var(--txt); }
+.wr-trace__key { display: inline-flex; align-items: center; gap: 6px; min-width: 0; overflow-wrap: anywhere; }
+.wr-trace__key .wr-num { width: 15px; height: 15px; font-size: var(--fs-micro); }
+.wr-trace__key--mark { color: var(--dim); font-size: var(--fs-xs); }
+.wr-foulkey { font-style: normal; font-weight: 700; color: var(--err); }
+.wr-foulkey--warn { color: var(--warn); }
+.wr-trace__plot { position: relative; min-height: 228px; }
+.wr-trace svg { display: block; overflow: visible; }
+/* A vertical swipe over the chart still scrolls the page; a sideways one scrubs. */
+.wr-trace__hit { cursor: crosshair; touch-action: pan-y; }
+
+.wr-grid { stroke: var(--rule); stroke-width: 1; shape-rendering: crispEdges; }
+.wr-axis { fill: var(--dim); font-family: var(--mono); font-size: 10px; }
+.wr-axis--title { fill: var(--dim); letter-spacing: .08em; text-transform: uppercase; font-size: 9px; }
+.wr-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.wr-s1 { stroke: var(--lane-1); }
+.wr-s2 { stroke: var(--lane-2); }
+.wr-s3 { stroke: var(--lane-3); }
+.wr-s4 { stroke: var(--lane-4); }
+/* The surface ring: keeps a marker legible where it crosses a line. */
+.wr-ring { fill: var(--void-2); }
+.wr-foul path { stroke: var(--err); stroke-width: 2; stroke-linecap: round; }
+.wr-foul--warn .wr-foul__dot { fill: none; stroke: var(--warn); stroke-width: 2; }
+/* The horses. A racer still going, or one that finished: a painted horse in its
+   lane colour. One that stopped short: hollow, so "out" reads in the shape and
+   not only in the flag beside it. The halo is the surface ring every marker here
+   wears, so a horse stays legible over a line or another horse. */
+.wr-horse { transition: transform .25s linear; }
+.wr-horse__hop { transition: transform .45s cubic-bezier(.3, 1.6, .55, 1); } /* a hop, with a little bounce */
+.wr-horse__rock { transform-box: fill-box; transform-origin: 50% 100%; }
+.wr-horse--run .wr-horse__rock { animation: wr-gallop .5s ease-in-out infinite; }
+@keyframes wr-gallop {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  30% { transform: translateY(-2px) rotate(-5deg); }
+  70% { transform: translateY(.5px) rotate(3deg); }
+}
+.wr-horse__halo .wr-horse__fill { fill: var(--void-2); stroke: var(--void-2); stroke-width: 3.4; stroke-linejoin: round; }
+.wr-horse__halo .wr-horse__leg { fill: none; stroke: var(--void-2); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+.wr-horse__coat .wr-horse__fill { fill: var(--lane); }
+.wr-horse__coat .wr-horse__leg { fill: none; stroke: var(--lane); stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
+.wr-horse__mane { fill: none; stroke: var(--lane-ink); stroke-width: 2.2; stroke-linecap: round; }
+.wr-horse__eye { fill: var(--lane-ink); }
+.wr-horse__cloth { fill: var(--txt); stroke: var(--lane-ink); stroke-width: .9; }
+.wr-horse__n { fill: var(--lane-ink); font-family: var(--mono); font-size: 11.5px; font-weight: 700; pointer-events: none; }
+.wr-horse--out .wr-horse__coat .wr-horse__fill { fill: var(--void-2); stroke: var(--lane); stroke-width: 1.6; }
+.wr-horse--out .wr-horse__coat .wr-horse__leg { stroke-width: 1.6; }
+.wr-horse--out .wr-horse__mane { stroke: var(--lane); stroke-width: 1.2; }
+.wr-horse--out .wr-horse__eye { fill: var(--lane); }
+.wr-horse--out .wr-horse__cloth { fill: var(--void-2); stroke: var(--lane); }
+.wr-horse--out .wr-horse__n { fill: var(--txt); }
+@media (prefers-reduced-motion: reduce) {
+  .wr-horse, .wr-horse__hop { transition: none; }
+  .wr-horse--run .wr-horse__rock { animation: none; }
+}
+.wr-end__flag { fill: var(--ok); font-size: 12px; }
+.wr-end__dq { fill: var(--err); font-size: 12px; font-weight: 700; }
+.wr-cross { stroke: var(--dim); stroke-width: 1; shape-rendering: crispEdges; pointer-events: none; }
+
+.wr-tip {
+  position: absolute; top: 6px; z-index: 3; min-width: 150px; max-width: 190px; padding: 6px 9px;
+  pointer-events: none; font-size: var(--fs-xs); color: var(--txt);
+  background: rgba(8, 11, 20, 0.94); border: 1px solid var(--edge); box-shadow: 0 6px 18px rgba(0, 0, 0, .4);
+}
+.wr-tip__t { margin-bottom: 3px; font-family: var(--mono); color: var(--dim); }
+.wr-tip__row { display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wr-tip__row b { min-width: 2ch; font-family: var(--mono); font-size: var(--fs-sm); color: var(--txt); text-align: right; }
+.wr-tip__row span { color: var(--dim); overflow: hidden; text-overflow: ellipsis; }
+
+/* ── Lane cards ────────────────────────────────────────────────────────────── */
+
+.wr-lanes { display: grid; gap: var(--sp-3); grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr)); }
+.wr-lane {
+  display: flex; flex-direction: column; min-width: 0;
+  background: var(--panel); border: 1px solid var(--edge-soft); border-top: 3px solid var(--lane);
+}
+.wr-lane.is-done { background: rgba(12, 17, 30, 0.5); }
+.wr-lane__hd { display: flex; align-items: center; gap: var(--sp-2); padding: 8px 10px 6px; }
+.wr-lane__hd .wr-num { width: 22px; height: 22px; font-size: var(--fs-sm); }
+.wr-lane__who { flex: 1; min-width: 0; }
+.wr-lane__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--txt); }
+.wr-lane__sub { font-family: var(--mono); font-size: var(--fs-micro); color: var(--dim); }
+.wr-lane__medal { font-size: 20px; line-height: 1; }
+
+.wr-kpis {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin: 0 10px;
+  background: var(--rule); border: 1px solid var(--rule);
+}
+.wr-kpis > div { padding: 4px 7px; background: var(--void-2); min-width: 0; }
+.wr-kpis dt { font-family: var(--mono); font-size: var(--fs-micro); letter-spacing: .06em; text-transform: uppercase; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wr-kpis dd { margin: 0; font-family: var(--mono); font-size: var(--fs-md); font-weight: 600; color: var(--txt); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wr-kpis dd small { font-size: var(--fs-micro); font-weight: 400; color: var(--dim); }
+.wr-kpis .is-foul dd { color: var(--err); }
+
+.wr-lane__at {
+  display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; padding: 8px 10px 4px;
+  font-size: var(--fs-sm); overflow-wrap: anywhere;
+}
+.wr-lane__pin { color: var(--lane); font-size: 10px; }
+.wr-lane__timer { font-family: var(--mono); font-size: var(--fs-xs); color: var(--mg); }
+
+.wr-steps { list-style: none; margin: 0; padding: 2px 10px 8px; max-height: 330px; min-height: 60px; }
+.wr-step { display: flex; gap: 8px; padding: 5px 0; border-top: 1px solid var(--rule); font-size: var(--fs-sm); }
+.wr-step:first-child { border-top: 0; }
+.wr-step__n { flex: 0 0 18px; padding-top: 1px; font-family: var(--mono); font-size: var(--fs-micro); color: var(--dimmer); text-align: right; }
+.wr-step__body { min-width: 0; flex: 1; }
+.wr-step__line { display: flex; align-items: baseline; gap: 5px; flex-wrap: wrap; overflow-wrap: anywhere; }
+.wr-step__glyph { font-family: var(--mono); font-weight: 700; color: var(--ok); }
+.wr-step__via { font-size: var(--fs-xs); color: var(--dim); }
+.wr-step__claim { color: var(--txt); overflow-wrap: anywhere; }
+.wr-step__why { font-size: var(--fs-xs); line-height: 1.45; color: var(--dim); overflow-wrap: anywhere; }
+.wr-step__meta { font-family: var(--mono); font-size: var(--fs-micro); color: var(--dimmer); overflow-wrap: anywhere; }
+.wr-step--err { background: var(--err-dim); margin: 0 -10px; padding-left: 10px; padding-right: 10px; }
+.wr-step--err .wr-step__glyph, .wr-step--err b { color: var(--err); }
+.wr-step--warn { background: var(--am-dim); margin: 0 -10px; padding-left: 10px; padding-right: 10px; }
+.wr-step--warn .wr-step__glyph, .wr-step--warn b { color: var(--warn); }
+.wr-step--neutral .wr-step__glyph { color: var(--dim); }
+.wr-step--hint { color: var(--dim); font-size: var(--fs-xs); }
+.wr-step--start .wr-step__glyph { color: var(--dim); font-weight: 400; }
+.wr-step__tag {
+  font-family: var(--mono); font-size: var(--fs-micro); letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--dim); border: 1px solid var(--rule); border-radius: 3px; padding: 0 4px;
+}
+
+/* Jev's top options: one row each, the bar behind the title, its length the
+   probability itself — a sure pick fills its row, a hunch barely marks it. The
+   option it followed is in bold on the accent wash; the rest stay recessive, so
+   the step list still scans by its → lines. */
+.wr-jev { list-style: none; margin: 3px 0 2px; padding: 0; display: flex; flex-direction: column; gap: 1px; max-width: 36rem; }
+.wr-jev__opt { position: relative; display: flex; align-items: baseline; gap: 8px; padding: 0 5px; font-size: var(--fs-xs); line-height: 15px; }
+.wr-jev__opt::before {
+  content: ''; position: absolute; top: 1px; bottom: 1px; left: 0;
+  width: calc(var(--p, 0) * 100%); min-width: 2px; background: rgba(125, 139, 166, 0.15);
+}
+.wr-jev__opt.is-chosen::before { background: var(--cy-dim); box-shadow: inset 2px 0 0 var(--cy); }
+.wr-jev__title { position: relative; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dim); }
+.wr-jev__opt.is-chosen .wr-jev__title { color: var(--txt); font-weight: 600; }
+.wr-jev__p { position: relative; font-family: var(--mono); font-size: var(--fs-micro); color: var(--dim); }
+.wr-jev__opt.is-chosen .wr-jev__p { color: var(--txt); }
+
+.wr-lane__note { padding: 6px 10px; font-size: var(--fs-xs); border-top: 1px solid var(--rule); color: var(--dim); overflow-wrap: anywhere; }
+.wr-lane__note--err { color: var(--err); }
+.wr-lane__note--warn { color: var(--warn); }
+.wr-lane__note--ok { color: var(--ok); }
+
+/* ── Results + cheat log ───────────────────────────────────────────────────── */
+
+/* Side by side only when the results table fits whole — nine columns need room. */
+.wr-track__foot { display: grid; gap: var(--sp-3); grid-template-columns: repeat(auto-fit, minmax(min(100%, 640px), 1fr)); align-items: start; }
+
+.wr-table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+.wr-table th {
+  padding: 4px 8px; text-align: left; font-family: var(--mono); font-size: var(--fs-micro); font-weight: 500;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--dim); border-bottom: 1px solid var(--edge-soft);
+  white-space: nowrap;
+}
+.wr-table td { padding: 5px 8px; border-bottom: 1px solid var(--rule); vertical-align: middle; }
+.wr-table td .wr-num { width: 16px; height: 16px; font-size: var(--fs-micro); margin-right: 4px; vertical-align: -3px; }
+.wr-table .num { text-align: right; }
+.wr-kind { white-space: nowrap; font-weight: 600; }
+.wr-kind--err { color: var(--err); }
+.wr-kind--warn { color: var(--warn); }
+
+.wr-verdict { margin: 0 0 var(--sp-2); font-size: var(--fs-md); color: var(--txt); }
+.wr-verdict--none { color: var(--dim); }
+
+/* ── History ───────────────────────────────────────────────────────────────── */
+
+.wr-history { max-width: 1400px; }
+.wr-hrow { cursor: pointer; }
+.wr-hrow:hover td { background: rgba(62, 244, 255, 0.04); }
+.wr-hracers { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.wr-hracer { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-xs); white-space: nowrap; }
+.wr-hracer .wr-num { width: 15px; height: 15px; font-size: var(--fs-micro); }
+.wr-hactions { white-space: nowrap; text-align: right; }
+.wr-hactions .btn + .btn { margin-left: 4px; }
+.wr-del:hover { color: var(--err) !important; border-color: rgba(255, 77, 106, 0.5) !important; }
+
+/* ── Phones ────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .toolbar { padding: 8px var(--sp-3); }
+  /* Row one: the name and the tabs; row two: the tagline, then a race running elsewhere. */
+  .app-hd .spacer { display: none; }
+  .app-hd .tabs { margin-left: auto; }
+  .app-tag { order: 5; flex-basis: 100%; font-size: var(--fs-xs); }
+  .app-hd .wr-live { order: 6; max-width: 100%; }
+
+  .wr-setup, .wr-track, .wr__history { padding: var(--sp-3); }
+  .wr-route__end a { font-size: var(--fs-base); }
+  .wr-clock { font-size: 18px; }
+  .wr-lanerow .wr-sel, .wr-lanerow .wr-custom { font-size: var(--fs-sm); }
+
+  /* A long race list reads as cards: the course, its racers, then when and what. */
+  .wr-table--history thead { display: none; }
+  .wr-table--history, .wr-table--history tbody { display: block; }
+  .wr-table--history tr {
+    display: grid; grid-template-columns: auto auto 1fr; align-items: center; gap: 6px 10px;
+    grid-template-areas: 'course course course' 'racers racers racers' 'when status actions';
+    padding: 10px 2px; border-bottom: 1px solid var(--rule);
+  }
+  .wr-table--history td { display: block; padding: 0; border: 0; min-width: 0; }
+  .wr-h-course { grid-area: course; overflow-wrap: anywhere; }
+  .wr-h-racers { grid-area: racers; }
+  .wr-h-when { grid-area: when; font-size: var(--fs-xs); color: var(--dim); }
+  .wr-h-status { grid-area: status; }
+  .wr-hactions { grid-area: actions; }
+  .wr-hracer { white-space: normal; }
+}

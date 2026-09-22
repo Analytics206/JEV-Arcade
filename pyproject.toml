@@ -1,0 +1,58 @@
+[project]
+name = "wikirace"
+version = "0.1.0"
+description = "Language models race across Wikipedia, link by link: Claude, GPT, OpenRouter, local Ollama models and TypeSafe Jev on one track."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+authors = [{ name = "J. Harrell" }]
+keywords = ["llm", "benchmark", "wikipedia", "wikirace", "typesafe", "ollama", "anthropic", "openai", "openrouter"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Framework :: FastAPI",
+    "Topic :: Games/Entertainment",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "httpx>=0.27",
+    "anthropic>=1.7,<2",
+]
+
+[project.scripts]
+wikirace = "wikirace.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/Analytics206/wikirace"
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "ruff>=0.6",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/wikirace"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["-q", "--tb=short"]
+filterwarnings = [
+    # Starlette's TestClient, not our code: an anyio alias it still imports.
+    "ignore:The anyio.abc.BlockingPortal alias is deprecated:DeprecationWarning",
+]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+extend-exclude = ["src/wikirace/static"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]

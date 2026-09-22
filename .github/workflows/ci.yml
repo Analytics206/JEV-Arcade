@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - run: uv sync --locked
+      - run: uv run ruff check .
+      - run: uv run pytest
+
+  page:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test tests/js
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose config -q
+      - run: docker build -t wikirace:ci .
+      - name: The image serves the page and the API, as a user that can write /data
+        run: |
+          docker run -d --name wikirace -p 8000:8000 wikirace:ci
+          for i in $(seq 1 30); do curl -fsS http://localhost:8000/api/health && break; sleep 1; done
+          curl -fsS http://localhost:8000/api/health | grep -q '"ok":true'
+          curl -fsS http://localhost:8000/ | grep -q WikiRace
+          curl -fsS http://localhost:8000/api/models | grep -q '"providers"'
+          test "$(docker exec wikirace id -u)" = "10001"
+          docker exec wikirace test -f /data/wikirace.db

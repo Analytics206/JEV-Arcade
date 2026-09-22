@@ -1,0 +1,35 @@
+# WikiRace in Docker:
+#   cp env.example .env     (then add a key or point at your Ollama)
+#   docker compose up -d
+#   open http://localhost:8000
+# The settings come from .env, the same file `uv run wikirace` reads.
+name: wikirace
+
+services:
+  wikirace:
+    build: .
+    image: wikirace:latest
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # Inside the container the server always listens on 8000 and binds every
+      # interface; WIKIRACE_PORT below is the port published on your machine.
+      WIKIRACE_HOST: 0.0.0.0
+      WIKIRACE_PORT: "8000"
+      WIKIRACE_DB: /data/wikirace.db
+    ports:
+      # 127.0.0.1: reachable from this machine only. Drop it to open the page to
+      # your network, and know that anyone who reaches it spends your API credits.
+      - "127.0.0.1:${WIKIRACE_PORT:-8000}:8000"
+    volumes:
+      - wikirace-data:/data
+    extra_hosts:
+      # An Ollama on this machine, as host.docker.internal, on Linux as well.
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    # Room to record a race that a stop cuts short as stopped, not interrupted.
+    stop_grace_period: 10s
+
+volumes:
+  wikirace-data:
