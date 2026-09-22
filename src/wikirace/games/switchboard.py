@@ -21,6 +21,7 @@ from __future__ import annotations
 import asyncio
 import json
 import random
+import re
 import time
 from functools import cache
 from pathlib import Path
@@ -92,6 +93,25 @@ def read_line(reply: str) -> str | None:
         rows = [r.strip() for r in (reply or "").splitlines() if r.strip()]
         claimed = rows[-1] if rows else None
     return claimed
+
+
+_DOMAIN_TAG = re.compile(r"\s*\(([^()]*)\)\s*$")
+
+
+def match_line(claimed: str | None, names: list[str]) -> str | None:
+    """The line *claimed* names. The listing shows each line as `name
+    (domain)`, and a model that copies the row whole ("translate (travel)")
+    has named the line: the domain is our decoration, not its answer. Only
+    the line's own domain is peeled; anything else in brackets is not."""
+    opt = match_option(claimed, names)
+    if opt is not None or not claimed:
+        return opt
+    m = _DOMAIN_TAG.search(claimed)
+    if m is None:
+        return None
+    opt = match_option(claimed[: m.start()], names)
+    domain = dict(lines()).get(opt or "")
+    return opt if opt is not None and fold(m.group(1)) == fold(domain or "") else None
 
 
 def judge(route: str, intent: str | None, gold: str | None) -> str:
@@ -201,7 +221,7 @@ async def play(run: GameRun, ctx: Context) -> None:
         if claimed is not None and fold(claimed) == OPERATOR:
             route, intent = "operator", None
         else:
-            opt = match_option(claimed, names)
+            opt = match_line(claimed, names)
             if opt is None:
                 route, intent = "foul", None
             elif opt == OOS:

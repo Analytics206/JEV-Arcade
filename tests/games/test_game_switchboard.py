@@ -45,6 +45,12 @@ def test_routing_and_scoring_rules():
     assert S.judge("operator", None, "apr") == "operator"
     assert S.read_line("thinking…\nLINE: **apr**") == "apr"
     assert S.read_line("apr") == "apr"
+    # A row copied whole from the listing names its line; another bracket does not.
+    names = [n for n, _ in S.lines()]
+    assert S.match_line("translate (travel)", names) == "translate"
+    assert S.match_line("uber (auto)", names) == "uber"
+    assert S.match_line("uber (banking)", names) is None
+    assert S.match_line("customer_service (billing)", names) is None
 
 
 def test_jev_connects_every_caller_when_it_is_sure(arcade):

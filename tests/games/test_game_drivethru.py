@@ -126,6 +126,9 @@ def test_a_text_models_till_lines_and_its_fouls():
     assert clarify is None
     lines, fouls, clarify = D.read_order("ITEM: fries | QTY: 1 | SIZE: - | MODS: -\nCLARIFY: onion rings\nDONE")
     assert lines == [{"item": "fries", "qty": 1, "size": "medium", "mods": []}] and clarify == "onion rings"
+    # A model that copies the form's placeholder ("->") has said nothing, not fouled.
+    lines, fouls, _ = D.read_order("ITEM: burger | QTY: 2 | SIZE: - | MODS: ->\nITEM: fries | QTY: 2 | SIZE: large | MODS: none\nDONE")
+    assert fouls == [] and [ln["item"] for ln in lines] == ["burger", "fries"]
 
 
 def test_assembling_jevs_answers_and_the_read_back():

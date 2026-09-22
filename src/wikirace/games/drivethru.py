@@ -24,7 +24,7 @@ different modifiers cannot be told this way; the orders here avoid it. One
 size per item per order, likewise.
 
 **A text model** rings the order up itself, one line per item:
-`ITEM: <item> | QTY: <n> | SIZE: <size or -> | MODS: <comma list or ->`, then
+`ITEM: <item> | QTY: <n> | SIZE: <size or none> | MODS: <comma list or none>`, then
 `DONE`, with `CLARIFY: <what>` for something not on the menu. An item or
 modifier not on the menu, or a size the item does not have, is a foul (the
 line is dropped).
@@ -247,12 +247,13 @@ def text_system() -> str:
     return (
         "You work the window at a drive-thru. Each customer says their order into the speaker, and you ring it "
         "up on the till as function calls: one line per item, in exactly this form:\n"
-        "ITEM: <item> | QTY: <number> | SIZE: <size or -> | MODS: <modifiers, comma-separated, or ->\n\n"
+        "ITEM: <item> | QTY: <number> | SIZE: <size, or none> | MODS: <modifiers, comma-separated, or none>\n"
+        "For example: ITEM: fries | QTY: 1 | SIZE: large | MODS: none\n\n"
         "The menu, one item per row as `item (what it is): sizes; modifiers`:\n" + "\n".join(rows) + "\n\n"
         "Rules:\n"
         "- Write each item and modifier exactly as the menu writes it.\n"
-        f"- SIZE is one of the item's sizes, or - for an item without sizes. If the customer names no size, "
-        f"write - and the till rings up {default_size()}.\n"
+        f"- SIZE is one of the item's sizes, or none for an item without sizes. If the customer names no size, "
+        f"write none and the till rings up {default_size()}.\n"
         "- When the customer changes their mind, ring up only what they end with.\n"
         "- When only some of an item are changed (\"two cheeseburgers, one with no pickles\"), write two lines: "
         "one for those with the change, one for the rest.\n"
@@ -264,7 +265,11 @@ def text_system() -> str:
 
 
 def _blank(s: str | None) -> bool:
-    return s is None or fold(s) in _BLANK
+    """Nothing said: a none-word, or only dashes and brackets (a model copying
+    the form's placeholder writes "->" or "<->")."""
+    if s is None:
+        return True
+    return fold(s) in _BLANK or not s.strip().strip("-–—<>_ ")
 
 
 def _match_item(name: str) -> str | None:
