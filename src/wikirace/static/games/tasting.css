@@ -1,0 +1,113 @@
+/* Blind Tasting: every rule under .bt-… */
+
+/* ── Setup ── */
+.bt-setup { gap: 16px; }
+.bt-side { display: flex; flex-direction: column; gap: 16px; }
+.bt-rules { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ── The stage ── */
+.bt-stage { display: grid; grid-template-columns: 260px minmax(0, 1fr) 232px; gap: 14px; align-items: start; }
+@media (max-width: 1100px) { .bt-stage { grid-template-columns: minmax(0, 1fr) 232px; } .bt-left { grid-column: 1 / -1; } }
+@media (max-width: 700px) { .bt-stage { grid-template-columns: minmax(0, 1fr); } }
+.bt-left, .bt-mid, .bt-right { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+
+.bt-note__text { font-size: 15px; line-height: 1.6; font-style: italic; color: var(--txt); }
+.bt-note__meta { font-size: var(--fs-xs); }
+.bt-guess__k { font-family: var(--display); font-size: var(--fs-xs); font-weight: 600; letter-spacing: .14em; color: var(--dim); }
+.bt-guess { display: flex; gap: 8px; }
+.bt-guess__in {
+  width: 92px; min-height: 44px; padding: 0 10px; font-size: 20px; font-weight: 700; color: var(--txt);
+  background: var(--panel); border: 1px solid var(--edge-hot); border-radius: 4px;
+}
+.bt-guess__go { flex: 1; min-height: 44px; }
+.bt-guess__help { font-size: var(--fs-xs); }
+.bt-pass {
+  align-self: flex-start; padding: 2px 0; font-size: var(--fs-sm); color: var(--dim); background: none;
+  border: none; text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+}
+.bt-pass:hover { color: var(--txt); }
+.bt-locked { padding: 10px 12px; font-size: var(--fs-md); color: var(--txt); background: var(--cy-dim); border: 1px solid var(--edge-hot); border-radius: 4px; }
+.bt-anchors { font-size: var(--fs-xs); line-height: 1.5; }
+
+/* ── What Jev measures ── */
+.bt-pick { display: flex; gap: 6px; flex-wrap: wrap; }
+.bt-pick__b {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; font-size: var(--fs-sm);
+  color: var(--dim); background: none; border: 1px solid var(--rule); border-radius: 3px; cursor: pointer;
+}
+.bt-pick__b--on { color: var(--txt); border-color: var(--edge-hot); background: var(--cy-dim); }
+.bt-rows { display: flex; flex-direction: column; gap: 8px; }
+.bt-row { display: grid; grid-template-columns: 116px minmax(0, 1fr) 64px; gap: 10px; align-items: center; font-size: var(--fs-sm); }
+.bt-row__v { font-family: var(--mono); text-align: right; }
+.bt-track { display: block; width: 100%; height: 14px; }
+.bt-track__bg { fill: color-mix(in srgb, var(--lane) 12%, transparent); }
+.bt-track__grid { stroke: var(--rule); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.bt-track__band { fill: color-mix(in srgb, var(--lane) 38%, transparent); transition: x .4s, width .4s; }
+.bt-track__tick { fill: var(--lane); transition: x .4s; }
+.bt-track--yes .bt-track__bg { fill: color-mix(in srgb, var(--ok) 12%, transparent); }
+.bt-track__bar { fill: var(--ok); transition: width .4s; }
+.bt-key { font-size: var(--fs-xs); }
+
+.bt-code { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; background: var(--void-2); border-radius: 3px; }
+.bt-code > svg { flex-shrink: 0; width: 20px; height: 20px; }
+.bt-code > svg path { fill: none; stroke: var(--cy); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.bt-code__body { display: flex; flex-direction: column; gap: 8px; min-width: 0; flex: 1; }
+.bt-code__body p { font-size: var(--fs-sm); line-height: 1.5; color: var(--dim); }
+.bt-code__body b { color: var(--txt); }
+.bt-weights { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.bt-scatter__row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.bt-scatter__svg { width: 220px; max-width: 100%; height: auto; flex-shrink: 0; }
+.bt-scatter__key { flex: 1; min-width: 160px; font-size: var(--fs-xs); line-height: 1.5; }
+.bt-sc__frame { fill: var(--void-2); stroke: var(--rule); }
+.bt-sc__k { font-family: var(--mono); font-size: 9px; fill: var(--dim); text-anchor: middle; }
+.bt-sc__diag { stroke: var(--dimmer); stroke-dasharray: 4 3; }
+.bt-sc__pred { stroke: var(--lane); stroke-width: 1.5; stroke-dasharray: 2 3; }
+.bt-sc__dot { fill: var(--lane); opacity: .75; }
+.bt-sc__this { fill: var(--txt); stroke: var(--lane); stroke-width: 3; }
+
+/* ── The guesses, as price tags ── */
+.bt-tag { position: relative; display: flex; align-items: center; gap: 8px; min-height: 58px; padding: 6px 14px 6px 34px; }
+.bt-tag__shape { position: absolute; inset: 0; width: 100%; height: 100%; }
+.bt-tag__shape path { fill: var(--panel); stroke: var(--dimmer); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.bt-tag__hole {
+  position: absolute; left: 13px; top: 50%; width: 9px; height: 9px; margin-top: -4.5px;
+  border-radius: 50%; background: var(--void); box-shadow: inset 0 0 0 1.5px var(--dimmer);
+}
+.bt-tag__who { position: relative; display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
+.bt-tag__name { display: flex; align-items: center; gap: 6px; font-size: var(--fs-md); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bt-tag__note { font-size: 10.5px; color: var(--dim); }
+.bt-tag__v { position: relative; font-size: 26px; font-weight: 800; line-height: 1; }
+.bt-tag--sealed .bt-tag__v, .bt-tag--none .bt-tag__v { color: var(--dimmer); }
+.bt-tag--mine .bt-tag__shape path { stroke: var(--edge-hot); }
+.bt-tag--won .bt-tag__shape path { fill: var(--ok-dim); stroke: var(--ok); stroke-width: 2.5; }
+.bt-tag--won .bt-tag__note { color: var(--ok); }
+.bt-tag--over .bt-tag__shape path { stroke: color-mix(in srgb, var(--err) 60%, transparent); }
+.bt-tag--over .bt-tag__v { color: var(--err); text-decoration: line-through; text-decoration-thickness: 3px; }
+.bt-tag--over .bt-tag__note { color: var(--err); }
+
+/* The critic's card turns over once it may be read. */
+.bt-critic { margin-top: 6px; perspective: 900px; }
+.bt-critic__inner { display: grid; transform-style: preserve-3d; transition: transform .7s cubic-bezier(.3, 1.3, .5, 1); }
+.bt-critic--up .bt-critic__inner { transform: rotateY(180deg); }
+.bt-critic__face {
+  grid-area: 1 / 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  min-height: 96px; padding: 12px; border-radius: 4px; backface-visibility: hidden; -webkit-backface-visibility: hidden;
+}
+.bt-critic__back {
+  color: var(--dim); border: 1px solid var(--edge-hot);
+  background:
+    repeating-linear-gradient(45deg, color-mix(in srgb, var(--cy) 10%, transparent) 0 2px, transparent 2px 10px),
+    var(--void-2);
+}
+.bt-critic__front { transform: rotateY(180deg); color: var(--void); background: var(--txt); }
+.bt-critic__k { font-size: var(--fs-xs); font-weight: 700; letter-spacing: .14em; }
+.bt-critic__seal { font-size: var(--fs-xs); }
+.bt-critic__v { font-size: 40px; font-weight: 800; line-height: 1.05; }
+
+.bt-lanebody { display: flex; flex-direction: column; gap: 4px; font-size: var(--fs-sm); }
+.bt-lanebody__said { color: var(--dim); font-style: italic; }
+
+@media (prefers-reduced-motion: reduce) {
+  .bt-critic__inner, .bt-track__band, .bt-track__tick, .bt-track__bar { transition: none; }
+}

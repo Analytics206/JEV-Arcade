@@ -42,6 +42,32 @@ Both screenshots are real races run while this was built, on the same course: th
 models above took from 6.9 s to 8 minutes, three to ten hops; Jev took five hops and 1.3 s of
 thinking in all.
 
+## The Arcade
+
+The page's **Arcade** tab holds fourteen more games beside the race, each showing a different
+thing a judgment model does well. The same players take the lanes: Jev, and any text model your
+keys reach. Every game runs on the server and streams live, like a race, and keeps its history.
+
+| Game | What happens | Jev use case |
+|---|---|---|
+| **Legal Moves Only** | Chess puzzles, mate in one. Jev picks from the real legal moves; a text model writes a move and can write an impossible one | typed actions |
+| **Switchboard** | Callers ring in on a clock; each operator patches them to one of 150 intents, or to a human when unsure, before they hang up | intent routing, confidence gating |
+| **Customs** | Messages ride an X-ray belt; hazard gauges send each to pass, inspect or block | LLM guardrails |
+| **WikiGuessr** | Where on Earth is this redacted article? Claim continent, country, region, only as deep as you're sure | hierarchical classification |
+| **Rail Yard** | Jev throws the switches that send each prompt to the text model that should answer it, against "always the big one" | model routing |
+| **Two Truths and a Lie** | A text model writes three claims about an article; Jev checks each against it, and so do you | verification |
+| **Judges' Panel** | Jev scores every contestant on five rubrics once; drag the weights and the ranking changes with no new request | composite scoring |
+| **Ghost Maze** | Two mazes, one clock, ten ticks a second. The ghosts don't wait for a model that's still thinking | real-time decisions |
+| **Needle Hunt** | Find the line of the Constitution (or any article) that answers the question, or say it isn't there | line-by-line search |
+| **Slot Machine** | One borderline post, fifteen pulls: does the verdict hold still? | self-consistency |
+| **Drive-Thru** | Spoken orders in, typed function calls out, with a read-back when unsure | function calling |
+| **Memory Match** | Two shops' listings: the same product, a close variant, or not? | entity alignment |
+| **The Big Sort** | Hundreds of random Wikipedia articles sorted into topics while you watch | map-reduce over big data |
+| **Blind Tasting** | Guess the critic's score: Jev measures the note, a small model in code does the maths | features for ML |
+
+The rounds' material (puzzles, callers, messages, orders, products, notes) is written for
+WikiRace, or read live from Wikipedia. [docs/arcade.md](docs/arcade.md) says how a game is built.
+
 ## Quick start
 
 You need at least one provider: a key in `.env`, or an Ollama you run yourself.
@@ -177,6 +203,10 @@ node --test tests/js     # the page's pure state (Node 22+)
 
 `node tests/js/mock_server.mjs` serves the page at <http://127.0.0.1:8001> against a mocked API
 that replays a recorded race live, for working on the page without any keys or network.
+
+`uv run python tests/games/demo_server.py` serves the real app at
+<http://127.0.0.1:8002/?tab=arcade> over stand-in players (a fake Jev that answers in a tenth of
+a second, fake text models that take one to six), for playing the Arcade without keys.
 
 ## Security
 

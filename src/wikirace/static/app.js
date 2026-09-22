@@ -12,10 +12,11 @@
  * the race, so a reload mid-race reattaches. The page only reads the event stream,
  * through one pure reducer (state.js). History replays finished races.
  */
-import { h, render } from 'preact'
+import { h } from 'preact'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import htm from 'htm'
 import { ApiError, api, useEndpoint, useRaceStream } from './api.js'
+import { navigate } from './games/route.js'
 import { RaceTrace } from './trace.js'
 import { Badge, Button, EmptyState, Panel, Spacer, StatDot, Tabs, Toolbar } from './ui.js'
 import {
@@ -72,6 +73,7 @@ const html = htm.bind(h)
 const TABS = [
   ['race', 'Race'],
   ['history', 'History'],
+  ['arcade', 'Arcade'],
 ]
 
 const TIME_LIMITS = [120, 300, 600, 1200, 1800, 3600]
@@ -1143,7 +1145,8 @@ function App() {
           <${Tabs}
             tabs=${TABS}
             value=${tab}
-            onChange=${(t) => go(t === 'history' ? { tab: 'history' } : { race: lastRace.current })}
+            onChange=${(t) =>
+              t === 'arcade' ? navigate('?tab=arcade') : go(t === 'history' ? { tab: 'history' } : { race: lastRace.current })}
           />
           <${Spacer} />
           ${runningRace &&
@@ -1160,4 +1163,5 @@ function App() {
   `
 }
 
-render(html`<${App} />`, document.getElementById('app'))
+/** The page's WikiRace view; main.js mounts it, or the Arcade beside it. */
+export { App as WikiRace }

@@ -1,0 +1,76 @@
+/* Switchboard: every rule under .sb-… */
+
+.sb-setup { gap: 16px; }
+.sb-params { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.sb-thr { grid-column: 1 / -1; }
+.sb-thr input { accent-color: var(--cy); }
+.sb-thr b { font-family: var(--mono); font-size: var(--fs-md); color: var(--txt); }
+.sb-side { display: flex; flex-direction: column; gap: 16px; }
+.sb-rules { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.sb-stage { display: grid; grid-template-columns: 300px minmax(0, 1fr) 300px; gap: 16px; align-items: start; }
+@media (max-width: 1150px) { .sb-stage { grid-template-columns: minmax(0, 1fr); } }
+
+.sb-calls__list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.sb-call { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; background: var(--void-2); border: 1px solid var(--rule); border-radius: 3px; }
+.sb-call:first-child { border-color: var(--edge-hot); background: rgba(62, 244, 255, 0.06); }
+.sb-call__text { font-size: var(--fs-md); }
+.sb-call__marks { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.sb-call__gold { margin-left: auto; font-size: var(--fs-xs); color: var(--dim); }
+.sb-mark {
+  display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px;
+  font-family: var(--mono); font-size: var(--fs-xs); font-weight: 700; color: var(--dim);
+  border: 1px solid var(--lane); border-radius: 2px;
+}
+.sb-mark--busy { color: var(--lane-ink); background: var(--lane); }
+.sb-mark--ok { color: var(--ok); }
+.sb-mark--err { color: var(--err); }
+.sb-mark--vi { color: var(--lane-3); }
+.sb-mark--warn { color: var(--warn); }
+
+.sb-center { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.sb-lanetabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.sb-lanetab {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; font-size: var(--fs-sm);
+  color: var(--dim); background: none; border: 1px solid var(--rule); border-radius: 3px; cursor: pointer;
+}
+.sb-lanetab--on { color: var(--txt); border-color: var(--edge-hot); background: var(--cy-dim); }
+.sb-board { padding: 8px; }
+.sb-board svg { width: 100%; height: auto; display: block; }
+.sb-board__bg { fill: var(--void-2); stroke: var(--edge); }
+.sb-board__domains text { font-family: var(--mono); font-size: 9.5px; fill: var(--dim); text-anchor: middle; letter-spacing: .5px; }
+.sb-board__rule { stroke: var(--rule); }
+.sb-board__cap { font-family: var(--mono); font-size: 10px; text-anchor: middle; }
+.sb-board__note { font-family: var(--mono); font-size: 10px; fill: var(--dim); }
+.sb-t-warn { fill: var(--warn); color: var(--warn); }
+.sb-t-vi { fill: var(--lane-3); color: var(--lane-3); }
+.sb-t-ok { color: var(--ok); }
+.sb-t-err { color: var(--err); }
+.sb-jack { fill: #060911; stroke-width: 2; }
+.sb-jack--oos { stroke: var(--warn); }
+.sb-jack--op { stroke: var(--lane-3); stroke-width: 2.5; }
+.sb-lit { stroke: none; }
+.sb-f-ok { fill: var(--ok); }
+.sb-f-err { fill: var(--err); }
+.sb-f-vi { fill: var(--lane-3); }
+.sb-cord { fill: none; stroke-width: 3.5; stroke-linecap: round; transition: d .3s; }
+.sb-s-ok { stroke: var(--ok); }
+.sb-s-err { stroke: var(--err); }
+.sb-s-vi { stroke: var(--lane-3); }
+.sb-plug { fill: #2a3a55; stroke: var(--dim); }
+.sb-callout rect { fill: var(--void); stroke: var(--ok); }
+.sb-callout text { font-family: var(--mono); font-size: 11px; fill: var(--txt); text-anchor: middle; }
+
+.sb-pick__call { font-size: 15px; }
+.sb-pick__said { font-size: 15px; padding: 8px 10px; background: var(--void-2); border-radius: 3px; overflow-wrap: anywhere; }
+.sb-pick__rule { font-size: var(--fs-xs); }
+.sb-pick__verdict { font-weight: 600; font-size: var(--fs-md); }
+
+.sb-tally__row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.sb-tally__score { display: flex; flex-direction: column; align-items: center; min-width: 64px; }
+.sb-tally__score span { font-size: 30px; font-weight: 700; line-height: 1; }
+.sb-tally__score small { font-size: var(--fs-xs); color: var(--dim); }
+.sb-tally__stats { flex: 1; border-top: none; padding-top: 0; }
+.sb-queue { display: flex; flex-direction: column; gap: 2px; width: 110px; }
+.sb-queue svg { width: 110px; height: 22px; }
+.sb-spark { fill: none; stroke: var(--lane); stroke-width: 2; vector-effect: non-scaling-stroke; }

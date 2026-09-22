@@ -439,8 +439,23 @@ async function api(req, res, url) {
       return json(res, 200, { deleted: id })
     }
   }
+  // The Arcade's games are played on the real server over stand-in players
+  // (tests/games/demo_server.py); here they are listed, as not built, so the
+  // Arcade tab draws its hub.
+  if (req.method === 'GET' && p === '/api/games') return json(res, 200, { games: ARCADE })
+  if (req.method === 'GET' && p === '/api/games/runs') return json(res, 200, { runs: [], running: [] })
   return json(res, 404, { detail: `no such endpoint: ${req.method} ${p}` })
 }
+
+const ARCADE = [
+  ['chess', 'Legal Moves Only'], ['switchboard', 'Switchboard'], ['customs', 'Customs'], ['wikiguessr', 'WikiGuessr'],
+  ['railyard', 'Rail Yard'], ['twotruths', 'Two Truths and a Lie'], ['judges', "Judges' Panel"], ['ghostmaze', 'Ghost Maze'],
+  ['needle', 'Needle Hunt'], ['slots', 'Slot Machine'], ['drivethru', 'Drive-Thru'], ['memory', 'Memory Match'],
+  ['bigsort', 'The Big Sort'], ['tasting', 'Blind Tasting'],
+].map(([id, title]) => ({
+  id, title, tagline: 'Played on the demo server: uv run python tests/games/demo_server.py', use_case: '',
+  lanes: { min: 1, max: 4 }, kinds: ['judgment', 'text'], needs_jev: false, ready: false, params: {},
+}))
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8',

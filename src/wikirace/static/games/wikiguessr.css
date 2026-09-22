@@ -1,0 +1,126 @@
+/* WikiGuessr: every rule under .wg-… */
+
+/* Softer body text, between the page's text and its dim. */
+.wg-setup, .wg-side, .wg-stage { --wg-soft: color-mix(in srgb, var(--txt) 72%, var(--dim)); }
+
+.wg-setup { gap: 16px; }
+.wg-params { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.wg-thr input { accent-color: var(--cy); }
+.wg-thr b { font-family: var(--mono); font-size: var(--fs-md); color: var(--txt); }
+.wg-side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.wg-side__row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 700px) { .wg-side__row, .wg-params { grid-template-columns: minmax(0, 1fr); } }
+
+.wg-how__pre { font-family: var(--mono); font-size: 11.5px; line-height: 1.6; color: var(--txt); white-space: pre-wrap; }
+.wg-scoring { background: none; border-color: var(--rule); }
+.wg-scoring__grid { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; font-family: var(--mono); font-size: var(--fs-sm); }
+.wg-scoring__grid dd { text-align: right; }
+.wg-scoring__note { font-size: var(--fs-sm); line-height: 1.5; color: var(--wg-soft); }
+
+/* Rounds and whose numbers. */
+.wg-bar { display: flex; gap: 16px; flex-wrap: wrap; }
+.wg-bar:empty { display: none; }
+.wg-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.wg-tab {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; font-size: var(--fs-sm);
+  color: var(--dim); background: none; border: 1px solid var(--rule); border-radius: 3px; cursor: pointer;
+}
+.wg-tab:hover { color: var(--txt); border-color: var(--edge); }
+.wg-tab--on { color: var(--txt); border-color: var(--edge-hot); background: var(--cy-dim); }
+
+.wg-stage { display: grid; grid-template-columns: 320px minmax(0, 470px) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 1250px) { .wg-stage { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .wg-col--article { grid-column: 1 / -1; } }
+@media (max-width: 800px) { .wg-stage { grid-template-columns: minmax(0, 1fr); } }
+.wg-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+/* The article. */
+.wg-article__text { display: flex; flex-direction: column; gap: 8px; }
+.wg-article__text p { font-size: var(--fs-base); line-height: 1.65; color: var(--txt); overflow-wrap: anywhere; }
+.wg-redact {
+  color: var(--txt); background: var(--txt); border-radius: 2px; letter-spacing: -0.5px;
+  word-break: break-all; box-decoration-break: clone; -webkit-box-decoration-break: clone;
+}
+.wg-note { font-size: var(--fs-xs); color: var(--dim); }
+
+/* A level. */
+.wg-level { display: flex; flex-direction: column; gap: 8px; }
+.wg-levelhd { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.wg-levelhd__k { font-family: var(--display); font-size: var(--fs-xs); font-weight: 600; letter-spacing: .14em; color: var(--dim); }
+.wg-levelhd__note { font-size: var(--fs-xs); }
+.wg-conf { font-size: var(--fs-xs); }
+.wg-conf--claim { color: var(--ok); }
+.wg-conf--stop { color: var(--warn); }
+.wg-empty { padding: 10px 0; }
+.wg-why { font-size: var(--fs-sm); line-height: 1.5; color: var(--wg-soft); }
+
+/* Level 1: the continent bar. */
+.wg-stack { display: flex; height: 26px; border-radius: 3px; overflow: hidden; background: var(--cy-dim); }
+.wg-stack__seg {
+  display: flex; align-items: center; padding-left: 8px; min-width: 0; overflow: hidden; white-space: nowrap;
+  font-family: var(--mono); font-size: var(--fs-xs); background: var(--cy); transition: width .4s;
+}
+.wg-stack__seg + .wg-stack__seg { box-shadow: inset 2px 0 0 var(--void); padding-left: 0; }
+.wg-stack__seg--top { color: var(--lane-ink); font-weight: 700; }
+.wg-then { font-size: var(--fs-xs); color: var(--dim); }
+
+/* Level 2: the tile map. */
+.wg-conts { display: flex; gap: 4px; flex-wrap: wrap; }
+.wg-cont {
+  display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; font-size: var(--fs-xs);
+  color: var(--dim); background: none; border: 1px solid var(--rule); border-radius: 3px; cursor: pointer;
+}
+.wg-cont .g-num { width: 16px; height: 16px; font-size: 10px; }
+.wg-cont:hover { color: var(--txt); border-color: var(--edge); }
+.wg-cont--on { color: var(--txt); border-color: var(--edge-hot); background: var(--cy-dim); }
+.wg-cont__p { color: var(--cy); }
+.wg-cont__pin { color: var(--err); font-size: 10px; }
+.wg-map { width: 100%; height: auto; display: block; max-height: 560px; }
+.wg-tile__bg { fill: color-mix(in srgb, var(--dimmer) 30%, var(--void)); stroke: var(--edge); stroke-width: 1; }
+.wg-tile__lit { fill: var(--cy); transition: fill-opacity .4s; }
+.wg-tile__code { font-family: var(--mono); font-size: 12px; text-anchor: middle; fill: var(--dim); }
+.wg-tile--lit .wg-tile__code { font-size: 13px; font-weight: 700; fill: var(--txt); }
+.wg-tile__p { font-family: var(--mono); font-size: 11px; text-anchor: middle; fill: var(--txt); }
+.wg-tile--dark .wg-tile__code, .wg-tile--dark .wg-tile__p { fill: var(--lane-ink); }
+.wg-ring__line { fill: none; stroke: var(--lane); stroke-width: 2.5; }
+.wg-ring__tag { fill: var(--lane); stroke: var(--void); stroke-width: 1; }
+.wg-ring__num { font-family: var(--mono); font-size: 9px; font-weight: 700; text-anchor: middle; fill: var(--lane-ink); }
+.wg-pin { fill: var(--err); stroke: var(--void); stroke-width: 1.5; }
+.wg-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: var(--fs-xs); color: var(--dim); }
+.wg-legend > span { display: inline-flex; align-items: center; gap: 5px; }
+.wg-key { display: inline-block; width: 11px; height: 11px; border-radius: 2px; }
+.wg-key--lit { background: linear-gradient(90deg, var(--cy-dim), var(--cy)); }
+.wg-key--ring { border: 2px solid var(--lane-1); }
+.wg-key--pin { width: auto; height: auto; color: var(--err); font-size: 10px; }
+.wg-beam { display: flex; flex-direction: column; gap: 2px; font-size: var(--fs-xs); color: var(--wg-soft); }
+.wg-beam b { color: var(--txt); font-weight: 600; }
+
+/* Level 3, the reveal and the claims. */
+.wg-regions .g-meter__k { min-width: 0; font-size: var(--fs-xs); color: var(--dim); }
+.wg-reveal { border-color: color-mix(in srgb, var(--err) 35%, transparent); background: var(--err-dim); gap: 4px; }
+.wg-reveal .g-label { color: var(--err); }
+.wg-reveal--hidden { background: none; border-color: var(--rule); border-style: dashed; }
+.wg-reveal--hidden .g-label { color: var(--dim); }
+.wg-reveal__title { font-size: 16px; font-weight: 700; color: var(--txt); }
+.wg-reveal__path { font-size: var(--fs-xs); color: var(--wg-soft); }
+
+.wg-claims { display: flex; flex-direction: column; gap: 8px; }
+.wg-claim {
+  display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--panel);
+  border: 1px solid var(--edge); border-left: 3px solid var(--lane); border-radius: 4px;
+}
+.wg-claim__body { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.wg-claim__who { font-size: var(--fs-base); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wg-claim__sub { display: flex; gap: 5px; align-items: baseline; flex-wrap: wrap; font-size: var(--fs-xs); color: var(--dim); }
+.wg-claim__why { font-size: var(--fs-xs); color: var(--wg-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wg-claim__pts { font-size: 20px; font-weight: 700; min-width: 40px; text-align: right; }
+
+.wg-board { background: none; border-color: var(--rule); }
+.wg-board__t td, .wg-board__t th { padding: 4px 6px; font-size: var(--fs-sm); }
+.wg-board__who { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.wg-board__chips { display: flex; gap: 6px; }
+
+.wg-lane__row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.wg-lane__row .g-stats { flex: 1; border-top: none; padding-top: 0; }
+.wg-lane__score { display: flex; flex-direction: column; align-items: center; min-width: 56px; }
+.wg-lane__score span { font-size: 28px; font-weight: 700; line-height: 1; }
+.wg-lane__score small { font-size: var(--fs-xs); color: var(--dim); }

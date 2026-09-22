@@ -1,0 +1,100 @@
+/* Slot Machine: every rule under .sl-… Over WikiRace's tokens (styles.css) only. */
+
+/* An outcome sets --tone; everything that wears it reads it. */
+.sl-tone--ok { --tone: var(--ok); }
+.sl-tone--warn { --tone: var(--warn); }
+.sl-tone--err { --tone: var(--err); }
+.sl-tone--vi { --tone: var(--vi); }
+.sl-tone--foul { --tone: var(--err); }
+
+/* ── Setup ── */
+.sl-setup { gap: 16px; }
+.sl-setup__post { font-size: var(--fs-md); line-height: 1.45; padding: 8px 10px; background: var(--void-2); border: 1px solid var(--rule); border-radius: 3px; }
+.sl-params { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.sl-thr input { accent-color: var(--cy); }
+.sl-thr b { font-family: var(--mono); font-size: var(--fs-md); color: var(--txt); }
+.sl-side { display: flex; flex-direction: column; gap: 16px; }
+.sl-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.sl-cook { font-size: var(--fs-sm); }
+
+/* ── The post ── */
+.sl-post__text { font-size: 17px; line-height: 1.45; }
+.sl-post__labels { font-size: var(--fs-xs); }
+.sl-post__why { font-size: var(--fs-md); line-height: 1.5; padding: 8px 12px; border-left: 3px solid var(--cy); background: var(--cy-dim); }
+
+/* ── The machines ── */
+.sl-machines { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); }
+.sl-cabinet { display: block; width: 100%; max-width: 460px; height: auto; margin: 0 auto; }
+.sl-body { fill: color-mix(in srgb, var(--lane) 12%, var(--void-2)); stroke: var(--lane); stroke-width: 2.5; }
+.sl-marquee { fill: var(--void); stroke: color-mix(in srgb, var(--lane) 55%, transparent); }
+.sl-marquee__t { font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: 2px; text-anchor: middle; fill: var(--txt); }
+.sl-cabinet--win .sl-marquee { fill: color-mix(in srgb, var(--lane) 28%, var(--void)); stroke: var(--lane); animation: sl-flash .5s ease-in-out 3 alternate; }
+@keyframes sl-flash { from { fill-opacity: 1; } to { fill-opacity: .4; } }
+.sl-window { fill: var(--void); stroke: var(--edge); }
+
+.sl-cell { fill: var(--tone, var(--dimmer)); }
+.sl-cell--blank { fill: var(--void-2); stroke: var(--rule); }
+.sl-cell.sl-tone--foul { fill: var(--void-2); stroke: var(--err); stroke-width: 2; stroke-dasharray: 4 3; }
+.sl-cell__glyph { font-family: var(--mono); font-size: 30px; font-weight: 800; text-anchor: middle; fill: var(--lane-ink); }
+.sl-cell__word { font-family: var(--mono); font-size: 12px; font-weight: 800; letter-spacing: 1px; text-anchor: middle; fill: var(--lane-ink); }
+.sl-cell__n { font-family: var(--mono); font-size: 9px; text-anchor: end; fill: var(--lane-ink); opacity: .7; }
+.sl-tone--foul ~ .sl-cell__glyph, .sl-tone--foul ~ .sl-cell__word, .sl-tone--foul ~ .sl-cell__n { fill: var(--err); }
+.sl-cell__none { font-family: var(--mono); font-size: 24px; text-anchor: middle; fill: var(--dimmer); }
+.sl-cell__wait { display: none; font-family: var(--mono); font-size: 28px; font-weight: 700; text-anchor: middle; fill: var(--dim); }
+
+/* A spinning reel: a strip of every symbol, twice over, sliding up for ever. */
+.sl-spin { animation: sl-spin .5s linear infinite; }
+.sl-spin .sl-cell { opacity: .85; }
+@keyframes sl-spin { from { transform: translateY(0); } to { transform: translateY(-368px); } }
+.sl-landed { animation: sl-land .28s cubic-bezier(.2, 1.4, .5, 1); }
+@keyframes sl-land { from { transform: translateY(-16px); opacity: .5; } to { transform: none; opacity: 1; } }
+
+.sl-payline { stroke: var(--txt); stroke-opacity: .4; stroke-width: 1.5; stroke-dasharray: 6 4; }
+.sl-tray { fill: var(--void); stroke: var(--edge); }
+.sl-lever__base { fill: var(--dimmer); }
+.sl-lever__arm { stroke: var(--dim); stroke-width: 5; stroke-linecap: round; }
+.sl-lever__ball { fill: var(--lane); stroke: var(--void); stroke-width: 2; }
+.sl-lever { transform-box: view-box; transform-origin: 372px 110px; transition: transform .22s ease-in; }
+.sl-lever--down { transform: scaleY(-1); }
+
+.sl-caption { font-size: var(--fs-xs); }
+.sl-strip { list-style: none; display: grid; gap: 3px; }
+.sl-chip {
+  display: flex; align-items: center; justify-content: center; min-width: 0; height: 18px; overflow: hidden;
+  font-family: var(--mono); font-size: 11px; font-weight: 800; color: var(--lane-ink); background: var(--tone); border-radius: 2px;
+}
+.sl-chip--empty { background: none; border: 1px dashed var(--rule); }
+.sl-chip--spin { background: none; border: 1px solid var(--lane); animation: sl-blink .6s ease-in-out infinite alternate; }
+@keyframes sl-blink { from { opacity: 1; } to { opacity: .3; } }
+.sl-chip.sl-tone--foul { color: var(--err); background: var(--void-2); border: 1px solid var(--err); }
+.sl-agree { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; font-size: var(--fs-sm); }
+.sl-agree__same { font-weight: 700; }
+.sl-num--big .g-stat__v { font-size: 20px; font-weight: 700; }
+
+.sl-band { display: flex; flex-direction: column; gap: 6px; }
+.sl-band svg { display: block; width: 100%; height: auto; }
+.sl-band__grid { stroke: var(--rule); }
+.sl-band__axis { font-family: var(--mono); font-size: 9px; text-anchor: end; fill: var(--dim); }
+.sl-band__zone { fill: var(--tone); opacity: .16; }
+.sl-band__thr { stroke: var(--vi); stroke-width: 1.5; stroke-dasharray: 5 3; }
+.sl-band__thr-t { font-family: var(--mono); font-size: 9px; text-anchor: end; fill: var(--vi); }
+.sl-band__line polyline { fill: none; stroke: var(--tone); stroke-width: 1.6; }
+.sl-band__line circle { fill: var(--tone); }
+.sl-band__q { font-family: var(--mono); font-size: 10px; font-weight: 800; text-anchor: middle; fill: var(--vi); }
+.sl-band__key { display: flex; flex-wrap: wrap; gap: 12px; font-size: var(--fs-xs); }
+.sl-key { color: var(--tone); }
+
+.sl-said { display: flex; flex-direction: column; gap: 6px; }
+.sl-said__box { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; font-size: var(--fs-sm); background: var(--void-2); border: 1px solid var(--rule); border-radius: 3px; overflow-wrap: anywhere; }
+
+.sl-cookbook { display: flex; align-items: center; gap: 14px; padding: 10px 14px; border: 1px solid var(--rule); border-radius: 4px; }
+.sl-cookbook__text { flex: 1; display: flex; flex-direction: column; gap: 4px; font-size: var(--fs-md); line-height: 1.5; color: color-mix(in srgb, var(--txt) 75%, var(--dim)); }
+.sl-cookbook__us { font-size: var(--fs-xs); color: var(--txt); }
+@media (max-width: 700px) { .sl-cookbook { flex-direction: column; align-items: stretch; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .sl-spin { display: none; }
+  .sl-cell__wait { display: block; }
+  .sl-lever { transition: none; }
+  .sl-landed, .sl-chip--spin, .sl-cabinet--win .sl-marquee { animation: none; }
+}

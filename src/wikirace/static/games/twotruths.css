@@ -1,0 +1,119 @@
+/* Two Truths and a Lie: every rule under .tt-… */
+
+.tt-setup { gap: 16px; }
+.tt-side { display: flex; flex-direction: column; gap: 16px; }
+.tt-rules { display: flex; flex-wrap: wrap; gap: 6px; }
+.tt-busy { font-size: var(--fs-sm); color: var(--dim); }
+.tt-sample { width: 100%; max-width: 330px; height: auto; display: block; }
+
+/* The top row: the article, and how a round goes. */
+.tt-top { display: flex; gap: 20px; align-items: stretch; }
+.tt-article { flex: 1; min-width: 0; padding: 14px 18px; }
+.tt-article__title { font-size: 22px; font-weight: 700; line-height: 1.2; }
+.tt-article__title a { color: var(--txt); text-decoration: none; }
+.tt-article__title a:hover { color: var(--cy); text-decoration: underline; }
+.tt-article__intro { max-height: 190px; padding-right: 6px; display: flex; flex-direction: column; gap: 8px; }
+.tt-article__intro p { font-size: var(--fs-base); line-height: 1.6; color: #aab7cc; max-width: 90ch; }
+.tt-flow { width: 460px; flex-shrink: 0; justify-content: center; border-color: rgba(125, 139, 166, 0.2); background: none; }
+.tt-flow__steps { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: var(--fs-md); }
+.tt-step { padding: 6px 10px; border: 1px solid; border-radius: 3px; }
+.tt-step--w { border-color: var(--lane-2); }
+.tt-step--j { border-color: var(--lane-1); }
+.tt-step--y { border-color: var(--cy); }
+.tt-arrow path { fill: none; stroke: var(--dim); stroke-width: 1.5; }
+.tt-flow__note { font-size: var(--fs-xs); }
+@media (max-width: 1100px) {
+  .tt-top { flex-direction: column; }
+  .tt-flow { width: auto; }
+}
+
+/* The three claims. */
+.tt-claims { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+@media (max-width: 1000px) { .tt-claims { grid-template-columns: minmax(0, 1fr); } }
+.tt-claim { gap: 12px; padding: 16px 18px; border-radius: 6px; transition: border-color .3s, background .3s; }
+.tt-claim--true { border-color: rgba(62, 245, 160, 0.4); }
+.tt-claim--lie { border: 2px solid var(--err); background: rgba(255, 77, 106, 0.06); }
+.tt-claim__hd { display: flex; align-items: baseline; gap: 8px; }
+.tt-claim__hd .g-label { color: var(--dim); }
+.tt-claim__text { font-size: 18px; line-height: 1.45; font-weight: 600; min-height: 78px; }
+.tt-grow { flex: 1; }
+.tt-true { font-family: var(--mono); font-size: var(--fs-sm); font-weight: 700; color: var(--ok); }
+.tt-sealedtag { font-family: var(--mono); font-size: var(--fs-xs); color: var(--dimmer); letter-spacing: .06em; text-transform: uppercase; }
+.tt-stamp {
+  padding: 2px 8px; font-family: var(--mono); font-size: var(--fs-sm); font-weight: 700; letter-spacing: .08em;
+  color: var(--void); background: var(--err); border-radius: 3px;
+  transform: rotate(-4deg); animation: tt-stamp .45s cubic-bezier(.2, 1.6, .4, 1) both;
+}
+@keyframes tt-stamp {
+  from { transform: rotate(-14deg) scale(2.2); opacity: 0; }
+  to { transform: rotate(-4deg) scale(1); opacity: 1; }
+}
+
+/* The polygraph strip. */
+.tt-poly { position: relative; }
+.tt-poly svg { display: block; width: 100%; height: auto; border-radius: 3px; }
+.tt-poly__bg { fill: var(--void-2); }
+.tt-poly__grid line { stroke: rgba(125, 139, 166, 0.14); stroke-width: 1; }
+.tt-poly__grid .tt-poly__tick { stroke: rgba(125, 139, 166, 0.07); }
+.tt-poly__p {
+  position: absolute; top: 4px; right: 6px; font-size: var(--fs-xs); color: var(--dimmer);
+  pointer-events: none;
+}
+.tt-trace { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.tt-trace--idle { stroke: var(--dimmer); opacity: .7; }
+.tt-trace--draw { stroke-dasharray: var(--len); stroke-dashoffset: var(--len); animation: tt-draw 1.5s ease-out forwards; }
+@keyframes tt-draw { to { stroke-dashoffset: 0; } }
+.tt-scan { fill: var(--cy); opacity: .45; animation: tt-scan 2.4s linear infinite; }
+@keyframes tt-scan { from { transform: translateX(0); } to { transform: translateX(358px); } }
+.tt-pen { opacity: 0; animation: tt-pen .3s 1.4s forwards; }
+@keyframes tt-pen { to { opacity: 1; } }
+.tt-s-ok { stroke: var(--ok); }
+.tt-s-err { stroke: var(--err); }
+.tt-s-dim { stroke: var(--dim); }
+.tt-f-ok { fill: var(--ok); }
+.tt-f-err { fill: var(--err); }
+.tt-f-dim { fill: var(--dim); }
+.tt-t-ok { color: var(--ok); }
+.tt-t-err { color: var(--err); }
+.tt-t-dim { color: var(--dim); }
+
+/* Jev's three bars: supported, contradicted, and a grey for not in the article. */
+.tt-jev { display: flex; flex-direction: column; gap: 4px; }
+.tt-jev__who { display: flex; align-items: center; gap: 6px; font-size: var(--fs-xs); color: var(--dim); }
+.tt-jev .g-bar { grid-template-columns: 110px minmax(0, 1fr) 36px; }
+.tt-jev .g-bar:not(.g-bar--ok):not(.g-bar--err) .g-bar__fill { background: var(--dim); }
+.tt-jev .g-bar__track { background: rgba(125, 139, 166, 0.15); }
+.tt-wait { font-size: var(--fs-xs); color: var(--dim); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+.tt-says { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.tt-says li { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; font-size: var(--fs-sm); }
+.tt-says q, .tt-q { color: #aab7cc; font-style: italic; }
+.tt-says q { flex-basis: 100%; padding-left: 26px; font-size: var(--fs-xs); }
+.tt-why { font-size: var(--fs-sm); line-height: 1.5; color: #aab7cc; }
+
+.tt-pick {
+  min-height: 44px; font-size: var(--fs-base); color: var(--txt); background: transparent; cursor: pointer;
+  border: 1px solid rgba(125, 139, 166, 0.4); border-radius: 4px;
+}
+.tt-pick:hover:not(:disabled) { border-color: var(--edge-hot); color: var(--cy); }
+.tt-pick:focus-visible { outline: 2px solid var(--cy); outline-offset: 2px; }
+.tt-pick:disabled { cursor: default; opacity: .5; }
+.tt-pick--on, .tt-pick--on:disabled { opacity: 1; font-weight: 600; color: var(--void); background: var(--cy); border-color: var(--cy); }
+
+/* The timing line and the tally. */
+.tt-bar { flex-direction: row; align-items: center; gap: 18px; flex-wrap: wrap; padding: 12px 18px; }
+.tt-bar__jev { font-size: var(--fs-md); }
+.tt-who { color: var(--lane); }
+.tt-tally { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: var(--fs-md); }
+.tt-tally .g-label { color: var(--dim); }
+.tt-tally__j { display: inline-flex; align-items: center; gap: 6px; }
+.tt-swatch { display: inline-block; width: 9px; height: 9px; background: var(--lane); }
+.tt-starterr { font-size: var(--fs-sm); }
+
+/* A judge's lane. */
+.tt-judge__row { display: flex; align-items: center; gap: 16px; }
+.tt-judge__score { display: flex; flex-direction: column; align-items: center; min-width: 54px; }
+.tt-judge__score span { font-size: 30px; font-weight: 700; line-height: 1; }
+.tt-judge__score small { font-size: var(--fs-xs); color: var(--dim); }
+.tt-judge__body { display: flex; flex-direction: column; gap: 4px; min-width: 0; font-size: var(--fs-md); overflow-wrap: anywhere; }
+.tt-verdict { font-weight: 600; }

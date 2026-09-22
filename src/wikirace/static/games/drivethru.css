@@ -1,0 +1,126 @@
+/* Drive-Thru: every rule under .dt-… The receipts are paper and the cars are
+ * drawn, so their few literal colours are the mockup's own. */
+
+/* ── Setup ─────────────────────────────────────────────────────────────────── */
+
+.dt-setup { gap: 16px; }
+.dt-params { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.dt-thr { grid-column: 1 / -1; }
+.dt-thr input { accent-color: var(--cy); }
+.dt-thr b { font-family: var(--mono); font-size: var(--fs-md); color: var(--txt); }
+.dt-side { display: flex; flex-direction: column; gap: 16px; }
+.dt-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ── The stage ─────────────────────────────────────────────────────────────── */
+
+.dt-stage { display: grid; grid-template-columns: 270px minmax(0, 1fr) 290px; gap: 14px; align-items: start; }
+@media (max-width: 1150px) { .dt-stage { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .dt-tickets { grid-column: 1 / -1; order: 3; } }
+@media (max-width: 760px) { .dt-stage { grid-template-columns: minmax(0, 1fr); } }
+.dt-right { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+.dt-bubble {
+  position: relative; padding: 12px 14px; font-size: 14px; line-height: 1.55;
+  color: var(--void); background: var(--txt); border-radius: 10px;
+}
+.dt-bubble::after {
+  content: ''; position: absolute; left: 34px; bottom: -9px; border: 9px solid transparent;
+  border-bottom: 0; border-top-color: var(--txt);
+}
+.dt-change { color: var(--void); background: var(--warn); border-radius: 2px; padding: 0 2px; }
+.dt-speaker__art { display: block; width: 100%; max-width: 250px; height: auto; margin-top: 4px; }
+.dt-road { stroke: #1d2a44; stroke-width: 2; }
+.dt-bigcar path { fill: #c98500; }
+.dt-bigcar__glass { fill: var(--void); }
+.dt-wheel { fill: #1d2a44; stroke: var(--dim); stroke-width: 2; }
+.dt-post rect { fill: #2a3a55; }
+.dt-post .dt-post__box { fill: #0e1a2c; stroke: var(--cy); stroke-width: 1.5; }
+.dt-post__grille { stroke: var(--dim); stroke-width: 1.5; }
+.dt-gold { display: flex; flex-direction: column; gap: 3px; padding-top: 8px; border-top: 1px solid var(--rule); font-size: var(--fs-sm); }
+.dt-nav { display: flex; gap: 6px; flex-wrap: wrap; }
+.dt-navbtn {
+  padding: 3px 10px; font-size: var(--fs-sm); color: var(--dim); background: none;
+  border: 1px solid var(--rule); border-radius: 3px; cursor: pointer;
+}
+.dt-navbtn:hover:not(:disabled) { color: var(--cy); border-color: var(--edge-hot); }
+.dt-navbtn:disabled { opacity: .4; cursor: default; }
+.dt-navbtn--on { color: var(--cy); border-color: var(--edge-hot); }
+
+/* ── Tickets: paper ────────────────────────────────────────────────────────── */
+
+.dt-tickets { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; align-items: start; min-width: 0; }
+.dt-ticket {
+  display: flex; flex-direction: column; gap: 6px; padding: 12px 14px 14px;
+  color: var(--void); background: #eef2f8; border-top: 4px solid var(--lane); border-radius: 3px;
+  font-family: var(--mono); font-size: var(--fs-md);
+}
+.dt-ticket--empty { background: #c9d2e0; }
+.dt-ticket__hd { display: flex; align-items: center; gap: 8px; font-weight: 700; letter-spacing: .1em; font-size: var(--fs-xs); color: #3b4a66; }
+.dt-ticket__who { font-weight: 400; letter-spacing: 0; max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dt-ticket__sub { font-size: var(--fs-xs); color: #3b4a66; }
+.dt-ticket__rule { border-top: 1px dashed var(--dim); }
+.dt-ticket__none { font-size: var(--fs-sm); color: #3b4a66; }
+.dt-ticket__pts { font-weight: 700; font-size: var(--fs-sm); }
+.dt-rows { list-style: none; display: flex; flex-direction: column; gap: 2px; }
+.dt-row { display: flex; align-items: baseline; gap: 8px; }
+.dt-row__k { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.dt-row__v { color: #3b4a66; }
+.dt-row__mark { font-weight: 700; }
+.dt-row--item .dt-row__k { font-weight: 700; }
+.dt-row--sub, .dt-row--none { padding-left: 16px; }
+.dt-row--none .dt-row__k { color: #3b4a66; font-style: italic; }
+.dt-row--clarify .dt-row__k { font-style: italic; }
+.dt-row--foul .dt-row__k { font-size: var(--fs-sm); color: #3b4a66; }
+.dt-row--least { background: rgba(255, 181, 69, 0.35); padding-top: 2px; padding-bottom: 2px; margin: 0 -4px; padding-right: 4px; }
+.dt-row--least:not(.dt-row--sub):not(.dt-row--none) { padding-left: 4px; }
+.dt-row--sub.dt-row--least, .dt-row--none.dt-row--least { padding-left: 20px; }
+.dt-row--alts { padding-left: 16px; font-size: var(--fs-sm); color: #3b4a66; }
+.dt-readback { font-family: var(--body); font-size: var(--fs-md); line-height: 1.45; color: var(--void); }
+/* State on paper: the semantic tokens, darkened to read on a light ground. */
+.dt-t-ok { color: color-mix(in srgb, var(--ok) 50%, black); }
+.dt-t-err { color: color-mix(in srgb, var(--err) 62%, black); }
+.dt-t-warn { color: color-mix(in srgb, var(--warn) 52%, black); }
+
+/* ── The calls, the menu ───────────────────────────────────────────────────── */
+
+.dt-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.dt-tab {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; font-size: var(--fs-sm); max-width: 100%;
+  color: var(--dim); background: none; border: 1px solid var(--rule); border-radius: 3px; cursor: pointer;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.dt-tab--on { color: var(--txt); border-color: var(--edge-hot); background: var(--cy-dim); }
+.dt-code { font-size: 11.5px; line-height: 1.6; overflow-wrap: anywhere; }
+.dt-calls__why { font-size: var(--fs-sm); line-height: 1.5; color: #aab7cc; }
+.dt-menu__list { list-style: none; display: flex; flex-direction: column; gap: 3px; font-size: var(--fs-sm); }
+.dt-menu__list li { display: flex; gap: 8px; justify-content: space-between; }
+.dt-menu__item { color: var(--txt); }
+.dt-menu__opts { color: var(--dim); font-size: var(--fs-xs); text-align: right; }
+
+/* ── The windows ───────────────────────────────────────────────────────────── */
+
+.dt-window__row { display: flex; align-items: center; gap: 14px; }
+.dt-window__score { display: flex; flex-direction: column; align-items: center; min-width: 64px; }
+.dt-window__score span { font-size: 30px; font-weight: 700; line-height: 1; }
+.dt-window__score small { font-size: var(--fs-xs); color: var(--dim); }
+.dt-window__strip { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.dt-window__strip svg { display: block; width: 100%; height: auto; }
+.dt-window__counts { font-size: var(--fs-xs); color: var(--ok); }
+.dt-window__counts.dt-t-warn { color: var(--warn); }
+.dt-booth { fill: none; stroke: var(--lane); stroke-width: 2; }
+.dt-booth__pane { fill: color-mix(in srgb, var(--lane) 30%, transparent); }
+.dt-more { font-family: var(--mono); font-size: 10px; fill: var(--dim); }
+.dt-mini path { fill: var(--dim); }
+.dt-mini--busy path { fill: var(--lane); }
+.dt-mini .dt-wheel { stroke-width: 1; }
+.dt-marks { display: flex; flex-wrap: wrap; gap: 3px; }
+.dt-mark {
+  display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; padding: 0;
+  font-family: var(--mono); font-size: var(--fs-xs); font-weight: 700; color: var(--dim); background: none;
+  border: 1px solid var(--lane); border-radius: 2px; cursor: pointer;
+}
+.dt-mark--ok { color: var(--ok); }
+.dt-mark--err { color: var(--err); }
+.dt-mark--warn { color: var(--warn); }
+.dt-mark--busy { color: var(--lane-ink); background: var(--lane); }
+.dt-mark--on { outline: 2px solid var(--cy); outline-offset: 1px; }
+.dt-window__stats { border-top: none; padding-top: 0; }

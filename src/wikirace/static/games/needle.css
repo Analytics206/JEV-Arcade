@@ -1,0 +1,149 @@
+/* Needle Hunt: every rule under .nh-… */
+
+.nh-setup { gap: 16px; }
+.nh-side { display: flex; flex-direction: column; gap: 16px; }
+.nh-rules { display: flex; flex-wrap: wrap; gap: 6px; }
+.nh-source { display: flex; flex-direction: column; gap: 6px; border: none; }
+.nh-source legend { margin-bottom: 6px; }
+.nh-radio { display: flex; align-items: baseline; gap: 8px; font-size: var(--fs-md); cursor: pointer; }
+.nh-radio input { accent-color: var(--cy); }
+.nh-starterr { font-size: var(--fs-sm); }
+.nh-grow { flex: 1; }
+
+/* The questions and the FIND field. */
+.nh-qbar { display: flex; flex-direction: column; gap: 10px; }
+.nh-qchips { display: flex; gap: 6px; flex-wrap: wrap; }
+.nh-qchip {
+  padding: 3px 10px; font-family: var(--mono); font-size: var(--fs-sm); color: var(--dim); background: none;
+  border: 1px solid var(--rule); border-radius: 3px; cursor: pointer;
+}
+.nh-qchip:hover { border-color: var(--edge-hot); color: var(--txt); }
+.nh-qchip--done { color: var(--txt); }
+.nh-qchip--on { color: var(--txt); border-color: var(--edge-hot); background: var(--cy-dim); }
+.nh-find { display: flex; gap: 10px; align-items: center; }
+.nh-find .g-label { color: var(--cy); }
+.nh-find__q {
+  flex: 1; min-width: 0; min-height: 40px; padding: 0 12px; font-size: 15px; color: var(--txt);
+  background: var(--panel); border: 1px solid rgba(62, 244, 255, 0.35); border-radius: 4px; outline: none;
+}
+.nh-find__in { font-size: var(--fs-xs); white-space: nowrap; }
+
+/* The stage: the map, the document or the zoom, the dial. */
+.nh-stage { display: grid; grid-template-columns: 116px minmax(0, 1fr) 220px; gap: 14px; align-items: stretch; }
+@media (max-width: 900px) { .nh-stage { grid-template-columns: 96px minmax(0, 1fr); } .nh-dial { grid-column: 1 / -1; } }
+
+.nh-map { padding: 8px; gap: 4px; align-items: stretch; }
+.nh-map svg { display: block; width: 100%; height: auto; cursor: pointer; }
+.nh-map__note { font-size: var(--fs-micro); color: var(--dimmer); text-align: center; }
+.nh-bar { transition: fill .5s; }
+.nh-heat-0 { fill: rgba(125, 139, 166, 0.24); }
+.nh-heat-1 { fill: rgba(62, 244, 255, 0.28); }
+.nh-heat-2 { fill: rgba(62, 244, 255, 0.45); }
+.nh-heat-3 { fill: rgba(62, 244, 255, 0.7); }
+.nh-heat-4 { fill: var(--cy); }
+.nh-bar--hot { fill: var(--cy); filter: drop-shadow(0 0 2px var(--cy)) drop-shadow(0 0 5px var(--cy)); animation: nh-glow 1.6s ease-in-out infinite; }
+@keyframes nh-glow { 50% { opacity: .55; } }
+.nh-mark { stroke: none; }
+.nh-mark--key { fill: var(--ok); }
+.nh-mark--you { fill: var(--txt); }
+
+.nh-center { min-height: 420px; max-height: 520px; }
+.nh-center__hd { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.nh-doc { list-style: none; flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 1px; padding-right: 4px; }
+.nh-doc__sec {
+  display: block; margin: 10px 0 4px; font-family: var(--display); font-size: var(--fs-label); font-weight: 600;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--dim);
+}
+.nh-doc li:first-child .nh-doc__sec { margin-top: 0; }
+.nh-line {
+  display: grid; grid-template-columns: 42px minmax(0, 1fr); gap: 8px; width: 100%; padding: 5px 6px; text-align: left;
+  font-size: var(--fs-md); line-height: 1.5; color: #aab7cc; background: none; border: none; border-left: 3px solid transparent;
+  cursor: pointer;
+}
+.nh-line:hover { color: var(--txt); background: var(--cy-dim); border-left-color: var(--edge-hot); }
+.nh-line:focus-visible { outline: 2px solid var(--cy); outline-offset: -2px; }
+.nh-line__id { font-family: var(--mono); font-size: var(--fs-xs); color: var(--dim); padding-top: 2px; }
+
+.nh-zoom { display: flex; flex-direction: column; gap: 2px; }
+.nh-row {
+  display: grid; grid-template-columns: 42px minmax(0, 1fr) 40px; gap: 8px; padding: 6px 8px;
+  font-size: var(--fs-md); line-height: 1.5; color: var(--dim); border-left: 3px solid transparent;
+  animation: nh-in .35s ease-out both;
+}
+.nh-row:nth-child(2) { animation-delay: .05s; }
+.nh-row:nth-child(3) { animation-delay: .1s; }
+.nh-row:nth-child(4) { animation-delay: .15s; }
+.nh-row:nth-child(5) { animation-delay: .2s; }
+@keyframes nh-in { from { opacity: 0; transform: translateY(4px); } }
+.nh-row__id { font-size: var(--fs-xs); padding-top: 2px; }
+.nh-row__p { font-size: var(--fs-xs); text-align: right; padding-top: 2px; }
+.nh-row--top { color: var(--txt); background: rgba(62, 244, 255, 0.10); border-left-color: var(--cy); }
+.nh-row--top .nh-row__id, .nh-row--top .nh-row__p { color: var(--cy); font-weight: 700; }
+.nh-row--key { color: var(--txt); box-shadow: inset 0 0 0 1px rgba(62, 245, 160, 0.45); }
+.nh-row--mine { box-shadow: inset 0 0 0 1px rgba(219, 230, 245, 0.35); }
+.nh-row--key.nh-row--mine { box-shadow: inset 0 0 0 1px rgba(62, 245, 160, 0.45), inset 0 0 0 3px rgba(219, 230, 245, 0.2); }
+.nh-row__tags { display: inline-flex; gap: 6px; align-items: center; margin-left: 8px; vertical-align: middle; }
+.nh-tag { font-family: var(--mono); font-size: var(--fs-xs); font-weight: 700; }
+.nh-tag--you { padding: 0 5px; color: var(--void); background: var(--txt); border-radius: 2px; }
+.nh-extra { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; }
+.nh-note { font-size: var(--fs-xs); }
+
+/* The existence dial. */
+.nh-dial { align-items: center; gap: 6px; }
+.nh-dial .g-label { align-self: flex-start; color: var(--dim); }
+.nh-dial svg { width: 186px; max-width: 100%; height: auto; display: block; }
+.nh-arc { fill: none; stroke-width: 14; transition: opacity .4s; }
+.nh-arc--absent { stroke: var(--err); }
+.nh-arc--partly { stroke: var(--warn); opacity: .7; }
+.nh-arc--answered { stroke: var(--ok); }
+.nh-arc--sealed { opacity: .18; }
+.nh-arc--on { opacity: 1; stroke-width: 17; }
+.nh-tick { stroke: var(--void); stroke-width: 2; }
+.nh-needle {
+  stroke: var(--txt); stroke-width: 3; stroke-linecap: round;
+  transform-box: view-box; transform-origin: 93px 98px; animation: nh-swing 1s cubic-bezier(.3, 1.35, .5, 1) both;
+}
+@keyframes nh-swing { from { transform: rotate(0deg); } }
+.nh-hub { fill: var(--txt); }
+.nh-dial__q { font-family: var(--mono); font-size: 26px; font-weight: 700; fill: var(--dimmer); text-anchor: middle; }
+.nh-dial__v { font-size: 22px; font-weight: 700; line-height: 1; }
+.nh-dial__band { font-size: var(--fs-sm); color: var(--dim); }
+.nh-legend { list-style: none; align-self: stretch; display: flex; flex-direction: column; gap: 3px; font-size: 11.5px; color: #aab7cc; }
+.nh-legend li { display: flex; align-items: center; gap: 6px; }
+.nh-sw { display: inline-block; width: 10px; height: 10px; flex-shrink: 0; }
+.nh-sw--answered { background: var(--ok); }
+.nh-sw--partly { background: var(--warn); }
+.nh-sw--absent { background: var(--err); }
+.nh-sw--lane { background: var(--lane); width: 9px; height: 9px; }
+.nh-t-ok { color: var(--ok); }
+.nh-t-warn { color: var(--warn); }
+.nh-t-err { color: var(--err); }
+.nh-t-dim { color: var(--dim); }
+
+/* Everyone's pick. */
+.nh-picks { padding: 10px 14px; }
+.nh-picks__list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.nh-picks__row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; font-family: var(--mono); font-size: 12.5px; }
+.nh-picks__who { font-family: var(--body); font-size: var(--fs-md); color: var(--lane, var(--txt)); }
+.nh-picks__row--you .nh-picks__who { color: var(--cy); }
+.nh-picks__line { font-weight: 700; color: var(--txt); }
+.nh-picks__why { flex-basis: 100%; padding-left: 30px; font-family: var(--body); font-size: var(--fs-xs); font-style: italic; color: #aab7cc; }
+.nh-you {
+  display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; flex-shrink: 0;
+  font-family: var(--mono); font-size: 8.5px; font-weight: 700; color: var(--void); background: var(--cy);
+}
+
+/* The tally line. */
+.nh-bar { flex-direction: row; align-items: center; gap: 14px; flex-wrap: wrap; padding: 10px 14px; }
+.nh-bar__hint { font-size: var(--fs-sm); }
+.nh-tally { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: var(--fs-md); }
+.nh-tally .g-label { color: var(--dim); }
+.nh-tally__lane { display: inline-flex; align-items: center; gap: 6px; }
+
+/* A lane's card. */
+.nh-lane__row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.nh-lane__score { display: flex; flex-direction: column; align-items: center; min-width: 60px; }
+.nh-lane__score span { font-size: 30px; font-weight: 700; line-height: 1; }
+.nh-lane__score small { font-size: var(--fs-xs); color: var(--dim); }
+.nh-lane__stats { flex: 1; border-top: none; padding-top: 0; }
+.nh-lane__note { font-size: var(--fs-xs); }

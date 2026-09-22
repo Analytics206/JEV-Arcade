@@ -33,9 +33,24 @@ src/wikirace/
     rules.py       pure: the prompt, reading a reply, judging a pick, ranking, prices, Jev's question
     racers.py      TextRacer (any text provider) and JevRacer (TypeSafe)
     engine.py      a race as a background task; every change is an event
-  static/          the page: index.html, *.js, styles.css, vendor/ (preact, hooks, htm)
-tests/             pytest; tests/js/ holds `node --test` tests for the page's pure state
+  games/           the Arcade (docs/arcade.md): games beside the race, each showing one use of Jev
+    base.py        what a game is: Game, Context, the errors a round's setup raises
+    core.py        pure: Jev's questions (choice, score, noul) and answers, reading a text reply, cost
+    players.py     a racer key as a player; one call to Jev or a text model, with retries
+    runs.py        a game run as a background task; every change is an event
+    store.py       run history in SQLite, beside the races
+    api.py         /api/games/*: the games, starting a run, its event stream
+    registry.py    the games, in the hub's order; <game>.py and data/<game>.json for each
+  static/          the page: index.html, main.js (WikiRace or the Arcade), app.js (WikiRace),
+                   games/ (the Arcade: shell, kit, one module per game), styles.css, vendor/
+tests/             pytest; tests/games/ for the Arcade; tests/js/ holds `node --test` tests for the
+                   page's pure state
 ```
+
+The Arcade shares the providers, the settings and the history file, and nothing else: a race and
+a game run are separate kinds of background task with the same shape (plain JSON state, changed
+only through mutators that each emit an event, one pure reducer on the page). See
+[arcade.md](arcade.md).
 
 ## How a race works
 

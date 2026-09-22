@@ -324,6 +324,13 @@ class Wiki:
                 raise PageMissing(last) if resp.status_code == 404 else WikiError(last)
         raise WikiError(last)
 
+    async def query(self, params: dict[str, Any]) -> Any:
+        """Any other read of the Action API, for the Arcade's games (extracts,
+        coordinates, categories, random pages): *params* as the API takes them,
+        JSON in the modern format. Raises WikiError. Uncached: a game caches
+        what it reads again."""
+        return await self._get(API, {**params, "format": "json", "formatversion": "2"})
+
     # ── articles ──
 
     async def page(self, title: str) -> Page:

@@ -1,0 +1,137 @@
+/* Ghost Maze: every rule under .gm-… The maze is a board, so its three ghosts
+ * wear their own colours (Blinky the error red, Pinky and Clyde the mockup's
+ * pink and orange); everything else is WikiRace's tokens. A lane's player is
+ * its --lane colour, set by the g-lN class on the maze and the box. */
+
+/* ── Setup ─────────────────────────────────────────────────────────────────── */
+
+.gm-setup { gap: 16px; }
+.gm-seg { display: flex; border: 1px solid var(--edge-hot); border-radius: 4px; overflow: hidden; }
+.gm-seg__btn {
+  flex: 1; min-height: 36px; padding: 0 10px; font-size: var(--fs-sm); color: var(--txt);
+  background: transparent; border: none; cursor: pointer;
+}
+.gm-seg__btn + .gm-seg__btn { border-left: 1px solid var(--edge); }
+.gm-seg__btn:hover { background: var(--cy-dim); }
+.gm-seg__btn--on, .gm-seg__btn--on:hover { font-weight: 600; color: var(--void); background: var(--cy); }
+.gm-seg__btn:focus-visible { outline: 2px solid var(--cy); outline-offset: -3px; }
+.gm-params { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.gm-params__wide { grid-column: 1 / -1; }
+.gm-setup__note { font-size: var(--fs-xs); }
+.gm-side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.gm-how { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 320px); gap: 18px; align-items: start; }
+@media (max-width: 1150px) { .gm-how { grid-template-columns: minmax(0, 1fr); } }
+.gm-how__text { display: flex; flex-direction: column; gap: 8px; }
+.gm-rules { display: flex; flex-wrap: wrap; gap: 6px; }
+.gm-ghostkey { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 20px; font-size: var(--fs-md); }
+.gm-ghostkey li { display: flex; align-items: center; gap: 6px; }
+.gm-ghostkey svg { width: 20px; height: 20px; flex-shrink: 0; }
+
+/* ── A round ───────────────────────────────────────────────────────────────── */
+
+.gm-top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.gm-top__hint { font-size: var(--fs-sm); }
+.gm-top__tick { font-family: var(--mono); font-size: 22px; font-weight: 700; }
+
+.gm-lanes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.gm-lanes--one { grid-template-columns: minmax(0, 900px); }
+@media (max-width: 1000px) { .gm-lanes { grid-template-columns: minmax(0, 1fr); } }
+.gm-lane { gap: 8px; }
+.gm-badge { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
+.gm-think { font-family: var(--mono); font-size: var(--fs-xs); color: var(--mg); white-space: nowrap; }
+.gm-lane__row { display: flex; gap: 14px; align-items: flex-start; }
+.gm-lane__row .gm-maze { flex: 1; min-width: 0; }
+.gm-big { flex-direction: column; flex-wrap: nowrap; gap: 10px; width: 124px; flex-shrink: 0; padding-top: 2px; border-top: none; }
+.gm-big .g-stat__v { font-size: 20px; font-weight: 700; }
+@media (max-width: 640px) {
+  .gm-lane__row { flex-direction: column; }
+  .gm-big { flex-direction: row; flex-wrap: wrap; width: auto; gap: 8px 18px; }
+}
+
+/* ── The maze ──────────────────────────────────────────────────────────────── */
+
+.gm-maze { display: block; width: 100%; height: auto; }
+.gm-frame { fill: var(--void); stroke: var(--edge-hot); stroke-width: 3; }
+.gm-walls rect { fill: var(--edge-soft); fill-opacity: .45; stroke: var(--edge-hot); stroke-width: 3; }
+.gm-pellets circle { fill: var(--txt); opacity: .75; }
+.gm-power circle { fill: var(--txt); transform-box: fill-box; transform-origin: center; animation: gm-pulse 1.1s ease-in-out infinite; }
+@keyframes gm-pulse { 50% { transform: scale(.7); opacity: .55; } }
+
+/* Everything that moves glides from tile to tile over one tick. A sprite put
+   back at its start is a new element (keyed by its gen), so it never slides there. */
+.gm-mover { transition: transform var(--gm-tick, 100ms) linear; }
+
+.gm-player path { fill: var(--lane); stroke: var(--void); stroke-width: 1.5; stroke-linejoin: round; }
+.gm-player--out path { fill: var(--void); stroke: var(--lane); stroke-width: 2.5; }
+.gm-hint path { fill: none; stroke: var(--lane); stroke-linecap: round; }
+
+.gm-ghost { --gm-ghost: var(--err); }
+.gm-ghost--pinky { --gm-ghost: #f59ac8; }
+.gm-ghost--clyde { --gm-ghost: #ff8a3d; }
+.gm-ghost__body { fill: var(--gm-ghost); }
+.gm-ghost__eye { fill: var(--txt); }
+.gm-ghost__pupil { fill: var(--void); }
+/* Frightened: hollow and violet, a wobbly mouth, flashing as the fright wears off. */
+.gm-ghost--scared .gm-ghost__body { fill: var(--vi-dim); stroke: var(--vi); stroke-width: 2; }
+.gm-ghost__dot { fill: var(--txt); }
+.gm-ghost__mouth { fill: none; stroke: var(--txt); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
+.gm-ghost--flash .gm-ghost__body { animation: gm-flash .3s steps(2, jump-none) infinite; }
+@keyframes gm-flash { 0% { stroke: var(--vi); } 100% { stroke: var(--txt); fill: rgba(219, 230, 245, 0.25); } }
+/* Eaten: only the eyes, waiting at its start. */
+.gm-ghost--eyes .gm-ghost__eye { opacity: .85; }
+
+.gm-banner rect { fill: var(--void); stroke: currentColor; stroke-width: 1.5; }
+.gm-banner text { fill: currentColor; font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: .06em; text-anchor: middle; }
+.gm-banner--err { color: var(--err); animation: gm-blink .45s steps(2, jump-none) 4; }
+.gm-banner--ok { color: var(--ok); }
+.gm-banner--neutral { color: var(--dim); }
+@keyframes gm-blink { 0% { opacity: 1; } 100% { opacity: .3; } }
+
+/* ── One lane's decisions ──────────────────────────────────────────────────── */
+
+.gm-tabs { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.gm-tabs .g-label { margin-right: 6px; }
+.gm-tab {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; font-size: var(--fs-sm);
+  color: var(--dim); background: none; border: 1px solid var(--rule); border-radius: 3px; cursor: pointer;
+}
+.gm-tab:hover { color: var(--txt); }
+.gm-tab--on { color: var(--txt); border-color: var(--edge-hot); background: var(--cy-dim); }
+.gm-tab:focus-visible { outline: 2px solid var(--cy); outline-offset: 1px; }
+
+.gm-bottom { display: grid; grid-template-columns: minmax(0, 1fr) 270px 360px; gap: 16px; align-items: start; }
+@media (max-width: 1200px) {
+  .gm-bottom { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .gm-words { grid-column: 1 / -1; }
+}
+@media (max-width: 700px) { .gm-bottom { grid-template-columns: minmax(0, 1fr); } }
+
+.gm-words__state { display: flex; flex-direction: column; gap: 2px; font-family: var(--mono); font-size: var(--fs-sm); line-height: 1.55; }
+.gm-words__row { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; }
+.gm-words__row dt { color: var(--dim); }
+.gm-words__row dd { color: var(--txt); overflow-wrap: anywhere; }
+.gm-words__opts { list-style: none; display: flex; flex-direction: column; gap: 3px; font-size: var(--fs-sm); line-height: 1.5; color: var(--txt); }
+.gm-words__opts b { color: var(--lane); font-family: var(--mono); }
+.gm-words__note { font-size: var(--fs-sm); color: var(--dim); }
+
+.gm-stick__svg { display: block; width: 100%; max-width: 240px; height: auto; align-self: center; }
+.gm-stick__knob { fill: var(--void-2); stroke: var(--lane); stroke-width: 2; }
+.gm-stick__arm path { fill: none; stroke: var(--lane); stroke-linecap: round; stroke-linejoin: round; }
+.gm-stick__head { stroke-width: 5px; }
+.gm-stick__arm text, .gm-stick__wall text { font-family: var(--mono); font-size: 12px; text-anchor: middle; fill: var(--txt); }
+.gm-stick__arm--top text { font-weight: 700; }
+.gm-stick__wall path { stroke: var(--dimmer); stroke-width: 2; stroke-dasharray: 3 3; }
+.gm-stick__wall text { fill: var(--dim); }
+.gm-stick__foul { fill: var(--err); font-size: 16px; font-weight: 700; text-anchor: middle; }
+.gm-stick__said { font-size: var(--fs-md); overflow-wrap: anywhere; }
+.gm-stick__when { font-size: var(--fs-xs); }
+
+.gm-cost__table { font-size: var(--fs-sm); }
+.gm-cost__table th, .gm-cost__table td { padding: 5px 6px; }
+.gm-cost__who { display: inline-flex; align-items: center; gap: 6px; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gm-cost__note { font-size: var(--fs-sm); line-height: 1.5; color: var(--dim); }
+
+@media (prefers-reduced-motion: reduce) {
+  .gm-mover { transition: none; }
+  .gm-power circle, .gm-ghost--flash .gm-ghost__body, .gm-banner--err { animation: none; }
+}

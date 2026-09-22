@@ -1,0 +1,172 @@
+/* Customs: every rule under .cu-… Over WikiRace's tokens (styles.css) only. */
+
+/* A tone sets --tone; everything that wears it reads it. */
+.cu-t-ok { --tone: var(--ok); color: var(--ok); }
+.cu-t-warn { --tone: var(--warn); color: var(--warn); }
+.cu-t-err { --tone: var(--err); color: var(--err); }
+.cu-f-ok { fill: var(--ok); }
+.cu-f-warn { fill: var(--warn); }
+.cu-f-err { fill: var(--err); }
+.cu-s-ok { --tone: var(--ok); }
+.cu-s-warn { --tone: var(--warn); }
+.cu-s-err { --tone: var(--err); }
+
+/* ── Setup ── */
+.cu-setup { gap: 16px; }
+.cu-toggle { display: flex; border: 1px solid var(--edge-hot); border-radius: 4px; overflow: hidden; }
+.cu-toggle__b {
+  flex: 1; min-height: 36px; padding: 0 12px; font-size: var(--fs-md); color: var(--txt);
+  background: none; border: none; cursor: pointer;
+}
+.cu-toggle__b + .cu-toggle__b { border-left: 1px solid var(--edge); }
+.cu-toggle__b--on { color: var(--void); background: var(--cy); font-weight: 600; }
+.cu-toggle__b:focus-visible { outline: 2px solid var(--cy); outline-offset: -3px; }
+.cu-params { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.cu-thr input { accent-color: var(--cy); }
+.cu-thr b { font-family: var(--mono); font-size: var(--fs-md); color: var(--txt); }
+.cu-setup__note { font-size: var(--fs-sm); }
+.cu-side { display: flex; flex-direction: column; gap: 16px; }
+.cu-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.cu-routes { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; background: var(--void-2); border: 1px solid var(--rule); border-radius: 3px; }
+.cu-routes__row { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 10px; font-size: var(--fs-sm); }
+.cu-routes__row dt { color: var(--dim); }
+.cu-routes__row dd { margin: 0; font-weight: 600; }
+
+/* ── The belts ── */
+.cu-belts { gap: 12px; }
+.cu-belt { display: flex; flex-direction: column; gap: 4px; overflow-x: auto; }
+.cu-belt__who {
+  display: flex; align-items: center; gap: 10px; align-self: flex-start; padding: 3px 8px;
+  font-size: var(--fs-md); color: var(--txt); background: none; border: 1px solid transparent; border-radius: 3px; cursor: pointer;
+}
+button.cu-belt__who:hover { border-color: var(--rule); }
+div.cu-belt__who { cursor: default; }
+.cu-belt--focus .cu-belt__who { border-color: var(--lane); background: color-mix(in srgb, var(--lane) 10%, transparent); }
+.cu-belt__name { font-weight: 700; }
+.cu-belt__svg { display: block; width: 100%; min-width: 720px; height: auto; }
+
+.cu-bg { fill: var(--void-2); stroke: var(--edge-soft); }
+.cu-belt--focus .cu-bg { stroke: color-mix(in srgb, var(--lane) 55%, transparent); }
+.cu-rail { fill: color-mix(in srgb, var(--dimmer) 45%, var(--void)); }
+.cu-rollers circle { fill: var(--void); stroke: var(--dimmer); stroke-width: 1.5; }
+.cu-dash { stroke: var(--dimmer); stroke-width: 1.5; stroke-dasharray: 3 5; }
+.cu-belt--moving .cu-dash { animation: cu-roll .6s linear infinite; }
+@keyframes cu-roll { to { stroke-dashoffset: -8; } }
+.cu-over { font-family: var(--mono); font-size: 12px; font-weight: 700; fill: var(--warn); }
+.cu-hint { font-family: var(--mono); font-size: 12px; fill: var(--dim); }
+
+.cu-scan__bg { fill: color-mix(in srgb, var(--cy) 4%, var(--void)); }
+.cu-scan__grid line { stroke: color-mix(in srgb, var(--cy) 22%, transparent); stroke-width: 1; }
+.cu-scan__frame { fill: none; stroke: var(--cy); stroke-width: 3; }
+.cu-scan__head { fill: color-mix(in srgb, var(--cy) 12%, var(--void-2)); stroke: var(--cy); stroke-width: 3; }
+.cu-scan__name { font-family: var(--display); font-size: 13px; font-weight: 700; letter-spacing: 2px; fill: var(--cy); }
+.cu-scan__read { font-family: var(--mono); font-size: 11.5px; font-weight: 700; text-anchor: middle; fill: var(--tone, var(--txt)); }
+.cu-scan__read--2 { font-weight: 400; fill: var(--dim); }
+.cu-light { fill: var(--dimmer); transition: fill .2s; }
+.cu-light--busy { fill: var(--cy); animation: cu-blink .7s ease-in-out infinite alternate; }
+@keyframes cu-blink { from { opacity: 1; } to { opacity: .35; } }
+.cu-beam { fill: var(--cy); opacity: .85; filter: drop-shadow(0 0 4px var(--cy)); animation: cu-sweep 1.1s ease-in-out infinite alternate; }
+@keyframes cu-sweep { from { transform: translateX(0); } to { transform: translateX(193px); } }
+.cu-foulnote { font-family: var(--mono); font-size: 11px; font-weight: 700; fill: var(--err); }
+
+.cu-fork__lane { fill: none; stroke: var(--tone); stroke-width: 3; stroke-linecap: round; opacity: .45; transition: opacity .25s, stroke-width .25s; }
+.cu-fork__lane--lit { opacity: 1; stroke-width: 4.5; }
+.cu-chute rect { fill: color-mix(in srgb, var(--tone) 9%, transparent); stroke: var(--tone); stroke-width: 1.5; transition: fill .25s; }
+.cu-chute--lit rect { fill: color-mix(in srgb, var(--tone) 24%, transparent); stroke-width: 2.5; }
+.cu-chute__k { font-family: var(--display); font-size: 13px; font-weight: 700; letter-spacing: 2px; fill: var(--tone); }
+.cu-chute__rule { font-family: var(--mono); font-size: 11px; fill: color-mix(in srgb, var(--txt) 75%, var(--dim)); }
+.cu-chute__n { font-family: var(--display); font-size: 28px; font-weight: 700; text-anchor: end; fill: var(--txt); }
+
+/* A bag slides between its places: the belt, the scanner, the exit. */
+.cu-bag { transition: transform .45s cubic-bezier(.3, .7, .4, 1); }
+.cu-bag__handle { fill: none; stroke: var(--dim); stroke-width: 2; }
+.cu-bag__body { fill: color-mix(in srgb, var(--dimmer) 45%, var(--void)); stroke: var(--dim); stroke-width: 1.5; }
+.cu-bag__tag { fill: var(--txt); }
+.cu-bag__txt { font-family: var(--mono); font-size: 10px; fill: var(--void); }
+.cu-bag--scan .cu-bag__body {
+  fill: color-mix(in srgb, var(--cy) 12%, transparent); stroke: var(--cy); stroke-width: 2; stroke-dasharray: 6 4;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--cy) 70%, transparent));
+}
+.cu-bag--scan .cu-bag__handle { stroke: var(--cy); stroke-dasharray: 4 3; }
+.cu-bag--scan .cu-bag__tag, .cu-bag--scan .cu-bag__txt { opacity: .22; }
+.cu-bag--out .cu-bag__body, .cu-bag--out .cu-bag__handle { stroke: var(--tone); stroke-width: 2; }
+.cu-stamp rect { fill: var(--void); stroke: var(--tone); stroke-width: 2; }
+.cu-stamp text { font-family: var(--display); font-size: 12px; font-weight: 800; letter-spacing: 2px; text-anchor: middle; fill: var(--tone); }
+
+/* ── The readout and the comparison ── */
+.cu-stage { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 16px; align-items: start; }
+@media (max-width: 1100px) { .cu-stage { grid-template-columns: minmax(0, 1fr); } }
+
+.cu-readout__hd { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cu-decision {
+  padding: 2px 10px; font-family: var(--mono); font-size: var(--fs-sm); font-weight: 700; border-radius: 3px;
+  border: 1px solid currentColor;
+}
+.cu-decision--ok { color: var(--ok); background: var(--ok-dim); }
+.cu-decision--warn { color: var(--warn); background: var(--am-dim); }
+.cu-decision--err { color: var(--err); background: var(--err-dim); }
+.cu-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.cu-tab {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; font-size: var(--fs-sm);
+  color: var(--dim); background: none; border: 1px solid var(--rule); border-radius: 3px; cursor: pointer;
+}
+.cu-tab--on { color: var(--txt); border-color: var(--edge-hot); background: var(--cy-dim); }
+.cu-readout__user { font-size: var(--fs-sm); color: var(--dim); }
+.cu-readout__msg { font-size: 15px; line-height: 1.45; }
+.cu-meters { display: flex; flex-direction: column; gap: 8px; }
+.cu-meters .g-meter { grid-template-columns: 150px minmax(0, 1fr) 44px; }
+.cu-meters .g-meter__k { min-width: 0; }
+.cu-sev { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
+.cu-sev__k { width: 150px; font-size: var(--fs-md); }
+.cu-sev__v { font-size: var(--fs-xs); }
+.cu-sevcols { display: flex; align-items: flex-end; gap: 6px; }
+.cu-sevcol { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px; height: 58px; }
+.cu-sevcol__bar { display: block; width: 44px; background: var(--dim); opacity: .6; }
+.cu-sevcol__bar--top { opacity: 1; background: var(--lane); }
+.cu-sevcol__bar--2, .cu-sevcol__bar--3 { background: var(--warn); }
+.cu-sevcol__k { font-family: var(--mono); font-size: 10px; color: var(--dim); }
+.cu-said { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; font-size: var(--fs-md); background: var(--void-2); border: 1px solid var(--rule); border-radius: 3px; overflow-wrap: anywhere; }
+.cu-said--foul { border-color: color-mix(in srgb, var(--err) 50%, transparent); }
+.cu-why { font-size: var(--fs-md); font-weight: 600; }
+.cu-why .g-muted { font-weight: 400; }
+.cu-against { font-size: var(--fs-sm); }
+
+.cu-compare { gap: 12px; }
+.cu-flow { display: flex; flex-direction: column; gap: 4px; }
+.cu-flow__row { display: flex; justify-content: space-between; gap: 10px; font-size: var(--fs-md); }
+.cu-flow__who { display: inline-flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cu-flow__row .g-mono { font-size: var(--fs-sm); white-space: nowrap; }
+.cu-flow__track { display: block; height: 10px; background: rgba(125, 139, 166, 0.15); }
+.cu-flow__fill { display: block; height: 100%; background: var(--lane); transition: width .3s; }
+.cu-flow__rate { font-size: var(--fs-xs); }
+.cu-board th[scope="row"] { font-family: var(--mono); font-size: var(--fs-sm); letter-spacing: 0; text-transform: none; color: var(--txt); font-weight: 400; }
+.cu-board thead th { vertical-align: middle; }
+.cu-board td { font-size: var(--fs-sm); }
+.cu-board__hint { display: block; font-size: var(--fs-xs); color: var(--dim); }
+.cu-board__score th, .cu-board__score td { font-weight: 700; font-size: var(--fs-md); border-bottom: none; }
+.cu-note { font-size: var(--fs-sm); line-height: 1.5; color: color-mix(in srgb, var(--txt) 75%, var(--dim)); }
+
+/* ── The lanes ── */
+.cu-tally__row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.cu-tally__score { display: flex; flex-direction: column; align-items: center; min-width: 64px; }
+.cu-tally__score span { font-size: 30px; font-weight: 700; line-height: 1; }
+.cu-tally__score small { font-size: var(--fs-xs); color: var(--dim); }
+.cu-tally__stats { flex: 1; border-top: none; padding-top: 0; }
+.cu-queue { display: flex; flex-direction: column; gap: 2px; width: 120px; }
+.cu-queue svg { width: 120px; height: 22px; }
+.cu-spark { fill: none; stroke: var(--lane); stroke-width: 2; vector-effect: non-scaling-stroke; }
+
+/* ── The manifest ── */
+.cu-manifest__scroll { max-height: 460px; overflow: auto; }
+.cu-man__msg { max-width: 60ch; }
+.cu-man__note { display: block; margin-top: 2px; font-size: var(--fs-xs); color: var(--dim); }
+.cu-man__label { white-space: nowrap; font-weight: 600; }
+.cu-man__hz { display: block; font-size: var(--fs-xs); font-weight: 400; color: var(--dim); }
+.cu-mark { font-family: var(--mono); font-weight: 700; }
+.cu-mark__v { margin-left: 3px; font-family: var(--mono); font-size: var(--fs-xs); }
+
+@media (prefers-reduced-motion: reduce) {
+  .cu-bag, .cu-flow__fill, .cu-fork__lane, .cu-chute rect, .cu-light { transition: none; }
+  .cu-belt--moving .cu-dash, .cu-light--busy { animation: none; }
+  .cu-beam { animation: none; transform: translateX(96px); }
+}

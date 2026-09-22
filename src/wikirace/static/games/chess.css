@@ -1,0 +1,119 @@
+/* Legal Moves Only: every rule under .ch-…, over WikiRace's tokens. The board's
+ * squares and pieces are the only drawing here, mixed from those tokens too. */
+
+/* ── Setup ── */
+.ch-setup { gap: 16px; }
+.ch-params { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.ch-check { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; font-size: var(--fs-md); color: var(--txt); cursor: pointer; }
+.ch-check input { width: 16px; height: 16px; accent-color: var(--cy); }
+.ch-side { display: flex; flex-direction: column; gap: 16px; }
+.ch-howto { display: flex; gap: 18px; align-items: flex-start; }
+.ch-howto__board { flex: 0 0 250px; margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.ch-howto__board figcaption { font-size: var(--fs-xs); padding-left: 12px; }
+.ch-howto__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.ch-rules { display: flex; flex-wrap: wrap; gap: 6px; }
+@media (max-width: 700px) { .ch-howto { flex-direction: column; } .ch-howto__board { flex-basis: auto; width: min(100%, 300px); } }
+
+/* ── The stage: puzzle and question | board | lanes ── */
+.ch-stage {
+  display: grid; grid-template-columns: 290px minmax(0, 520px) minmax(0, 1fr);
+  gap: 20px; align-items: start;
+}
+@media (max-width: 1320px) {
+  .ch-stage { grid-template-columns: minmax(0, 520px) minmax(0, 1fr); }
+  .ch-left { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+}
+@media (max-width: 880px) { .ch-stage { grid-template-columns: minmax(0, 1fr); } }
+.ch-left, .ch-center, .ch-right { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.ch-left { gap: 14px; }
+
+.ch-head { display: flex; flex-direction: column; gap: 6px; }
+.ch-head__k { font-family: var(--display); font-size: var(--fs-xs); font-weight: 600; letter-spacing: .14em; color: var(--cy); }
+.ch-head__title { font-size: 24px; font-weight: 700; line-height: 1.15; color: var(--txt); }
+.ch-head__theme { font-size: var(--fs-sm); color: var(--dim); }
+
+/* The strip of puzzles: one button each, a mark per lane. */
+.ch-strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 6px; }
+.ch-pz {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 4px;
+  background: var(--void-2); border: 1px solid var(--rule); border-radius: 3px; cursor: pointer; color: var(--dim);
+}
+.ch-pz:hover { border-color: var(--edge-hot); color: var(--txt); }
+.ch-pz--on { border-color: var(--cy); background: var(--cy-dim); color: var(--txt); }
+.ch-pz__n { font-family: var(--mono); font-size: var(--fs-md); font-weight: 700; }
+.ch-pz__marks { display: flex; gap: 2px; flex-wrap: wrap; justify-content: center; }
+.ch-mk {
+  display: inline-flex; align-items: center; justify-content: center; width: 13px; height: 13px;
+  font-family: var(--mono); font-size: 9.5px; font-weight: 700; line-height: 1; color: var(--dimmer);
+  border: 1px solid var(--lane); border-radius: 2px;
+}
+.ch-mk--ok { color: var(--ok); }
+.ch-mk--warn { color: var(--warn); }
+.ch-mk--err { color: var(--err); }
+.ch-mk--live { color: var(--lane-ink); background: var(--lane); }
+
+.ch-step { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* How Jev is asked: the state, field by field. */
+.ch-asked { gap: 6px; }
+.ch-asked__sub { font-family: var(--mono); font-size: var(--fs-xs); color: var(--dim); }
+.ch-asked__q { font-size: var(--fs-md); line-height: 1.45; color: var(--txt); }
+.ch-state { display: flex; flex-direction: column; gap: 4px; margin: 0 0 4px; }
+.ch-state__row { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 8px; font-family: var(--mono); font-size: 11.5px; line-height: 1.5; }
+.ch-state dt { color: var(--cy); overflow-wrap: anywhere; }
+.ch-state dd { margin: 0; color: var(--txt); overflow-wrap: anywhere; }
+.ch-answer__mv { font-family: var(--mono); font-size: 20px; font-weight: 700; }
+
+/* ── The board ── */
+.ch-boardbox { padding: 6px; }
+.ch-board { display: block; width: 100%; height: auto; }
+.ch-sq--l { fill: color-mix(in srgb, var(--txt) 62%, var(--dim)); }
+.ch-sq--d { fill: color-mix(in srgb, var(--dim) 86%, var(--void)); }
+.ch-lit rect { fill: color-mix(in srgb, var(--lane) 45%, transparent); }
+.ch-mates rect { fill: none; stroke: var(--ok); stroke-width: 3; }
+.ch-frame { fill: none; stroke: var(--edge-hot); stroke-width: 1.5; }
+.ch-coords text { font-family: var(--mono); font-size: 12px; fill: var(--dim); text-anchor: middle; }
+.ch-pc {
+  font-family: 'Segoe UI Symbol', 'Noto Sans Symbols 2', 'Noto Sans Symbols', 'Apple Symbols', 'DejaVu Sans', serif;
+  font-size: 46px; text-anchor: middle; dominant-baseline: central; pointer-events: none;
+}
+.ch-pc--w { fill: color-mix(in srgb, var(--txt) 25%, white); stroke: var(--void); stroke-width: 1.5px; paint-order: stroke; }
+.ch-pc--b { fill: var(--void); stroke: color-mix(in srgb, var(--txt) 50%, white); stroke-width: 0.8px; }
+
+.ch-arrows { filter: drop-shadow(0 0 1.5px var(--void)); animation: ch-fade .35s ease-out both; }
+.ch-arrow path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.ch-arrow--lane path { stroke: var(--lane); }
+.ch-arrow--lane polygon { fill: var(--lane); }
+.ch-arrow--err path { stroke: var(--err); stroke-dasharray: 8 7; }
+.ch-arrow--err polygon { fill: var(--err); }
+.ch-x { fill: none; stroke: var(--err); stroke-width: 5; stroke-linecap: round; }
+@keyframes ch-fade { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .ch-arrows { animation: none; } }
+
+.ch-caption { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-left: 24px; font-size: var(--fs-sm); color: var(--dim); }
+
+.ch-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.ch-tab {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; font-size: var(--fs-sm);
+  color: var(--dim); background: none; border: 1px solid var(--rule); border-radius: 3px; cursor: pointer;
+}
+.ch-tab:hover { color: var(--txt); border-color: var(--edge-hot); }
+.ch-tab--on { color: var(--txt); border-color: var(--edge-hot); background: var(--cy-dim); }
+
+/* ── A lane ── */
+.ch-lane { gap: 8px; }
+.ch-wait { font-size: var(--fs-sm); }
+.ch-meta { font-size: var(--fs-xs); color: var(--dim); }
+.ch-note { font-size: var(--fs-sm); color: color-mix(in srgb, var(--txt) 50%, var(--dim)); }
+.ch-tries { list-style: none; display: flex; flex-direction: column; gap: 5px; }
+.ch-try { display: flex; gap: 8px; align-items: baseline; font-size: var(--fs-md); line-height: 1.4; }
+.ch-try__mv { flex-shrink: 0; font-family: var(--mono); font-weight: 700; color: var(--txt); }
+.ch-try__why { color: color-mix(in srgb, var(--txt) 50%, var(--dim)); overflow-wrap: anywhere; }
+.ch-try--foul .ch-try__mv { color: var(--err); }
+.ch-try--ok .ch-try__mv { color: var(--ok); }
+
+/* ── The session ── */
+.ch-session { gap: 6px; }
+.ch-table td, .ch-table th { padding: 5px 6px; }
+.ch-table__who { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.ch-table__who span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

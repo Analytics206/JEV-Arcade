@@ -1,0 +1,154 @@
+/* Judges' Panel: every rule under .jp-… */
+
+/* ── Setup ── */
+.jp-setup { gap: 16px; }
+.jp-topics { display: flex; flex-wrap: wrap; gap: 6px; }
+.jp-topic {
+  padding: 6px 12px; font-size: var(--fs-md); color: var(--dim); background: none;
+  border: 1px solid var(--rule); border-radius: 3px; cursor: pointer;
+}
+.jp-topic:hover { color: var(--txt); border-color: var(--edge-hot); }
+.jp-topic--on { color: var(--txt); border-color: var(--edge-hot); background: var(--cy-dim); }
+.jp-side { display: flex; flex-direction: column; gap: 16px; }
+.jp-rules { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ── The stage ── */
+.jp-stage { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 22px; align-items: start; }
+@media (max-width: 1100px) { .jp-stage { grid-template-columns: minmax(0, 1fr); } }
+.jp-main { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.jp-aside { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+.jp-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.jp-head__title { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 220px; }
+.jp-kicker { font-family: var(--display); font-size: var(--fs-xs); font-weight: 600; letter-spacing: .14em; color: var(--cy); }
+.jp-for { font-size: 22px; font-weight: 700; }
+.jp-presets { display: flex; flex-wrap: wrap; gap: 8px; }
+.jp-preset {
+  min-height: 38px; padding: 0 14px; font-size: var(--fs-md); font-weight: 600; color: var(--txt);
+  background: transparent; border: 1px solid var(--edge-hot); border-radius: 4px; cursor: pointer;
+}
+.jp-preset:hover { background: var(--cy-dim); }
+.jp-preset--on, .jp-preset--on:hover { color: var(--void); background: var(--cy); }
+
+.jp-rankby { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.jp-rankby__k { font-family: var(--display); font-size: var(--fs-label); font-weight: 600; letter-spacing: .14em; color: var(--dim); }
+.jp-rankby__b {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; font-size: var(--fs-sm);
+  color: var(--dim); background: none; border: 1px solid var(--rule); border-radius: 3px; cursor: pointer;
+}
+.jp-rankby__b--on { color: var(--txt); border-color: var(--edge-hot); background: var(--cy-dim); }
+
+/* ── The judges ── */
+.jp-bench { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 760px) { .jp-bench { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); } }
+.jp-seat {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 10px 10px; min-width: 0;
+  background: var(--panel); border: 1px solid var(--edge); border-radius: 6px;
+}
+.jp-seat__art { display: block; width: 100%; max-width: 132px; height: auto; overflow: visible; }
+.jp-body { fill: var(--dimmer); }
+.jp-arm { stroke: var(--dimmer); stroke-width: 7; stroke-linecap: round; }
+.jp-hand { fill: var(--dim); }
+.jp-hold {
+  transform-box: view-box; transform-origin: 60px 122px;
+  transition: transform .6s cubic-bezier(.34, 1.56, .64, 1);
+}
+.jp-card { stroke-width: 1.5; }
+.jp-card--up { fill: var(--txt); stroke: var(--txt); filter: drop-shadow(0 6px 9px rgba(0, 0, 0, 0.45)); }
+.jp-card--wait { fill: var(--void-2); stroke: var(--edge-hot); stroke-dasharray: 5 4; }
+.jp-card--foul { fill: var(--err-dim); stroke: var(--err); }
+.jp-card__big { font-family: var(--body); font-size: 34px; font-weight: 800; text-anchor: middle; fill: var(--void); }
+.jp-card__small { font-family: var(--mono); font-size: 11px; font-weight: 600; text-anchor: middle; fill: var(--void); }
+.jp-card--wait ~ text { fill: var(--dim); }
+.jp-card--foul ~ text { fill: var(--err); }
+.jp-desk { fill: var(--void-2); stroke: var(--edge); }
+.jp-desk__n { font-family: var(--mono); font-size: 8.5px; letter-spacing: .12em; text-anchor: middle; fill: var(--dim); }
+.jp-seat__name {
+  padding: 2px 6px; font-size: var(--fs-md); font-weight: 700; text-align: center; color: var(--txt);
+  background: none; border: 1px solid transparent; border-radius: 3px; cursor: pointer;
+}
+.jp-seat__name:hover { border-color: var(--rule); }
+.jp-seat__name--on { border-color: var(--edge-hot); background: var(--cy-dim); }
+.jp-seat__w { font-family: var(--mono); font-size: var(--fs-xs); color: var(--dim); }
+.jp-seat__w b { color: var(--txt); }
+.jp-seat__range { width: 100%; accent-color: var(--cy); cursor: pointer; }
+
+/* ── The leaderboard ── */
+.jp-boardhd { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.jp-formula { font-size: var(--fs-xs); color: var(--dim); }
+.jp-board { position: relative; display: flex; flex-direction: column; gap: 6px; }
+.jp-row {
+  display: grid; grid-template-columns: 28px minmax(120px, 250px) minmax(0, 1fr) 40px 124px; gap: 12px;
+  align-items: center; min-height: 40px; padding: 0 12px; text-align: left; color: var(--txt);
+  background: var(--panel); border: 1px solid var(--edge-soft); border-radius: 4px; cursor: pointer;
+  transition: transform .45s cubic-bezier(.2, .8, .2, 1), border-color .15s, background-color .15s;
+}
+.jp-row:hover { border-color: var(--edge-hot); }
+.jp-row--on { background: var(--cy-dim); border-color: var(--edge-hot); }
+.jp-row__rank { font-family: var(--mono); font-size: 14px; font-weight: 700; color: var(--dim); }
+.jp-row__rank--top { color: var(--ok); }
+.jp-row__name { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jp-row__track { height: 10px; background: color-mix(in srgb, var(--lane) 15%, transparent); }
+.jp-row__fill { display: block; height: 100%; background: var(--lane); transition: width .35s ease-out; }
+.jp-row__pts { font-family: var(--mono); font-size: var(--fs-md); text-align: right; }
+.jp-row__dots { display: flex; gap: 4px; }
+.jp-dot {
+  display: flex; align-items: center; justify-content: center; width: 20px; height: 20px;
+  font-family: var(--mono); font-size: var(--fs-xs); font-weight: 700; color: var(--txt); border-radius: 2px;
+}
+.jp-dot--0 { background: color-mix(in srgb, var(--cy) 8%, transparent); }
+.jp-dot--1 { background: color-mix(in srgb, var(--cy) 26%, transparent); }
+.jp-dot--2 { background: color-mix(in srgb, var(--cy) 46%, transparent); }
+.jp-dot--3 { background: color-mix(in srgb, var(--cy) 68%, transparent); color: var(--void); }
+.jp-dot--4 { background: color-mix(in srgb, var(--cy) 90%, transparent); color: var(--void); }
+.jp-dot--x { color: var(--dimmer); border: 1px dashed var(--rule); }
+@media (max-width: 700px) {
+  .jp-row { grid-template-columns: 22px minmax(0, 1fr) 36px; }
+  .jp-row__track, .jp-row__dots { display: none; }
+}
+
+/* ── The spotlight, the rubric, the counter ── */
+.jp-spot__name { font-size: var(--fs-lg); font-weight: 700; color: var(--txt); }
+.jp-spot__lede { font-size: var(--fs-sm); line-height: 1.5; color: var(--dim); }
+.jp-dist { display: flex; flex-direction: column; gap: 8px; }
+.jp-dist__row { display: grid; grid-template-columns: 124px minmax(0, 1fr) 72px; gap: 10px; align-items: end; }
+.jp-dist__row .g-levels { width: 100%; }
+.jp-dist__k { font-size: var(--fs-sm); }
+.jp-dist__none { align-self: center; font-family: var(--mono); font-size: var(--fs-xs); color: var(--dim); }
+.jp-dist__v { font-family: var(--mono); font-size: var(--fs-sm); text-align: right; }
+.jp-note { font-family: var(--mono); font-size: var(--fs-xs); color: var(--dim); }
+.jp-others { display: flex; flex-direction: column; gap: 4px; padding-top: 8px; border-top: 1px solid var(--rule); }
+.jp-others__row { display: flex; align-items: center; gap: 8px; font-size: var(--fs-sm); }
+.jp-others__who { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dim); }
+.jp-others__v { display: flex; gap: 4px; font-family: var(--mono); }
+.jp-others__v span { width: 28px; text-align: center; }
+
+.jp-rubric__q { font-size: var(--fs-md); }
+.jp-levels { list-style: none; display: flex; flex-direction: column; gap: 3px; }
+.jp-lv {
+  display: grid; grid-template-columns: 16px minmax(0, 1fr) 92px; gap: 8px; align-items: center;
+  padding: 2px 4px; font-size: var(--fs-sm); color: var(--dim); border-radius: 2px;
+}
+.jp-lv--on { color: var(--txt); background: var(--cy-dim); }
+.jp-lv__n { font-family: var(--mono); color: var(--txt); }
+.jp-lv__p { display: grid; grid-template-columns: minmax(0, 1fr) 32px; gap: 6px; align-items: center; font-family: var(--mono); font-size: var(--fs-xs); text-align: right; }
+.jp-lv__track { height: 8px; background: color-mix(in srgb, var(--lane) 15%, transparent); }
+.jp-lv__bar { display: block; height: 100%; background: var(--lane); }
+
+.jp-counter {
+  display: flex; flex-direction: column; gap: 6px; padding: 12px 16px;
+  font-family: var(--mono); font-size: var(--fs-sm); border: 1px solid var(--rule); border-radius: 4px;
+}
+.jp-counter > div { display: flex; justify-content: space-between; gap: 12px; }
+.jp-counter span { color: var(--dim); }
+.jp-counter b { font-weight: 600; color: var(--txt); text-align: right; }
+.jp-counter b.g-t-ok { color: var(--ok); }
+.jp-counter__who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.jp-lanebody { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; font-size: var(--fs-sm); }
+.jp-lanebody__n { font-size: 26px; font-weight: 700; line-height: 1; }
+.jp-lanebody__n small { font-size: var(--fs-sm); font-weight: 400; color: var(--dim); }
+
+@media (prefers-reduced-motion: reduce) {
+  .jp-hold, .jp-row, .jp-row__fill { transition: none; }
+}

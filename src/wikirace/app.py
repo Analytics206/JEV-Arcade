@@ -20,6 +20,9 @@ from fastapi.staticfiles import StaticFiles
 
 from . import __version__, api, store
 from .config import Settings, load_settings
+from .games import api as games_api
+from .games import runs as game_runs
+from .games import store as games_store
 from .providers import aclose_all, build
 from .race import engine
 from .race.wiki import Wiki
@@ -55,6 +58,7 @@ def begin_closing(app: FastAPI) -> None:
     app.state.closing = True
     for race in engine.live_races():
         race._wake()
+    game_runs.wake_all()
 
 
 def create_app(
@@ -65,9 +69,11 @@ def create_app(
     @contextlib.asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         store.init(settings.db_path)
+        games_store.init(settings.db_path)
         app.state.loop = asyncio.get_running_loop()
         yield
         await _stop_races()
+        await game_runs.stop_all(_STOP_WAIT_S)
         await aclose_all(app.state.providers)
         await app.state.wiki.aclose()
 
@@ -83,6 +89,7 @@ def create_app(
     # it can start a race on your keys. WIKIRACE_ALLOWED_HOSTS adds names.
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(settings.allowed_hosts))
     app.include_router(api.router)
+    app.include_router(games_api.router)
     # Last, so /api/* is matched first; `html=True` serves index.html at "/".
     app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="page")
     return app
