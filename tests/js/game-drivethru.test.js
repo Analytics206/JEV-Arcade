@@ -3,13 +3,17 @@ import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   altsText,
+  callTokens,
   callsOf,
   goldText,
   latestCar,
+  leadersOf,
   lineMarks,
   queueLayout,
   receiptRows,
+  sparkPath,
   splitChange,
+  streakOf,
   windowCars,
   windowCounts,
 } from '../../src/wikirace/static/games/drivethru.logic.js'
@@ -133,5 +137,41 @@ describe('a window', () => {
     assert.equal(latestCar({ cars, lanes: [lane, { tickets: [{ car: 4 }] }] }), 4)
     assert.equal(latestCar({ cars, lanes: [{ tickets: [] }] }), 5)
     assert.equal(latestCar({ cars: [], lanes: [] }), null)
+  })
+})
+
+describe('what the page lights up', () => {
+  it('colours a call by its parts, and joined they are the line', () => {
+    const line = 'add_item(item="cheeseburger", qty=1, mods=["no_pickles"])'
+    const toks = callTokens(line)
+    assert.equal(toks.map((t) => t.t).join(''), line)
+    assert.deepEqual(toks.filter((t) => t.k === 'fn').map((t) => t.t), ['add_item'])
+    assert.deepEqual(toks.filter((t) => t.k === 'key').map((t) => t.t), ['item', 'qty', 'mods'])
+    assert.deepEqual(toks.filter((t) => t.k === 'str').map((t) => t.t), ['"cheeseburger"', '"no_pickles"'])
+    assert.deepEqual(toks.filter((t) => t.k === 'num').map((t) => t.t), ['1'])
+    const rb = `read_back("That's a \\"medium\\" Coke?")`
+    assert.equal(callTokens(rb).map((t) => t.t).join(''), rb)
+    assert.deepEqual(callTokens('# foul: bad'), [{ t: '# foul: bad', k: 'comment' }])
+    assert.deepEqual(callTokens(''), [])
+  })
+  it('names the leaders by points, below nought too, all of them on a tie', () => {
+    assert.deepEqual(leadersOf({ lanes: [{ index: 0, score: 4 }, { index: 1, score: 9 }, { index: 2, score: 9 }] }), [1, 2])
+    assert.deepEqual(leadersOf({ lanes: [{ index: 0, score: -3 }, { index: 1, score: -1 }] }), [1])
+    assert.deepEqual(leadersOf({ lanes: [{ index: 0 }, { index: 1, score: 0 }] }), [0, 1])
+    assert.deepEqual(leadersOf({ lanes: [] }), [])
+  })
+  it('counts the exact orders in a row, cars still in line aside', () => {
+    const s = (...st) => st.map((status, i) => ({ i, status, ticket: status === 'busy' || status === 'waiting' ? null : {} }))
+    assert.equal(streakOf(s('exact', 'served', 'exact', 'exact', 'busy', 'waiting')), 2)
+    assert.equal(streakOf(s('exact', 'dropped')), 0)
+    assert.equal(streakOf(s('exact', 'exact', 'exact')), 3)
+    assert.equal(streakOf([]), 0)
+  })
+  it('draws the line length as a sparkline, the longest at the top', () => {
+    const { d, max } = sparkPath([0, 2, 4, 1], { width: 32, height: 12, pad: 1 })
+    assert.equal(max, 4)
+    assert.equal(d, 'M1 11 L11 6 L21 1 L31 8.5')
+    assert.equal(sparkPath([3]).d, '')
+    assert.equal(sparkPath([0, 0]).max, 1)
   })
 })

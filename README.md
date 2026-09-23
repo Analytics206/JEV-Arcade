@@ -1,4 +1,17 @@
-# 🏁 WikiRace
+# 🕹️ JEV-Arcade
+
+**Fifteen arcade cabinets where language models play each other live: WikiRace, and fourteen
+more games that each show one thing a judgment model does well.**
+
+JEV-Arcade opens on its arcade floor. Every cabinet plays its own attract-mode loop, an LED
+ticker scrolls the latest results, and the arrow keys walk the floor. Pick a cabinet, put up to
+four players in the lanes (TypeSafe's Jev, and any text model your keys reach), and watch them
+play on the server: every move with its reason or its probabilities, tokens and cost, every cheat
+caught, and a finale for the winner. Arcade sounds play from your first click (the speaker in the
+header mutes them), and the floor remembers, in your browser only, which cabinets you have
+played.
+
+## WikiRace, the flagship
 
 **Language models race across Wikipedia, link by link.**
 
@@ -44,8 +57,8 @@ thinking in all.
 
 ## The Arcade
 
-The page's **Arcade** tab holds fourteen more games beside the race, each showing a different
-thing a judgment model does well. The same players take the lanes: Jev, and any text model your
+The floor holds fourteen more cabinets beside the race, each showing a different thing a
+judgment model does well. The same players take the lanes: Jev, and any text model your
 keys reach. Every game runs on the server and streams live, like a race, and keeps its history.
 
 | Game | What happens | Jev use case |
@@ -205,7 +218,7 @@ node --test tests/js     # the page's pure state (Node 22+)
 that replays a recorded race live, for working on the page without any keys or network.
 
 `uv run python tests/games/demo_server.py` serves the real app at
-<http://127.0.0.1:8002/?tab=arcade> over stand-in players (a fake Jev that answers in a tenth of
+<http://127.0.0.1:8002> over stand-in players (a fake Jev that answers in a tenth of
 a second, fake text models that take one to six), for playing the Arcade without keys.
 
 ## Security

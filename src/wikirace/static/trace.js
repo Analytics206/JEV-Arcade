@@ -18,6 +18,12 @@
  *
  * The geometry — scales, lines, where each horse stands — is `traceLayout` in
  * state.js, where it is tested; this file only draws it.
+ *
+ * The arcade dressing costs no filters: each line is a neon tube drawn as three
+ * strokes (a wide faint glow, the lane colour, a pale core), the hops are
+ * banded like the lanes of a track, a galloping horse kicks up dust, a new hop
+ * rings out from its horse and a new foul pops — CSS animations that play once,
+ * when the mark appears, and only while the race is live.
  */
 import { h } from 'preact'
 import { useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks'
@@ -42,7 +48,23 @@ const horseParts = () => html`
 // The legs above: the flying gallop of every carnival and rocking horse — the
 // forelegs reaching ahead, the hind legs stretched out behind.
 
-function Horse({ lane, x, y, status }) {
+/** The finisher's chequered flag, flying beyond its horse's nose. Drawn
+ *  from rects so it stays crisp at any size. */
+function FinishFlag({ x, y }) {
+  const checks = []
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) if ((r + c) % 2 === 0) checks.push([c * 2.4, r * 2.2])
+  return html`
+    <g class="wr-end__flag" transform=${`translate(${x} ${y})`}>
+      <rect class="wr-end__pole" x="-0.7" y="0" width="1.4" height="19" rx=".7" />
+      <g class="wr-end__cloth">
+        <rect class="wr-end__bg" x="0.7" y="0.4" width="9.6" height="6.6" />
+        ${checks.map(([cx, cy]) => html`<rect x=${0.7 + cx} y=${0.4 + cy} width="2.4" height="2.2" />`)}
+      </g>
+    </g>
+  `
+}
+
+function Horse({ lane, x, y, status, hops, live }) {
   const out = status === 'dnf' || status === 'dq' || status === 'error' || status === 'stopped'
   const running = status === 'thinking' || status === 'moving'
   return html`
@@ -51,6 +73,17 @@ function Horse({ lane, x, y, status }) {
       style=${{ transform: `translateX(${x}px)` }}
     >
       <g class="wr-horse__hop" style=${{ transform: `translateY(${y}px)` }}>
+        ${live &&
+        hops > 0 &&
+        html`<circle key=${`p${hops}`} class="wr-horse__pulse" cx="0" cy="-10" r="15" />`}
+        ${running &&
+        html`
+          <g class="wr-horse__dust">
+            <circle cx="-19" cy="-3" r="2.2" />
+            <circle cx="-22" cy="-6" r="1.6" />
+            <circle cx="-24" cy="-2" r="1.9" />
+          </g>
+        `}
         <g class="wr-horse__rock" style=${{ animationDelay: `${-lane * 0.13}s` }}>
           <g transform=${`scale(${HORSE_SCALE}) translate(-22 -29)`}>
             <g class="wr-horse__halo">${horseParts()}</g>
@@ -61,8 +94,7 @@ function Horse({ lane, x, y, status }) {
             <text class="wr-horse__n" x="17.7" y="15.7" dy="0.36em" text-anchor="middle">${lane + 1}</text>
           </g>
         </g>
-        ${status === 'finished' &&
-        html`<text x=${HORSE_HALF + 3} y=${-12} dy="0.34em" class="wr-end__flag">⚑</text>`}
+        ${status === 'finished' && html`<${FinishFlag} x=${HORSE_HALF + 4} y=${-24} />`}
         ${status === 'dq' && html`<text x=${HORSE_HALF + 3} y=${-12} dy="0.34em" class="wr-end__dq">✕</text>`}
       </g>
     </g>
@@ -89,6 +121,7 @@ export function RaceTrace({ race, now }) {
   const [hoverX, setHoverX] = useState(null)
   const L = useMemo(() => traceLayout(race, now, width), [race, now, width])
   const lanes = race.lanes
+  const live = race.status === 'running'
   const tAt = hoverX == null ? null : timeAt(L, hoverX)
 
   // A pointer anywhere on the plot finds the time; a tap does too, where there
@@ -101,24 +134,35 @@ export function RaceTrace({ race, now }) {
   const summary = lanes.map((ln) => `${ln.index + 1} ${ln.label}: ${ln.hops} hops, ${STATUS_LABEL[ln.status]}`).join('; ')
 
   return html`
-    <div class="wr-trace">
+    <div class=${`wr-trace${live ? ' is-live' : ''}`}>
       <div class="wr-trace__legend" aria-hidden="true">
         ${lanes.map(
           (ln) => html`
-            <span key=${ln.index} class="wr-trace__key">
+            <span key=${ln.index} class=${`wr-trace__key wr-c${ln.index + 1}`}>
               <i class=${`wr-linekey wr-c${ln.index + 1}`} />
               <b class="wr-num">${ln.index + 1}</b>
               ${ln.label}
             </span>
           `,
         )}
-        <span class="wr-trace__key wr-trace__key--mark"><i class="wr-foulkey">✕</i> foul</span>
-        <span class="wr-trace__key wr-trace__key--mark"><i class="wr-foulkey wr-foulkey--warn">?</i> no pick</span>
+        <span class="wr-trace__marks">
+          <span class="wr-trace__key wr-trace__key--mark"><i class="wr-foulkey">✕</i> foul</span>
+          <span class="wr-trace__key wr-trace__key--mark"><i class="wr-foulkey wr-foulkey--warn">?</i> no pick</span>
+        </span>
       </div>
       <div ref=${box} class="wr-trace__plot">
         ${width > 0 &&
         html`
           <svg width=${width} height=${L.H} role="img" aria-label=${`Hops over time. ${summary}`}>
+            <rect class="wr-plotbg" x=${L.M.left} y=${L.M.top} width=${L.plotW} height=${L.plotH} rx="6" />
+            ${
+              /* The hops, banded like the lanes of a track. */
+              L.yTicks.slice(1).map(({ y }, k) =>
+                k % 2 === 0
+                  ? html`<rect key=${`b${k}`} class="wr-band" x=${L.M.left} y=${y} width=${L.plotW} height=${Math.max(0, L.yTicks[k].y - y)} />`
+                  : null,
+              )
+            }
             ${L.yTicks.map(
               ({ h: hop, y }) => html`
                 <g key=${`y${hop}`}>
@@ -136,16 +180,31 @@ export function RaceTrace({ race, now }) {
             )}
             <text class="wr-axis wr-axis--title" x=${L.M.left} y=${L.M.top - 4}>hops</text>
 
-            ${L.lines.map((ln) => html`<path key=${`l${ln.lane}`} class=${`wr-line wr-s${ln.lane + 1}`} d=${ln.d} />`)}
+            ${
+              /* Each line a neon tube: glow, colour, core — three strokes, no filter. */
+              ['glow', 'line', 'core'].map(
+                (part) => html`
+                  <g key=${part} class=${`wr-lines wr-lines--${part}`}>
+                    ${L.lines.map((ln) => html`<path key=${`${part}${ln.lane}`} class=${`wr-line wr-s${ln.lane + 1}`} d=${ln.d} />`)}
+                  </g>
+                `,
+              )
+            }
 
-            ${L.horses.map((hs) => html`<${Horse} key=${`h${hs.lane}`} lane=${hs.lane} x=${hs.x} y=${hs.y} status=${hs.status} />`)}
+            ${L.horses.map(
+              (hs) => html`<${Horse} key=${`h${hs.lane}`} lane=${hs.lane} x=${hs.x} y=${hs.y} status=${hs.status} hops=${hs.hops} live=${live} />`,
+            )}
 
             ${
               /* Fouls, on their racer's line — over the horses, so a foul at the
                  head of a line is never hidden under the horse standing there. */
               L.fouls.map(
                 (f) => html`
-                  <g key=${`f${f.lane}-${f.k}`} class=${f.kind === 'foul' ? 'wr-foul' : 'wr-foul wr-foul--warn'}>
+                  <g
+                    key=${`f${f.lane}-${f.k}`}
+                    class=${`wr-foul${f.kind === 'foul' ? '' : ' wr-foul--warn'}${live ? ' is-new' : ''}`}
+                    style=${{ transformOrigin: `${f.cx}px ${f.cy}px` }}
+                  >
                     <title>${`Racer ${f.lane + 1}: ${f.note}`}</title>
                     <circle cx=${f.cx} cy=${f.cy} r="6" class="wr-ring" />
                     ${f.kind === 'foul'

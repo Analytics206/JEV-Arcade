@@ -1,7 +1,7 @@
 [project]
 name = "wikirace"
 version = "0.1.0"
-description = "Language models race across Wikipedia, link by link: Claude, GPT, OpenRouter, local Ollama models and TypeSafe Jev on one track."
+description = "JEV-Arcade: WikiRace and fourteen more games that pit TypeSafe Jev against Claude, GPT, OpenRouter and local Ollama models, live."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]

@@ -258,3 +258,35 @@ export function boardLabel({ pz, lane, on, mates }) {
 
 /** Difficulty 1 to 3 as filled and hollow dots. */
 export const dots = (n) => '●'.repeat(Math.max(0, Math.min(3, n | 0))) + '○'.repeat(Math.max(0, 3 - Math.min(3, n | 0)))
+
+/* ── What the page lights up ───────────────────────────────────────────────── */
+
+/** The square a side's king stands on (`w` or `b`), or null. The king a mate
+ *  falls on is the side NOT to move. */
+export function kingSquare(fen, color) {
+  const k = parseFen(fen).pieces.find((pc) => pc.kind === 'k' && pc.color === color)
+  return k ? k.sq : null
+}
+
+/** The piece on a square of a FEN ({sq, piece, color, kind}), or null. */
+export function pieceAt(fen, sq) {
+  return parseFen(fen).pieces.find((pc) => pc.sq === sq) ?? null
+}
+
+/** Who is ahead by the game's own rule: a lane's score is the puzzles it
+ *  solved, so the lanes with the most, all of them on a tie. Nobody leads
+ *  while nobody has solved one. */
+export function leadersOf(run) {
+  const lanes = run?.lanes ?? []
+  const best = Math.max(0, ...lanes.map((ln) => ln.solved ?? 0))
+  return best > 0 ? lanes.filter((ln) => (ln.solved ?? 0) === best).map((ln) => ln.index) : []
+}
+
+/** A lane's puzzles as a row of pips: done (with its verdict), the one it is
+ *  on, waiting, or out. [{k, state, verdict}] */
+export function lanePips(lane, total) {
+  return Array.from({ length: Math.max(0, total | 0) }, (_, k) => {
+    const on = laneOn(lane, k)
+    return { k, state: on.state, verdict: verdictOf(on.result) }
+  })
+}

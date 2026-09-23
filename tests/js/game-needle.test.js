@@ -14,6 +14,7 @@ import {
   isNear,
   judgePick,
   lineAt,
+  matchOf,
   minimap,
   needleAngle,
   nextQuestion,
@@ -141,5 +142,54 @@ describe('scoring the visitor', () => {
     assert.deepEqual(t.lanes, [{ index: 0, label: 'jev', kind: 'judgment', points: 1, right: 1, near: 0, wrong: 1 }])
     assert.equal(tallyOf(run, { 0: { skipped: true } }).you.played, 0)
     assert.deepEqual([4, 0, -2].map(signed), ['+4', '0', '−2'])
+  })
+})
+
+describe('the match', () => {
+  const questions = [
+    { k: 0, revealed: true, scored: true, answer: ['L004'] },
+    { k: 1, revealed: true, scored: true, answer: [] },
+  ]
+  const lane = (index, marks, status = 'done') => ({
+    index, label: `p${index}`, kind: 'text', status,
+    answers: marks.map((m) => ({ q: m.q, pick: 'L001' })), marks,
+  })
+  const run = {
+    lines, questions,
+    lanes: [
+      lane(0, [{ q: 0, verdict: 'right', points: 2 }, { q: 1, verdict: 'wrong', points: -1 }]),
+      lane(1, [{ q: 0, verdict: 'near', points: 1 }, { q: 1, verdict: 'right', points: 2 }]),
+    ],
+  }
+  it('keeps every lane sealed until the visitor has played', () => {
+    const m = matchOf(run, {})
+    assert.deepEqual(m.lanes[0].cells.map((c) => c.state), ['sealed', 'sealed'])
+    assert.deepEqual(m.you.cells.map((c) => c.state), ['hunting', 'hunting'])
+    assert.equal(m.done, false)
+    assert.deepEqual(m.leaders, { best: 0, lanes: [0, 1], you: false })
+  })
+  it('scores the questions played, and agrees with the tally', () => {
+    const m = matchOf(run, { 0: { pick: 'L004', ms: 1 } })
+    assert.deepEqual(m.you.cells, [{ state: 'right', points: 2 }, { state: 'hunting' }])
+    assert.deepEqual(m.lanes[1].cells, [{ state: 'near', points: 1 }, { state: 'sealed' }])
+    assert.deepEqual([m.you.points, m.lanes[0].points, m.lanes[1].points], [2, 2, 1])
+    assert.deepEqual(m.leaders, { best: 2, lanes: [0], you: true })
+  })
+  it('names the winners when every question is played', () => {
+    const m = matchOf(run, { 0: { pick: 'L003' }, 1: { skipped: true } })
+    assert.equal(m.done, true)
+    assert.deepEqual(m.you.cells.map((c) => c.state), ['near', 'skipped'])
+    assert.deepEqual(m.leaders, { best: 3, lanes: [1], you: false })
+    const mine = matchOf(run, { 0: { pick: 'L004' }, 1: { pick: NONE } })
+    assert.deepEqual(mine.leaders, { best: 4, lanes: [], you: true })
+  })
+  it('waits for the key, and leaves out a lane that dropped out', () => {
+    const open = { ...run, questions: [questions[0], { ...questions[1], revealed: false, answer: null }] }
+    const m = matchOf(open, { 0: { skipped: true }, 1: { pick: 'L002' } })
+    assert.deepEqual(m.you.cells.map((c) => c.state), ['skipped', 'pending'])
+    assert.equal(m.lanes[0].cells[1].state, 'pending')
+    assert.equal(m.done, false)
+    const out = { ...run, lanes: [{ ...run.lanes[0], status: 'error' }, run.lanes[1]] }
+    assert.deepEqual(matchOf(out, { 0: { skipped: true }, 1: { skipped: true } }).leaders.lanes, [1])
   })
 })

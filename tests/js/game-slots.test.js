@@ -8,13 +8,18 @@ import {
   byPull,
   caption,
   chipsOf,
+  finale,
   flips,
+  held,
+  heldText,
   jackpot,
+  leversOf,
   nextPost,
   outcomeOf,
   reelsOf,
   share,
   spreadText,
+  steadiest,
 } from '../../src/wikirace/static/games/slots.logic.js'
 
 const pull = (n, outcome, extra = {}) => ({ n, reel: n % 3, outcome, top: LABELS.includes(outcome) ? outcome : 'warn', ...extra })
@@ -72,6 +77,48 @@ describe('the strip and the numbers', () => {
     const text = { kind: 'text', pulls: [pull(0, 'foul', { said: 'escalate' })] }
     assert.equal(caption(text, 0.6), 'pulls 1 · the last said “escalate”')
     assert.equal(caption({ pulls: [], spinning: [0, 1, 2] }, 0.6), 'the first pull is spinning…')
+  })
+})
+
+describe('the levers', () => {
+  it('group the pulls three to a lever, and call three in a row once all three have landed alike', () => {
+    const lane = { pulls: [pull(0, 'warn'), pull(1, 'warn'), pull(2, 'warn'), pull(3, 'allow'), pull(5, 'allow')], spinning: [null, 4, null] }
+    const ls = leversOf(lane, 9)
+    assert.deepEqual(ls.map((l) => [l.lever, l.chips.map((c) => c.n), l.landed, l.win]), [
+      [0, [0, 1, 2], true, 'warn'],
+      [1, [3, 4, 5], false, null],
+      [2, [6, 7, 8], false, null],
+    ])
+    assert.equal(ls[1].chips[1].spinning, true)
+  })
+  it('never calls a short last lever, or a mixed one, three in a row', () => {
+    const lane = { pulls: [pull(0, 'allow'), pull(1, 'warn'), pull(2, 'allow'), pull(3, 'allow')] }
+    const ls = leversOf(lane, 4)
+    assert.deepEqual(ls.map((l) => [l.chips.length, l.landed, l.win]), [[3, true, null], [1, true, null]])
+  })
+})
+
+describe('who won', () => {
+  const lane = (index, score, extra = {}) => ({
+    index, label: `p${index}`, status: 'done', score, agreement: score / 100, consensus: 'allow',
+    pulls: [pull(0, 'allow'), pull(1, 'allow'), pull(2, score === 100 ? 'allow' : 'warn')], ...extra,
+  })
+  it('is the steadiest verdict among the lanes that pulled every time; a tie shares it', () => {
+    assert.deepEqual(steadiest([lane(0, 100), lane(1, 66.7)]), [0])
+    assert.deepEqual(steadiest([lane(0, 66.7), lane(1, 66.7), lane(2, 33.3)]), [0, 1])
+    assert.deepEqual(steadiest([lane(0, 100, { status: 'error' }), lane(1, 66.7)]), [1])
+    assert.deepEqual(steadiest([lane(0, null), lane(1, null)]), [])
+    assert.deepEqual(steadiest([lane(0, 100)]), [])
+  })
+  it('says the verdict held or wobbled for one lane alone, and names the steadiest otherwise', () => {
+    assert.ok(held(lane(0, 100)))
+    assert.ok(!held(lane(0, 66.7)))
+    assert.deepEqual(finale({ lanes: [lane(0, 100)] }), { winners: [], headline: 'VERDICT HELD', sub: 'p0: allow on all 3 pulls', win: true })
+    assert.deepEqual(finale({ lanes: [lane(0, 66.7)] }), { winners: [], headline: 'VERDICT WOBBLED', sub: 'p0: the same verdict 2/3, changed its mind 1×', win: false })
+    assert.deepEqual(finale({ lanes: [lane(0, 66.7, { status: 'error' })] }), { winners: [] })
+    assert.deepEqual(finale({ lanes: [lane(0, 100), lane(1, 66.7)] }), { winners: [0], sub: 'p0: allow on all 3 pulls' })
+    assert.deepEqual(finale({ lanes: [lane(0, 66.7), lane(1, 66.7)] }).winners, [0, 1])
+    assert.match(heldText({ pulls: [] }), /no pulls/)
   })
 })
 

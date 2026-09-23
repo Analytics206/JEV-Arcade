@@ -104,6 +104,36 @@ export function signalOf(run, k) {
   return { p, source: 'judges', top: p >= 0.5 ? 'contradicted' : 'supported' }
 }
 
+/** A time as the duel's lit clock shows it: 0.18S, 12.3S, 1:04. */
+export function clockText(ms) {
+  if (!Number.isFinite(ms)) return '--'
+  const v = Math.max(0, ms)
+  if (v < 1000) return `${(v / 1000).toFixed(2)}S`
+  if (v < 60_000) return `${(Math.floor(v / 100) / 10).toFixed(1)}S`
+  const s = Math.floor(v / 1000)
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+}
+
+/** The lie detector's needle for a claim: p(contradicted) 0…1 as degrees
+ *  from −90 (all the way to TRUE, on the left) to +90 (LIE, on the right). */
+export const needleAngle = (p) => -90 + clamp(Number(p) || 0, 0, 1) * 180
+
+/** The order the stamps land in at the reveal: the truths first, left to
+ *  right (0, 1), then the lie (2), for the drum roll. */
+export function revealOrder(k, lie) {
+  if (!Number.isInteger(lie)) return 0
+  if (k === lie) return 2
+  return k < lie ? k : k - 1
+}
+
+/**
+ * Who won the round, by the game's own rule (games/twotruths.py: a judge
+ * scores 1 when it found the lie, else 0): every lane that found it, tied.
+ * Empty until the lie is out, and when nobody found it.
+ */
+export const foundBy = (run) =>
+  Number.isInteger(run?.lie) ? (run.lanes ?? []).filter((ln) => ln.found === true).map((ln) => ln.index) : []
+
 /** The visitor has played this round: picked a claim or asked to be shown. */
 export const unsealed = (mine) => !!mine && (Number.isInteger(mine.pick) || !!mine.skipped)
 

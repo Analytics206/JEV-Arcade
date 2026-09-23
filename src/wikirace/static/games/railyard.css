@@ -1,69 +1,244 @@
-/* Rail Yard: every rule under .ry-… The yard is a drawn board, so its few
- * literal colours (the ties, the locomotive) are the mockup's own. */
+/* Rail Yard: every rule under .ry-… The yard is a board drawn at night, so its
+ * few literal colours (the ballast, the sleepers, the rails' steel, the
+ * carriages) are its own; the cabinet's neon is var(--acc), a lane's var(--lane). */
+
+/* The page's entrance must not hold a transform once it has played: a held
+ * transform makes the page the frame of every fixed overlay in it, and the
+ * finale would centre on the whole page instead of the screen. */
+.g-page.ry-page { animation-fill-mode: backwards; }
 
 /* ── Setup ─────────────────────────────────────────────────────────────────── */
 
 .ry-setup { gap: 16px; }
 .ry-tiers { display: flex; flex-direction: column; gap: 8px; }
-.ry-tier { display: flex; align-items: center; gap: 8px; }
+.ry-tier {
+  display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 10px;
+  background: color-mix(in srgb, var(--lane) 7%, transparent); border: 1px solid color-mix(in srgb, var(--lane) 32%, transparent);
+}
 .ry-tier__model { flex: 1; min-width: 0; font-family: var(--mono); font-size: var(--fs-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ry-tier .wr-sel { width: 110px; }
+.ry-tier .wr-sel { width: 110px; border-radius: 6px; }
 .ry-hint { font-size: var(--fs-sm); color: var(--warn); }
 .ry-params { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.ry-thr input { accent-color: var(--cy); }
-.ry-thr b { font-family: var(--mono); font-size: var(--fs-md); color: var(--txt); }
+.ry-thr input { accent-color: var(--acc); }
+.ry-thr b { font-family: var(--mono); font-size: var(--fs-md); color: var(--acc); text-shadow: 0 0 10px color-mix(in srgb, var(--acc) 60%, transparent); }
 .ry-side { display: flex; flex-direction: column; gap: 16px; }
+.ry-how { gap: 14px; }
 .ry-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 
+/* The yard in miniature. */
+.ry-dia { display: block; width: 100%; max-width: 640px; height: auto; margin: 0 auto; }
+.ry-dia__note--end { text-anchor: end; }
+.ry-dia__bg { fill: #0a0820; stroke: color-mix(in srgb, var(--acc) 30%, transparent); }
+.ry-dia__plat { fill: #1a1545; stroke: rgba(170, 160, 255, 0.3); }
+.ry-dia__tier { font-family: var(--display); font-size: 12px; font-weight: 800; letter-spacing: 2px; fill: var(--txt); }
+.ry-dia__lamp { stroke: rgba(0, 0, 0, 0.45); stroke-width: 1.5; }
+.ry-dia__mark { font: 800 9px var(--mono); fill: var(--lane-ink); text-anchor: middle; pointer-events: none; }
+.ry-dia__note { font-family: var(--mono); font-size: 10px; fill: var(--dim); }
+.ry-q--dia .ry-q__win { fill: rgba(255, 243, 196, 0.25); }
+
+/* The routing rule, printed as code: the line a train took is lit. */
 .ry-rule {
-  display: flex; flex-direction: column; padding: 8px 10px; font-family: var(--mono); font-size: var(--fs-xs);
-  line-height: 1.55; color: #aab7cc; background: var(--void-2); border-radius: 3px;
+  display: flex; flex-direction: column; padding: 9px 11px; font-family: var(--mono); font-size: var(--fs-xs);
+  line-height: 1.6; color: var(--txt-2); background: #07051a; border: 1px solid var(--rule); border-radius: 8px;
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
 }
-.ry-rule > span { white-space: pre-wrap; }
-.ry-rule__on { color: var(--cy); font-weight: 700; }
+.ry-rule > span { white-space: pre-wrap; padding: 0 4px; border-radius: 4px; }
+.ry-rule--live > span:not(.ry-rule__on) { opacity: .55; }
+.ry-rule__on {
+  color: var(--acc); font-weight: 700; background: color-mix(in srgb, var(--acc) 12%, transparent);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--acc) 55%, transparent); animation: ry-line .6s var(--ease-out) both;
+}
+@keyframes ry-line { from { background: color-mix(in srgb, var(--acc) 45%, transparent); } }
+
+/* ── The scoreboard over the yard ──────────────────────────────────────────── */
+
+.ry-yardbox {
+  padding: 12px; gap: 12px; border-color: color-mix(in srgb, var(--acc) 26%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 0 46px -26px var(--acc), 0 16px 34px -22px rgba(0, 0, 0, 0.95);
+}
+.ry-sb { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 980px) { .ry-sb { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.ry-sb__cell {
+  --glow: var(--lane, var(--acc));
+  position: relative; display: flex; flex-direction: column; gap: 5px; min-width: 0; padding: 10px 14px 12px; border-radius: 12px; overflow: hidden;
+  background:
+    radial-gradient(130% 100% at 0% 0%, color-mix(in srgb, var(--glow) 17%, transparent), transparent 62%),
+    linear-gradient(180deg, #0d0a26, #07051a);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--glow) 30%, transparent), inset 0 2px 14px rgba(0, 0, 0, 0.65);
+}
+.ry-sb__cell::before {
+  content: ''; position: absolute; left: 12px; right: 12px; top: 0; height: 2px; border-radius: 0 0 2px 2px;
+  background: linear-gradient(90deg, transparent, var(--glow), transparent); opacity: .85;
+}
+.ry-sb__cell--save { --glow: var(--ok); }
+.ry-sb__cell--save.is-dearer { --glow: var(--warn); }
+.ry-sb__cell--run { --glow: var(--acc); }
+.ry-sb__k {
+  display: inline-flex; align-items: center; gap: 7px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-family: var(--display); font-size: var(--fs-micro); font-weight: 700; letter-spacing: .14em; color: var(--txt-2);
+}
+.ry-sb__k .g-num { width: 18px; height: 18px; font-size: 10px; border-radius: 5px; }
+.ry-sb__v { font-size: 34px; color: #fff; }
+.ry-sb__v--base { color: var(--txt-2); }
+.ry-sb__v--save { color: var(--glow); text-shadow: 0 0 16px color-mix(in srgb, var(--glow) 65%, transparent); }
+.ry-sb__v--n { color: var(--acc); text-shadow: 0 0 16px color-mix(in srgb, var(--acc) 60%, transparent); }
+.ry-sb__row { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 8px; }
+.ry-sb__word { font-family: var(--display); font-size: var(--fs-md); font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--glow); }
+.ry-sb__of { font-family: var(--mono); font-size: 17px; font-weight: 700; color: var(--dim); }
+.ry-sb__s { font-family: var(--mono); font-size: var(--fs-xs); color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ry-sb__s b { font-weight: 600; color: var(--txt); }
+.ry-sb__track { position: relative; height: 6px; margin-top: 4px; border-radius: 3px; background: rgba(255, 255, 255, 0.06); overflow: hidden; }
+.ry-sb__fill {
+  position: absolute; inset: 0 auto 0 0; border-radius: 3px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--acc) 45%, #000), var(--acc) 85%, #fff3c4);
+  box-shadow: 0 0 10px var(--acc); transition: width .6s var(--ease-out);
+}
 
 /* ── The yard ──────────────────────────────────────────────────────────────── */
 
-.ry-yard { padding: 0; overflow: hidden; }
+.ry-yard { border-radius: 10px; overflow: hidden; }
 .ry-yard svg { display: block; width: 100%; height: auto; }
-.ry-yard__bg { fill: #070a13; stroke: rgba(62, 244, 255, 0.14); }
+/* On a phone the yard keeps a readable size and scrolls inside its own box. */
+@media (max-width: 700px) {
+  .ry-yard { overflow-x: auto; }
+  .ry-yard svg { min-width: 820px; }
+  .ry-sb__v { font-size: 28px; }
+}
+.ry-yard__bg { stroke: color-mix(in srgb, var(--acc) 22%, transparent); }
 .ry-yard__cap, .ry-yard__more { font-family: var(--mono); font-size: 11px; fill: var(--dim); }
-.ry-yard__who { font-family: var(--mono); font-size: 10px; fill: var(--lane); }
-.ry-ties path { fill: none; stroke: #1d2a44; stroke-width: 12; stroke-dasharray: 3 7; }
-.ry-rails path { fill: none; stroke: var(--dimmer); stroke-width: 2.5; transition: stroke .2s; }
-.ry-rails .ry-rail--main { stroke: var(--dim); }
-.ry-rails .ry-rail--on { stroke: var(--cy); stroke-width: 3; }
+.ry-yard__more { fill: var(--txt-2); }
+.ry-yard__who { font-family: var(--mono); font-size: 10.5px; font-weight: 700; fill: var(--lane); }
+.ry-stop-acc { stop-color: var(--acc); }
+.ry-stop-hi { stop-color: color-mix(in srgb, var(--acc) 40%, #fff8e6); }
+.ry-stop-lo { stop-color: color-mix(in srgb, var(--acc) 50%, #1c0700); }
+.ry-stop-lane { stop-color: var(--lane); }
 
-.ry-car rect { fill: #1d2a44; stroke: var(--dim); }
-.ry-car text { font-family: var(--mono); font-size: 10px; fill: var(--txt); }
-.ry-car--front rect { stroke: var(--txt); stroke-dasharray: 4 3; }
-.ry-car--now rect { fill: #c98500; stroke: none; }
-.ry-car--now text { fill: var(--lane-ink); font-weight: 700; }
-.ry-car--in { opacity: .45; transition: opacity .4s; }
-.ry-wheel { fill: #1d2a44; stroke: var(--dim); stroke-width: 1.5; }
+/* Track: ballast, sleepers, twin rails (the rails are one wide stroke with the
+ * bed drawn back down its middle, so they stay parallel round the curves). */
+.ry-ballast path, .ry-ties path, .ry-rails path, .ry-gap path, .ry-route path { fill: none; }
+.ry-ballast path { stroke: rgba(130, 110, 220, 0.07); stroke-width: 28; stroke-linecap: round; }
+.ry-ties path { stroke: #3a2d5e; stroke-width: 18; stroke-dasharray: 4 7; }
+.ry-ties--in path { stroke: #4a3a74; stroke-width: 5; }
+.ry-rails path { stroke: #8079c2; stroke-width: 8; }
+.ry-gap path { stroke: #100c28; stroke-width: 5; }
 
-.ry-tower rect { fill: #0e1a2c; stroke: var(--cy); stroke-width: 2; }
-.ry-tower__name { font-family: var(--display); font-size: 12px; font-weight: 700; letter-spacing: 2px; fill: var(--cy); text-anchor: middle; }
-.ry-tower__sub { font-family: var(--mono); font-size: 10px; fill: var(--dim); text-anchor: middle; }
-.ry-tower__wire { stroke: var(--cy); stroke-width: 2; stroke-dasharray: 3 3; }
-.ry-blade { stroke: var(--cy); stroke-width: 5; stroke-linecap: round; }
-.ry-switch { fill: var(--cy); }
+/* The route the points are set for: lit rails, a glow, and light running down it. */
+.ry-route { animation: ry-fade .35s ease-out both; }
+@keyframes ry-fade { from { opacity: 0; } }
+.ry-route__glow { stroke: var(--acc); stroke-width: 26; stroke-linecap: round; opacity: .12; }
+.ry-route__rail { stroke: var(--acc); stroke-width: 8; }
+.ry-route__gap { stroke: #1c0d10; stroke-width: 5; }
+.ry-route__ties { stroke: #6c3322; stroke-width: 5; stroke-dasharray: 4 7; }
+.ry-route__run { stroke: #fff3d8; stroke-width: 2.2; stroke-linecap: round; stroke-dasharray: 2 24; animation: ry-run .6s linear infinite; }
+@keyframes ry-run { to { stroke-dashoffset: -26; } }
 
-.ry-station__box { fill: #0a0f1b; stroke: rgba(125, 139, 166, 0.35); transition: fill .2s, stroke .2s; }
-.ry-station--on .ry-station__box { fill: rgba(62, 244, 255, 0.10); stroke: var(--cy); stroke-width: 1.5; }
-.ry-station--out { opacity: .5; }
-.ry-station__stripe, .ry-station__num { fill: var(--lane); }
-.ry-station__numtxt { font-family: var(--mono); font-size: 11px; font-weight: 700; fill: var(--lane-ink); text-anchor: middle; }
-.ry-station__tier { font-family: var(--display); font-size: 13px; font-weight: 700; letter-spacing: 2px; fill: var(--txt); }
-.ry-station--on .ry-station__tier { fill: var(--cy); }
-.ry-station__model { font-family: var(--mono); font-size: 10.5px; fill: var(--dim); letter-spacing: 0; }
-.ry-station__line { font-family: var(--mono); font-size: 10.5px; fill: #aab7cc; }
-.ry-station__wait { font-family: var(--mono); font-size: 14px; font-weight: 700; fill: var(--cy); text-anchor: end; }
-.ry-station__v { font-family: var(--mono); font-size: 14px; font-weight: 700; text-anchor: end; }
+/* The switch tower: Jev's cabin, lit in its lane's colour; a beam on the carriage it reads. */
+.ry-tower__mast { fill: none; stroke: #6f68a8; stroke-width: 2; stroke-linecap: round; }
+.ry-tower__beacon { fill: #5a2030; }
+.ry-tower__beacon.is-live { fill: var(--err); animation: ry-blink 1.2s steps(1) infinite; }
+.ry-tower__cab { fill: url(#ryCar) #1d1747; stroke: var(--acc); stroke-width: 1.5; }
+.ry-tower__glass { fill: var(--lane); opacity: .3; }
+.ry-tower__glass.is-reading { animation: ry-glass .7s ease-in-out infinite alternate; }
+@keyframes ry-glass { to { opacity: .75; } }
+.ry-tower__name {
+  font-family: var(--display); font-size: 16px; font-weight: 800; letter-spacing: 4px; fill: #fff; text-anchor: middle;
+  filter: drop-shadow(0 0 4px var(--lane));
+}
+.ry-tower__sub { font-family: var(--mono); font-size: 10px; fill: var(--txt-2); text-anchor: middle; }
+.ry-tower__beam { fill: url(#ryScan); animation: ry-beam .9s ease-in-out infinite alternate; }
+@keyframes ry-beam { from { opacity: .45; } to { opacity: 1; } }
+
+/* The points: the blade swings to the set track; a ring goes off as it throws. */
+.ry-blade { transition: transform .45s var(--ease-spring); }
+.ry-blade line { stroke: var(--acc); stroke-width: 5; stroke-linecap: round; }
+.ry-blade circle { fill: #fff3c4; }
+.ry-switch { fill: #1d1640; stroke: var(--acc); stroke-width: 2.5; }
+.ry-switch__ring { fill: none; stroke: var(--acc); stroke-width: 2; transform-box: fill-box; transform-origin: center; animation: ry-ring .75s var(--ease-out) both; }
+@keyframes ry-ring { from { transform: scale(.3); opacity: 1; } to { transform: scale(1.9); opacity: 0; } }
+
+/* The queue: carriages glide up the main line as the one in front leaves. */
+.ry-q { transition: transform .6s var(--ease-out) .25s; }
+/* A carriage joins the back once the one ahead of it has moved up. */
+.ry-q__in { animation: ry-q-in .5s var(--ease-out) .45s both; }
+@keyframes ry-q-in { from { opacity: 0; transform: translateX(-44px); } }
+.ry-q__body { fill: url(#ryCar) #1d1747; stroke: rgba(170, 160, 255, 0.35); stroke-width: 1; }
+.ry-q--front .ry-q__body { stroke: var(--acc); stroke-width: 1.6; }
+.ry-q__shine { fill: rgba(255, 255, 255, 0.13); }
+.ry-q__txt { font-family: var(--mono); font-size: 9.5px; fill: var(--txt-2); }
+.ry-q--front .ry-q__txt { fill: var(--txt); }
+.ry-q__plate { fill: #2a2250; stroke: rgba(170, 160, 255, 0.35); }
+.ry-q--front .ry-q__plate { fill: var(--acc); stroke: none; }
+.ry-q__no { font-family: var(--mono); font-size: 9px; font-weight: 800; fill: var(--txt-2); text-anchor: middle; }
+.ry-q--front .ry-q__no { fill: var(--lane-ink); }
+.ry-q__scan { fill: var(--lane); opacity: .5; animation: ry-scan .8s ease-in-out infinite alternate; }
+@keyframes ry-scan { to { transform: translateX(100px); } }
+
+/* The log: a tile per departure, in its station's colour and number, marked as it went. */
+.ry-log__cap { font-family: var(--mono); font-size: 10px; fill: var(--dim); }
+.ry-log__in { transform-box: fill-box; transform-origin: center; animation: ry-pop .45s var(--ease-spring) both; }
+.ry-log__box { fill: color-mix(in srgb, var(--lane) 26%, #0b0920); stroke: var(--lane); stroke-width: 1; }
+.ry-log__no { font-family: var(--mono); font-size: 9.5px; font-weight: 800; fill: var(--txt); text-anchor: middle; }
+.ry-log__mark { font-family: var(--mono); font-size: 11px; font-weight: 900; text-anchor: middle; transform-box: fill-box; transform-origin: center; animation: ry-pop .45s var(--ease-spring) both; }
+.ry-log__mark--wait { fill: var(--acc); animation: ry-blink 1s steps(1) infinite; }
+
+/* A locomotive: a lit body, a headlight throwing its beam down the track. */
+.ry-loco__shadow { fill: #000; opacity: .45; }
+.ry-loco__beam { fill: url(#ryBeam); }
+.ry-loco__body, .ry-loco__nose { fill: url(#ryLoco) var(--acc); stroke: rgba(0, 0, 0, 0.35); stroke-width: 1; }
+.ry-loco__win { fill: #1b0c05; }
+.ry-loco__stripe { fill: rgba(255, 246, 222, 0.6); }
+.ry-loco__wheel { fill: #1a1430; stroke: #9a93cf; stroke-width: 1.3; }
+.ry-loco__lamp { fill: #fff7d6; stroke: rgba(255, 238, 180, 0.5); stroke-width: 3; }
+.ry-loco__no { font-family: var(--mono); font-size: 10px; font-weight: 800; fill: var(--lane-ink); text-anchor: middle; }
+.ry-mv--gone { animation: ry-gone .6s ease-in both; }
+@keyframes ry-gone { to { opacity: 0; } }
+
+/* The mark over a train as it pulls in. */
+.ry-badge--ok { --tone: var(--ok); }
+.ry-badge--err { --tone: var(--err); }
+.ry-badge--warn { --tone: var(--warn); }
+.ry-badge--neutral { --tone: var(--dim); }
+.ry-badge__in { transform-box: fill-box; transform-origin: center; animation: ry-badge .6s var(--ease-spring) both; }
+@keyframes ry-badge { from { transform: scale(0); opacity: 0; } 40% { opacity: 1; } }
+.ry-badge__ring { fill: none; stroke: var(--tone); stroke-width: 2.5; transform-box: fill-box; transform-origin: center; animation: ry-ring .9s var(--ease-out) both; animation-delay: inherit; }
+.ry-badge__disc { fill: var(--tone); stroke: #07051a; stroke-width: 2; }
+.ry-badge__mark { font-family: var(--mono); font-size: 13px; font-weight: 900; fill: #07051a; text-anchor: middle; }
+.ry-badge__mark--sm { font-size: 10.5px; }
+
+/* A station's platform. */
+.ry-st__halo { fill: none; stroke: var(--acc); stroke-width: 2; opacity: 0; transition: opacity .3s; }
+.ry-st--on .ry-st__halo { opacity: .85; }
+.ry-st__box { fill: url(#ryPlat) #15113a; stroke: color-mix(in srgb, var(--lane) 50%, transparent); stroke-width: 1.2; }
+.ry-st__shine { fill: rgba(255, 255, 255, 0.08); }
+.ry-st__stripe { fill: var(--lane); }
+.ry-st__buf { fill: #3a2f5c; stroke: #8079c2; }
+.ry-st__lamp { fill: #3a2f5c; }
+.ry-st--inbound .ry-st__lamp { fill: var(--acc); animation: ry-blink .5s steps(1) infinite; }
+.ry-st__num { fill: var(--lane); }
+.ry-st__numtxt { font-family: var(--mono); font-size: 11px; font-weight: 800; fill: var(--lane-ink); text-anchor: middle; }
+.ry-st__tier { font-family: var(--display); font-size: 16px; font-weight: 800; letter-spacing: 3px; fill: var(--txt); transition: fill .3s; }
+.ry-st--on .ry-st__tier { fill: var(--acc); }
+.ry-st__model { font-family: var(--mono); font-size: 10.5px; fill: var(--txt-2); }
+.ry-st__short { font-family: var(--mono); font-size: 9.5px; fill: var(--dim); }
+.ry-st__count { font-family: var(--mono); font-size: 24px; font-weight: 800; fill: var(--txt); text-anchor: end; }
+.ry-st__count--pop { transform-box: fill-box; transform-origin: center; animation: ry-count .7s var(--ease-spring) both; }
+@keyframes ry-count { 35% { transform: scale(1.45); fill: var(--acc); } }
+.ry-st__unit { font-family: var(--display); font-size: 9px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; fill: var(--dim); text-anchor: end; }
+.ry-st__tally { font-family: var(--mono); font-size: 9.5px; fill: var(--txt-2); text-anchor: end; }
+.ry-st__flash { pointer-events: none; opacity: 0; animation: ry-flash 1s ease-out both; }
+@keyframes ry-flash { 0% { opacity: 0; } 12% { opacity: .4; } 100% { opacity: 0; } }
+.ry-fl--ok { fill: var(--ok); }
+.ry-fl--err { fill: var(--err); }
+.ry-fl--warn { fill: var(--warn); }
+.ry-fl--neutral { fill: var(--dim); }
+.ry-st__v .ry-badge__disc { stroke-width: 1.5; }
+.ry-st__v { animation: ry-fade .4s ease-out both; }
+.ry-st--out { opacity: .5; }
 .ry-f-ok { fill: var(--ok); }
 .ry-f-err { fill: var(--err); }
 .ry-f-warn { fill: var(--warn); }
 .ry-f-neutral { fill: var(--dim); }
+@keyframes ry-blink { 50% { opacity: .2; } }
 
 /* ── Under the yard ────────────────────────────────────────────────────────── */
 
@@ -71,78 +246,143 @@
 @media (max-width: 1250px) { .ry-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .ry-board { grid-column: 1 / -1; } }
 @media (max-width: 800px) { .ry-row { grid-template-columns: minmax(0, 1fr); } }
 
-.ry-train__prompt { font-size: var(--fs-md); line-height: 1.45; white-space: pre-wrap; max-height: 7.5em; overflow: auto; }
-.ry-train__no {
-  display: inline-block; padding: 0 5px; margin-right: 4px; font-family: var(--mono); font-size: var(--fs-xs);
-  color: var(--warn); border: 1px solid rgba(255, 181, 69, 0.4); border-radius: 2px;
+.ry-train__body { display: flex; flex-direction: column; gap: 12px; animation: ry-in .45s var(--ease-out) both; }
+@keyframes ry-in { from { opacity: 0; transform: translateY(8px); } }
+.ry-train__prompt {
+  font-size: var(--fs-md); line-height: 1.5; white-space: pre-wrap; max-height: 8.5em; overflow: auto;
+  padding: 9px 11px; border-radius: 10px; background: rgba(0, 0, 0, 0.25); border: 1px solid var(--rule);
+}
+.ry-plate {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 20px; padding: 0 6px; margin-right: 4px;
+  border-radius: 5px; font-family: var(--mono); font-size: var(--fs-xs); font-weight: 800; color: var(--lane-ink); vertical-align: 1px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--acc) 50%, #fff8e6), var(--acc));
+  box-shadow: 0 0 12px -3px var(--acc), inset 0 -2px 0 rgba(0, 0, 0, 0.25);
 }
 .ry-train__diff { display: flex; align-items: flex-end; gap: 10px; font-family: var(--mono); font-size: var(--fs-sm); }
 .ry-train__diff .g-levels { width: 90px; }
 .ry-flags {
-  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 14px; padding-top: 8px;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px 14px; padding-top: 10px;
   border-top: 1px solid var(--rule); font-family: var(--mono); font-size: var(--fs-sm); color: var(--dim);
 }
-.ry-flag b { font-weight: 400; color: #aab7cc; }
+.ry-flag { display: inline-flex; align-items: center; gap: 6px; }
+.ry-flag__dot { width: 7px; height: 7px; flex-shrink: 0; border-radius: 50%; background: var(--dimmer); }
+.ry-flag b { font-weight: 400; color: var(--txt-2); }
 .ry-flag--on { color: var(--txt); }
+.ry-flag--on .ry-flag__dot { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
 .ry-flag--on b { color: var(--ok); font-weight: 700; }
-.ry-train__to { font-size: var(--fs-md); }
-.ry-train__v { font-weight: 600; font-size: var(--fs-md); display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+.ry-train__to { font-size: var(--fs-md); line-height: 1.9; }
+.ry-train__arrow { color: var(--acc); font-weight: 800; }
+.ry-dest {
+  display: inline-flex; align-items: center; gap: 6px; padding: 1px 9px 1px 2px; border-radius: 999px; line-height: 1.4; vertical-align: 1px;
+  background: color-mix(in srgb, var(--lane) 16%, transparent); border: 1px solid color-mix(in srgb, var(--lane) 55%, transparent);
+  box-shadow: 0 0 14px -6px var(--lane);
+}
+.ry-dest .g-num { width: 18px; height: 18px; font-size: 10px; border-radius: 50%; }
+.ry-dest b { font-family: var(--display); letter-spacing: .12em; }
+.ry-train__why { font-size: var(--fs-sm); }
+.ry-stamp {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; padding: 9px 12px; border-radius: 10px;
+  font-weight: 700; font-size: var(--fs-md); color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 11%, transparent); border: 1px solid color-mix(in srgb, var(--tone) 48%, transparent);
+  box-shadow: 0 0 22px -12px var(--tone); animation: ry-stamp .5s var(--ease-spring) both;
+}
+@keyframes ry-stamp { from { opacity: 0; transform: scale(1.18) rotate(-1.5deg); } }
+.ry-stamp--ok { --tone: var(--ok); }
+.ry-stamp--err { --tone: var(--err); }
+.ry-stamp--warn { --tone: var(--warn); }
+.ry-stamp--neutral { --tone: var(--dim); }
+.ry-stamp__mark {
+  display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%;
+  font-family: var(--mono); font-size: 16px; font-weight: 900; color: #07051a; background: var(--tone); box-shadow: 0 0 14px -2px var(--tone);
+}
+.ry-stamp__label { font-family: var(--display); letter-spacing: .06em; text-transform: uppercase; }
 .ry-train__said { font-weight: 400; font-size: var(--fs-sm); color: var(--txt); overflow-wrap: anywhere; }
+.ry-onway { display: flex; align-items: center; gap: 8px; font-size: var(--fs-md); color: var(--txt-2); }
+.ry-dots { display: inline-flex; gap: 4px; }
+.ry-dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--acc); animation: ry-dot 1s ease-in-out infinite; }
+.ry-dots i:nth-child(2) { animation-delay: .15s; }
+.ry-dots i:nth-child(3) { animation-delay: .3s; }
+@keyframes ry-dot { 50% { opacity: .2; transform: translateY(-3px); } }
 .ry-train__gold { font-size: var(--fs-xs); }
 .ry-t-ok { color: var(--ok); }
 .ry-t-err { color: var(--err); }
 .ry-t-warn { color: var(--warn); }
 .ry-t-neutral { color: var(--dim); }
 .ry-follow {
-  align-self: flex-start; padding: 3px 10px; font-size: var(--fs-sm); color: var(--cy); background: none;
-  border: 1px solid var(--edge-hot); border-radius: 3px; cursor: pointer;
+  align-self: flex-start; padding: 4px 12px; font-size: var(--fs-sm); font-weight: 600; color: var(--acc); background: none; cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--acc) 60%, transparent); border-radius: 999px; transition: box-shadow .15s, background .15s;
 }
+.ry-follow:hover { background: color-mix(in srgb, var(--acc) 12%, transparent); box-shadow: 0 0 14px -4px var(--acc); }
 
+/* Quality against cost. */
 .ry-scatter svg { display: block; width: 100%; height: auto; }
-.ry-grid line { stroke: var(--rule); }
+.ry-plot { fill: rgba(0, 0, 0, 0.25); stroke: var(--rule); }
+.ry-plot__better { font-family: var(--mono); font-size: 9.5px; fill: rgba(62, 245, 160, 0.75); }
+.ry-grid line { stroke: var(--rule); stroke-dasharray: 2 4; }
 .ry-axis, .ry-axis text { font-family: var(--mono); font-size: 10px; fill: var(--dim); }
-.ry-pt circle { fill: var(--dim); stroke: var(--lane); stroke-width: 2; }
-.ry-pt text { font-size: 11px; fill: #aab7cc; }
-.ry-pt--jev circle { fill: var(--lane); stroke: var(--txt); stroke-width: 1.5; }
+.ry-pt { transition: transform .7s var(--ease-out); }
+.ry-pt__glow { fill: var(--lane); opacity: .2; }
+.ry-pt__dot { fill: #120e2c; stroke: var(--lane); stroke-width: 2.5; }
+.ry-pt text { font-size: 11px; fill: var(--txt-2); }
+.ry-pt--jev .ry-pt__dot { fill: var(--lane); stroke: #fff; stroke-width: 2; }
 .ry-pt--jev text { font-size: 12px; font-weight: 700; fill: var(--txt); }
-.ry-scatter__cap { font-size: var(--fs-sm); line-height: 1.5; color: #aab7cc; }
+.ry-pt__halo { fill: none; stroke: var(--lane); stroke-width: 2; transform-box: fill-box; transform-origin: center; animation: ry-halo 1.8s ease-out infinite; }
+@keyframes ry-halo { from { transform: scale(.55); opacity: .9; } to { transform: scale(1.6); opacity: 0; } }
+.ry-scatter__cap { font-size: var(--fs-sm); line-height: 1.5; color: var(--txt-2); }
 .ry-scatter__cap b { color: var(--txt); font-family: var(--mono); font-weight: 600; }
 
-.ry-board { background: #05070d; }
+/* The departure board: amber on black, each new departure flipping in. */
+.ry-board {
+  background: linear-gradient(180deg, #0c0818, #05040c); border-color: rgba(255, 181, 69, 0.2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 0 34px -22px rgba(255, 181, 69, 0.7), 0 16px 34px -22px rgba(0, 0, 0, 0.95);
+}
 .ry-board .ry-board__hd { color: var(--warn); }
 .ry-board__scroll { max-height: 320px; overflow: auto; }
 .ry-board__table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: var(--fs-sm); table-layout: fixed; }
-.ry-board__table th { text-align: left; font-weight: 400; color: var(--dim); padding: 2px 6px 6px; position: sticky; top: 0; background: #05070d; }
+.ry-board__table th { text-align: left; font-weight: 400; color: var(--dim); padding: 2px 6px 6px; position: sticky; top: 0; background: #08060f; z-index: 1; }
 .ry-board__table th:nth-child(1) { width: 44px; }
 .ry-board__table th:nth-child(3) { width: 84px; }
 .ry-board__table th:nth-child(4) { width: 44px; }
 .ry-board__table th:nth-child(5) { width: 26%; }
 .ry-board__table th:nth-child(6) { width: 28px; }
-.ry-board__table td { padding: 4px 6px; border-top: 1px solid var(--rule); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ry-board__table td {
+  padding: 4px 6px; border-top: 1px solid rgba(255, 181, 69, 0.08); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  color: #ffd9a0; text-shadow: 0 0 6px rgba(255, 181, 69, 0.3);
+}
+.ry-board__row td { animation: ry-row .9s ease-out both; }
+@keyframes ry-row { from { background: rgba(255, 138, 61, 0.28); } }
 .ry-board__table tbody tr { cursor: pointer; }
-.ry-board__table tbody tr:hover td { background: rgba(62, 244, 255, 0.04); }
-.ry-board__on td { background: var(--cy-dim); }
+.ry-board__table tbody tr:hover td { background: rgba(255, 181, 69, 0.06); }
+.ry-board__on td { background: rgba(255, 181, 69, 0.12); }
 .ry-board__table .num { text-align: right; }
-.ry-board__no { padding: 0; font: inherit; color: var(--warn); background: none; border: none; cursor: pointer; }
-.ry-board__to { display: inline-block; padding-left: 6px; border-left: 3px solid var(--lane); }
+.ry-board__no { padding: 0; font: inherit; font-weight: 700; color: var(--warn); background: none; border: none; cursor: pointer; }
+.ry-board__to { display: inline-block; padding-left: 6px; border-left: 3px solid var(--lane); color: var(--txt); }
 .ry-board__rule { margin-left: 4px; font-size: var(--fs-xs); color: var(--cy); }
-.ry-board__ans { color: #aab7cc; }
+.ry-board__table td.ry-board__ans { color: var(--txt-2); }
+.ry-board__table td.ry-t-ok, .ry-board__table td.ry-t-err, .ry-board__table td.ry-t-warn { text-shadow: none; }
+.ry-board__table td.ry-t-ok { color: var(--ok); }
+.ry-board__table td.ry-t-err { color: var(--err); }
+.ry-board__table td.ry-t-warn { color: var(--warn); }
+.ry-board__v { display: inline-block; font-weight: 900; animation: ry-pop .5s var(--ease-spring) both; }
+@keyframes ry-pop { from { opacity: 0; transform: scale(0); } }
+.ry-board__wait { display: inline-block; animation: ry-blink 1s steps(1) infinite; }
 .ry-board__foot { font-size: var(--fs-xs); color: var(--dim); }
 
 /* ── The lanes ─────────────────────────────────────────────────────────────── */
 
 .ry-lane__row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-.ry-lane__score { display: flex; flex-direction: column; align-items: center; min-width: 78px; }
-.ry-lane__score > span { font-size: 30px; font-weight: 700; line-height: 1; }
-.ry-lane__score > span small { font-size: 15px; color: var(--dim); }
+.ry-lane__score { display: flex; flex-direction: column; align-items: center; min-width: 88px; }
+.ry-lane__num { font-size: 36px; }
 .ry-lane__score > small { font-size: var(--fs-xs); color: var(--dim); }
 .ry-lane__stats { flex: 1; border-top: none; padding-top: 0; }
 .ry-marks { display: flex; flex-wrap: wrap; gap: 3px; }
 .ry-mark {
-  display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px;
-  font-family: var(--mono); font-size: 10px; font-weight: 700; color: var(--dim);
-  border: 1px solid var(--lane); border-radius: 2px;
+  display: inline-flex; align-items: center; justify-content: center; width: 17px; height: 17px;
+  font-family: var(--mono); font-size: 10px; font-weight: 800; color: var(--dim);
+  border: 1px solid color-mix(in srgb, var(--lane) 70%, transparent); border-radius: 4px;
+  animation: ry-pop .4s var(--ease-spring) both;
 }
-.ry-mark--ok { color: var(--ok); }
-.ry-mark--err { color: var(--err); }
-.ry-mark--warn { color: var(--warn); }
+.ry-mark--wait { animation: ry-blink 1s steps(1) infinite; }
+.ry-mark--ok { color: var(--ok); background: var(--ok-dim); }
+.ry-mark--err { color: var(--err); background: var(--err-dim); }
+.ry-mark--warn { color: var(--warn); background: var(--am-dim); }

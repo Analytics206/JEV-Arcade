@@ -137,3 +137,67 @@ export function articleRuns(text) {
     para.split(/(█+)/).filter(Boolean).map((s) => (s[0] === '█' ? { hidden: s.length } : { text: s })),
   )
 }
+
+/* ── The claim ladder ──────────────────────────────────────────────────────── */
+
+/** The game's points (games/wikiguessr.py POINTS), for a run that lacks them. */
+export const POINTS = { continent: 1, country: 3, region: 6, wrong: -6 }
+
+/**
+ * A lane's claim for a round as the ladder draws it: one tier per level,
+ * continent → country → region, each with a state:
+ *
+ *   wait    no claim yet (the lane is thinking)
+ *   claim   claimed, not yet revealed
+ *   right   claimed and right (pts: what it earned)
+ *   bust    the first wrong claim (pts: the bust)
+ *   void    claimed after a bust: it doesn't count
+ *   stop    Jev's confidence here was under the threshold, so it stopped
+ *   foul    a text model named something not on the lists (name: what it said)
+ *   unsure  a text model left this level out, or said it was unsure
+ *   end     nothing deeper to claim (no country in Antarctica, no regions listed)
+ *   none    below where the claim stopped
+ *
+ * `conf` is Jev's confidence at that level, when it was asked it.
+ */
+export function tiersOf(claim, result, points = POINTS) {
+  const pts = { ...POINTS, ...(points ?? {}) }
+  return LEVELS.map((level, i) => {
+    const t = { level, i, state: 'none', name: null, conf: null, pts: null }
+    if (!claim) return { ...t, state: 'wait' }
+    const lv = claim.kind === 'jev' ? claim.levels?.[i] : null
+    if (lv && Number.isFinite(lv.confidence)) t.conf = lv.confidence
+    const said = claim.claim ?? []
+    const name = said[i]
+    if (name) {
+      t.name = name
+      if (!result) return { ...t, state: 'claim' }
+      const m = result.marks?.[i]
+      if (m === 'right') return { ...t, state: 'right', pts: pts[level] }
+      if (m === 'wrong') return { ...t, state: 'bust', pts: pts.wrong }
+      return { ...t, state: 'void' }
+    }
+    if (i !== said.length) return t
+    if (claim.kind === 'jev') return { ...t, state: claim.stopped_at === i + 1 ? 'stop' : 'end' }
+    if (claim.fouls?.includes(level)) return { ...t, state: 'foul', name: claim.said?.[level] ?? null }
+    return { ...t, state: 'unsure' }
+  })
+}
+
+/** Right all the way down: continent, country and region. */
+export const bullseye = (result) => result?.marks?.length === 3 && result.marks.every((m) => m === 'right')
+
+/**
+ * Who won, by the game's rule: the most points over the articles. Lanes that
+ * dropped out (an error, a stop) are out of it when another lane played to
+ * the end. Ties are several lanes; no lanes, none.
+ */
+export function winnersOf(run) {
+  const lanes = run?.lanes ?? []
+  const done = lanes.filter((ln) => ln.status === 'done')
+  const field = done.length ? done : lanes
+  if (!field.length) return []
+  const score = (ln) => (Number.isFinite(ln.score) ? ln.score : 0)
+  const best = Math.max(...field.map(score))
+  return field.filter((ln) => score(ln) === best).map((ln) => ln.index)
+}

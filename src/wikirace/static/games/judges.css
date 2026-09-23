@@ -1,154 +1,409 @@
-/* Judges' Panel: every rule under .jp-… */
+/* Judges' Panel: every rule under .jp-… A talent show at night: the cabinet's
+ * gold (--acc, registry.js) lights the stage, the paddles, the faders and the
+ * podium; the colour of the lane that ranks the board (--lane) fills its
+ * bars. The paddles are a board's own drawing, so they use literal colours
+ * (card stock, gold rim). Everything that moves animates transform or
+ * opacity; the few filters sit on small, still pixel lettering. */
 
-/* ── Setup ── */
-.jp-setup { gap: 16px; }
-.jp-topics { display: flex; flex-wrap: wrap; gap: 6px; }
+.jp-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+/* ── Setup ─────────────────────────────────────────────────────────────────── */
+
+.g-box.jp-setup { gap: 16px; }
+.jp-topics { display: flex; flex-wrap: wrap; gap: 8px; }
 .jp-topic {
-  padding: 6px 12px; font-size: var(--fs-md); color: var(--dim); background: none;
-  border: 1px solid var(--rule); border-radius: 3px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px 8px 11px; font-size: var(--fs-md); font-weight: 600;
+  color: var(--txt-2); cursor: pointer; border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.01));
+  border: 1px solid var(--rule); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 2px 0 rgba(0, 0, 0, 0.45);
+  transition: color .15s, border-color .15s, background .2s, box-shadow .2s, transform .1s;
 }
-.jp-topic:hover { color: var(--txt); border-color: var(--edge-hot); }
-.jp-topic--on { color: var(--txt); border-color: var(--edge-hot); background: var(--cy-dim); }
+.jp-topic:hover { color: var(--txt); border-color: color-mix(in srgb, var(--acc) 55%, transparent); }
+.jp-topic:active { transform: translateY(2px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06); }
+.jp-topic__lamp { width: 8px; height: 8px; flex-shrink: 0; border-radius: 50%; background: #3a3560; box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.6); transition: background .2s, box-shadow .2s; }
+.jp-topic--on { color: #fff; border-color: var(--acc); background: linear-gradient(180deg, color-mix(in srgb, var(--acc) 22%, transparent), color-mix(in srgb, var(--acc) 5%, transparent)); box-shadow: 0 0 18px -6px var(--acc), inset 0 1px 0 rgba(255, 255, 255, 0.12); }
+.jp-topic--on .jp-topic__lamp { background: var(--acc); box-shadow: 0 0 8px var(--acc); }
 .jp-side { display: flex; flex-direction: column; gap: 16px; }
+.g-box.jp-howbox { gap: 14px; }
 .jp-rules { display: flex; flex-wrap: wrap; gap: 6px; }
 
-/* ── The stage ── */
+/* The little show: five paddles, five faders, a board that re-ranks. */
+.jp-how {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr); gap: 10px; align-items: stretch;
+  padding: 16px 14px 14px; border-radius: 14px;
+  background: radial-gradient(120% 100% at 50% 0%, color-mix(in srgb, var(--acc) 13%, transparent), transparent 70%), rgba(0, 0, 0, 0.3);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acc) 22%, transparent);
+}
+.jp-how__step { display: flex; flex-direction: column; align-items: center; gap: 7px; min-width: 0; text-align: center; }
+.jp-how__art { display: flex; align-items: flex-end; justify-content: center; gap: 4px; width: 100%; height: 66px; }
+.jp-how__k { font-size: 10px; line-height: 1; color: var(--acc); }
+.jp-how__t { font-size: var(--fs-xs); color: var(--dim); }
+.jp-how__arrow { align-self: center; color: var(--acc); opacity: .55; font-size: 14px; }
+.jp-how__paddle {
+  position: relative; display: grid; place-items: center; width: 27px; height: 34px; margin-bottom: 16px; border-radius: 5px;
+  font: 800 10px/1 var(--mono); color: #1a1300; background: linear-gradient(180deg, #fff, #f1dca0);
+  box-shadow: 0 0 0 1.5px var(--acc), 0 4px 10px -4px rgba(0, 0, 0, 0.8);
+  animation: jp-how-raise 5.4s var(--ease-spring) infinite; animation-delay: calc(var(--jp-i) * 110ms);
+}
+.jp-how__paddle::after { content: ''; position: absolute; left: 50%; top: 100%; width: 3px; height: 15px; margin-left: -1.5px; border-radius: 2px; background: #2a2560; }
+@keyframes jp-how-raise { 0%, 6% { opacity: 0; transform: translateY(26px); } 16%, 90% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(26px); } }
+.jp-how__art--faders { gap: 12px; align-items: center; }
+.jp-how__slot { position: relative; width: 5px; height: 58px; border-radius: 3px; background: #03041a; box-shadow: inset 0 1px 2px #000, 0 0 0 1px rgba(255, 255, 255, 0.06); }
+.jp-how__cap {
+  position: absolute; left: 50%; top: 50%; width: 17px; height: 9px; margin: -4.5px 0 0 -8.5px; border-radius: 2px;
+  background: linear-gradient(180deg, #eef0ff, #9aa0c8 44%, #15172e 44% 56%, #9aa0c8 56%, #eef0ff);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.7);
+  animation: jp-how-fade 5.4s ease-in-out infinite; animation-delay: calc(var(--jp-i) * -1.3s);
+}
+@keyframes jp-how-fade { 0%, 100% { transform: translateY(18px); } 50% { transform: translateY(-18px); } }
+.jp-how__art--board { align-items: center; gap: 6px; padding: 0 4px; }
+.jp-how__ranks { display: flex; flex-direction: column; gap: 6px; }
+.jp-how__ranks i { display: grid; place-items: center; height: 12px; font: 800 9px/1 var(--mono); font-style: normal; color: var(--dim); }
+.jp-how__ranks i:first-child { color: var(--acc); }
+.jp-how__bars { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; }
+.jp-how__row { display: flex; align-items: center; height: 12px; }
+.jp-how__row span { display: block; flex: 1; height: 9px; border-radius: 5px; transform-origin: left center; transform: scaleX(var(--jp-s, .9)); }
+.jp-how__row--a span { --jp-s: .92; background: linear-gradient(90deg, color-mix(in srgb, var(--pk) 45%, #000), var(--pk)); animation: jp-how-a-bar 5.4s var(--ease-out) infinite; }
+.jp-how__row--b span { --jp-s: .76; background: linear-gradient(90deg, color-mix(in srgb, var(--cy) 45%, #000), var(--cy)); }
+.jp-how__row--c span { --jp-s: .6; background: linear-gradient(90deg, color-mix(in srgb, var(--yl) 45%, #000), var(--yl)); animation: jp-how-c-bar 5.4s var(--ease-out) infinite; }
+.jp-how__row--a { animation: jp-how-a 5.4s var(--ease-out) infinite; }
+.jp-how__row--c { animation: jp-how-c 5.4s var(--ease-out) infinite; }
+@keyframes jp-how-a { 0%, 40% { transform: none; } 52%, 90% { transform: translateY(36px); } 100% { transform: none; } }
+@keyframes jp-how-c { 0%, 40% { transform: none; } 52%, 90% { transform: translateY(-36px); } 100% { transform: none; } }
+@keyframes jp-how-a-bar { 0%, 40% { transform: scaleX(.92); } 52%, 90% { transform: scaleX(.55); } 100% { transform: scaleX(.92); } }
+@keyframes jp-how-c-bar { 0%, 40% { transform: scaleX(.6); } 52%, 90% { transform: scaleX(.96); } 100% { transform: scaleX(.6); } }
+@media (max-width: 560px) { .jp-how { grid-template-columns: minmax(0, 1fr); } .jp-how__arrow { transform: rotate(90deg); } }
+
+/* ── The stage ─────────────────────────────────────────────────────────────── */
+
 .jp-stage { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 22px; align-items: start; }
 @media (max-width: 1100px) { .jp-stage { grid-template-columns: minmax(0, 1fr); } }
 .jp-main { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 .jp-aside { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 
-.jp-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.jp-head__title { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 220px; }
-.jp-kicker { font-family: var(--display); font-size: var(--fs-xs); font-weight: 600; letter-spacing: .14em; color: var(--cy); }
-.jp-for { font-size: 22px; font-weight: 700; }
-.jp-presets { display: flex; flex-wrap: wrap; gap: 8px; }
-.jp-preset {
-  min-height: 38px; padding: 0 14px; font-size: var(--fs-md); font-weight: 600; color: var(--txt);
-  background: transparent; border: 1px solid var(--edge-hot); border-radius: 4px; cursor: pointer;
+/* What the board is for, lit like a marquee, and the presets as big lamps. */
+.jp-head {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 14px 16px; border-radius: 14px;
+  background:
+    radial-gradient(90% 160% at 0% 0%, color-mix(in srgb, var(--acc) 16%, transparent), transparent 60%),
+    linear-gradient(180deg, rgba(34, 27, 80, 0.62), rgba(12, 10, 34, 0.72));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acc) 28%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
-.jp-preset:hover { background: var(--cy-dim); }
-.jp-preset--on, .jp-preset--on:hover { color: var(--void); background: var(--cy); }
+.jp-head__title { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 220px; }
+.jp-kicker { font-size: 11px; line-height: 1; color: var(--acc); }
+.jp-kicker .px { filter: drop-shadow(0 0 4px color-mix(in srgb, var(--acc) 70%, transparent)); }
+.jp-for { font-family: var(--display); font-size: 26px; font-weight: 800; line-height: 1.1; color: #fff; animation: jp-for-in .45s var(--ease-out) both; }
+@keyframes jp-for-in { from { opacity: 0; transform: translateY(8px); } }
+.jp-presets { display: flex; flex-wrap: wrap; gap: 10px; }
+.jp-preset {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 16px 0 12px; cursor: pointer;
+  font-size: var(--fs-md); font-weight: 700; color: var(--txt); border-radius: 12px;
+  background: linear-gradient(180deg, #2a2560, #16123a); border: 1px solid color-mix(in srgb, var(--acc) 25%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 3px 0 #07051a, 0 8px 16px -10px #000;
+  transition: transform .1s var(--ease-out), box-shadow .2s, background .2s, border-color .2s, color .2s;
+}
+.jp-preset:hover { border-color: color-mix(in srgb, var(--acc) 70%, transparent); }
+.jp-preset:active { transform: translateY(2px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 1px 0 #07051a; }
+.jp-preset__lamp { width: 9px; height: 9px; flex-shrink: 0; border-radius: 50%; background: #3a3560; box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.6); }
+.jp-preset--on, .jp-preset--on:hover {
+  color: #1d1400; border-color: #fff3b0;
+  background: linear-gradient(180deg, #fff3b0, var(--acc) 55%, #d9a800);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 3px 0 #8a6a00, 0 0 24px -4px var(--acc);
+}
+.jp-preset--on .jp-preset__lamp { background: #fff; box-shadow: 0 0 8px #fff; }
 
 .jp-rankby { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.jp-rankby__k { font-family: var(--display); font-size: var(--fs-label); font-weight: 600; letter-spacing: .14em; color: var(--dim); }
+.jp-rankby__k { font-family: var(--display); font-size: var(--fs-label); font-weight: 700; letter-spacing: .14em; color: var(--dim); }
 .jp-rankby__b {
-  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; font-size: var(--fs-sm);
-  color: var(--dim); background: none; border: 1px solid var(--rule); border-radius: 3px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px 5px 6px; font-size: var(--fs-sm); font-weight: 600;
+  color: var(--txt-2); background: rgba(255, 255, 255, 0.03); border: 1px solid var(--rule); border-radius: 999px; cursor: pointer;
+  transition: color .15s, border-color .15s, background .2s, box-shadow .2s;
 }
-.jp-rankby__b--on { color: var(--txt); border-color: var(--edge-hot); background: var(--cy-dim); }
+.jp-rankby__b:hover { color: var(--txt); border-color: color-mix(in srgb, var(--lane) 60%, transparent); }
+.jp-rankby__b--on { color: var(--txt); border-color: var(--lane); background: color-mix(in srgb, var(--lane) 16%, transparent); box-shadow: 0 0 16px -6px var(--lane); }
 
-/* ── The judges ── */
-.jp-bench { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
-@media (max-width: 760px) { .jp-bench { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); } }
-.jp-seat {
-  display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 10px 10px; min-width: 0;
-  background: var(--panel); border: 1px solid var(--edge); border-radius: 6px;
+/* ── The judges: a stage, a spotlight each, a paddle, a nameplate, a fader ── */
+
+.jp-bench {
+  position: relative; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; padding: 14px 12px 12px;
+  border-radius: 16px; overflow: hidden;
+  background:
+    radial-gradient(130% 55% at 50% 108%, color-mix(in srgb, var(--acc) 15%, transparent), transparent 62%),
+    linear-gradient(180deg, #08061e 0%, #110d31 62%, #1a1444 100%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acc) 22%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 22px 44px -28px #000;
 }
-.jp-seat__art { display: block; width: 100%; max-width: 132px; height: auto; overflow: visible; }
-.jp-body { fill: var(--dimmer); }
-.jp-arm { stroke: var(--dimmer); stroke-width: 7; stroke-linecap: round; }
-.jp-hand { fill: var(--dim); }
-.jp-hold {
-  transform-box: view-box; transform-origin: 60px 122px;
-  transition: transform .6s cubic-bezier(.34, 1.56, .64, 1);
+@media (max-width: 760px) { .jp-bench { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); } }
+.jp-seat { position: relative; display: flex; flex-direction: column; align-items: center; gap: 7px; min-width: 0; }
+.jp-seat__stage { position: relative; display: flex; justify-content: center; width: 100%; }
+/* The spotlight: a cone from above as bright as the weight, and its pool of light. */
+.jp-seat__stage::before {
+  content: ''; position: absolute; left: 50%; top: -14px; width: 160%; height: calc(100% + 14px); translate: -50% 0; pointer-events: none;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--acc) 50%, transparent), color-mix(in srgb, var(--acc) 7%, transparent) 72%, transparent);
+  clip-path: polygon(43% 0, 57% 0, 100% 100%, 0 100%);
+  opacity: var(--jp-beam, .6); transition: opacity .35s var(--ease-out);
 }
-.jp-card { stroke-width: 1.5; }
-.jp-card--up { fill: var(--txt); stroke: var(--txt); filter: drop-shadow(0 6px 9px rgba(0, 0, 0, 0.45)); }
-.jp-card--wait { fill: var(--void-2); stroke: var(--edge-hot); stroke-dasharray: 5 4; }
-.jp-card--foul { fill: var(--err-dim); stroke: var(--err); }
-.jp-card__big { font-family: var(--body); font-size: 34px; font-weight: 800; text-anchor: middle; fill: var(--void); }
-.jp-card__small { font-family: var(--mono); font-size: 11px; font-weight: 600; text-anchor: middle; fill: var(--void); }
-.jp-card--wait ~ text { fill: var(--dim); }
+.jp-seat__stage::after {
+  content: ''; position: absolute; left: 50%; bottom: -6px; width: 120%; height: 22px; translate: -50% 0; pointer-events: none; border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--acc) 40%, transparent), transparent);
+  opacity: var(--jp-beam, .6); transition: opacity .35s var(--ease-out);
+}
+.jp-seat__art { position: relative; display: block; width: 100%; max-width: 128px; height: auto; overflow: visible; }
+.jp-body { fill: url(#jp-g-body); stroke: var(--acc); stroke-width: 1.2; stroke-opacity: calc(var(--jp-beam, .6) * .55); transition: stroke-opacity .35s; }
+.jp-arm { stroke: #2a2560; stroke-width: 7; stroke-linecap: round; }
+.jp-hand { fill: #463f8f; }
+/* The paddle pops up when a new score is on it, the judges one after another. */
+.jp-raise { animation: jp-raise .62s var(--ease-spring) both; animation-delay: calc(var(--jp-i) * 70ms); }
+@keyframes jp-raise { from { opacity: 0; transform: translateY(50px); } 35% { opacity: 1; } }
+.jp-hold { transform-box: view-box; transform-origin: 60px 100px; transition: transform .6s cubic-bezier(.34, 1.56, .64, 1); }
+.jp-card { stroke-width: 2.6; }
+.jp-card--up { fill: url(#jp-g-paddle); stroke: var(--acc); }
+.jp-card--wait { fill: url(#jp-g-wait); stroke: color-mix(in srgb, var(--acc) 60%, transparent); stroke-dasharray: 7 5; animation: jp-ants 1s linear infinite; }
+@keyframes jp-ants { to { stroke-dashoffset: -24; } }
+.jp-card--foul { fill: url(#jp-g-foul); stroke: var(--err); }
+.jp-card__big { font-family: var(--display); font-size: 31px; font-weight: 800; text-anchor: middle; fill: #1a1300; }
+.jp-card__small { font-family: var(--mono); font-size: 10px; font-weight: 700; text-anchor: middle; fill: #7a6200; }
+.jp-card--wait ~ text { fill: var(--acc); }
+.jp-card--wait ~ .jp-card__small { fill: var(--dim); }
 .jp-card--foul ~ text { fill: var(--err); }
-.jp-desk { fill: var(--void-2); stroke: var(--edge); }
-.jp-desk__n { font-family: var(--mono); font-size: 8.5px; letter-spacing: .12em; text-anchor: middle; fill: var(--dim); }
-.jp-seat__name {
-  padding: 2px 6px; font-size: var(--fs-md); font-weight: 700; text-align: center; color: var(--txt);
-  background: none; border: 1px solid transparent; border-radius: 3px; cursor: pointer;
-}
-.jp-seat__name:hover { border-color: var(--rule); }
-.jp-seat__name--on { border-color: var(--edge-hot); background: var(--cy-dim); }
-.jp-seat__w { font-family: var(--mono); font-size: var(--fs-xs); color: var(--dim); }
-.jp-seat__w b { color: var(--txt); }
-.jp-seat__range { width: 100%; accent-color: var(--cy); cursor: pointer; }
+.jp-pip { fill: rgba(122, 98, 0, 0.2); }
+.jp-pip--on { fill: #d99a00; }
+/* A judge with no weight sits in the dark: it does not count. */
+.jp-seat--mute .jp-seat__art { opacity: .42; transition: opacity .3s; }
+.jp-seat__art { transition: opacity .3s; }
 
-/* ── The leaderboard ── */
+.jp-plate {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; padding: 6px 6px 7px; cursor: pointer;
+  color: var(--txt); border-radius: 9px; background: linear-gradient(180deg, #211b50, #120f30);
+  border: 1px solid color-mix(in srgb, var(--acc) 18%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 2px 0 #06041a;
+  transition: border-color .15s, background .2s, box-shadow .2s;
+}
+.jp-plate__n { display: inline-flex; font-size: 8px; line-height: 1; color: var(--acc); opacity: .85; }
+.jp-plate__label { font-size: var(--fs-sm); font-weight: 700; line-height: 1.2; text-align: center; overflow-wrap: anywhere; }
+.jp-plate:hover { border-color: color-mix(in srgb, var(--acc) 60%, transparent); }
+.jp-plate--on { border-color: var(--acc); background: linear-gradient(180deg, color-mix(in srgb, var(--acc) 22%, #211b50), #120f30); box-shadow: 0 0 16px -6px var(--acc), inset 0 1px 0 rgba(255, 255, 255, 0.1); }
+
+/* The channel strip: a mixing desk's fader for the weight, its scale, its lamps. */
+.jp-strip {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; padding: 7px 6px 10px; border-radius: 10px;
+  background: linear-gradient(180deg, #16123a, #0a0820);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05), inset 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+.jp-strip__top { display: flex; align-items: center; justify-content: space-between; gap: 6px; width: 100%; padding: 0 3px; }
+.jp-strip__k { font-family: var(--display); font-size: var(--fs-micro); font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); cursor: pointer; }
+.jp-strip__v { display: inline-flex; font-size: 12px; line-height: 1; color: var(--acc); animation: jp-bump .35s var(--ease-spring) both; }
+.jp-strip__v .px { filter: drop-shadow(0 0 4px color-mix(in srgb, var(--acc) 70%, transparent)); }
+.jp-seat--mute .jp-strip__v { color: var(--dim); }
+.jp-seat--mute .jp-strip__v .px { filter: none; }
+@keyframes jp-bump { from { transform: scale(1.5); } }
+.jp-strip__body { display: flex; align-items: stretch; gap: 7px; height: 104px; }
+.jp-strip__scale { display: flex; flex-direction: column; justify-content: space-between; padding: 4px 0; font: 600 9px/1 var(--mono); color: var(--dimmer); text-align: right; }
+.jp-strip__scale .is-on { color: var(--acc); font-weight: 800; }
+.jp-strip__slot { position: relative; width: 30px; }
+.jp-fader {
+  position: absolute; left: 50%; top: 50%; width: 104px; height: 30px; margin: 0; padding: 0;
+  transform: translate(-50%, -50%) rotate(-90deg);
+  -webkit-appearance: none; appearance: none; background: transparent; cursor: grab;
+}
+.jp-fader:active { cursor: grabbing; }
+.jp-fader:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; border-radius: 6px; }
+.jp-fader::-webkit-slider-runnable-track {
+  height: 8px; border-radius: 4px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--acc) 55%, #000), var(--acc) calc(var(--jp-w, 0) * 100%), #03041a calc(var(--jp-w, 0) * 100%));
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.07);
+}
+.jp-fader::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 16px; height: 30px; margin-top: -11px; border: 0; border-radius: 4px;
+  background: linear-gradient(90deg, #5d6186 0%, #eef0ff 26%, #b9bedf 44%, #15172e 44% 56%, #b9bedf 56%, #eef0ff 74%, #5d6186 100%);
+  box-shadow: 0 0 0 1px #000, -3px 0 7px rgba(0, 0, 0, 0.7);
+  transition: box-shadow .2s;
+}
+.jp-fader:hover::-webkit-slider-thumb, .jp-fader:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 1px #000, 0 0 14px color-mix(in srgb, var(--acc) 85%, transparent); }
+.jp-fader::-moz-range-track { height: 8px; border-radius: 4px; background: #03041a; box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.9); }
+.jp-fader::-moz-range-progress { height: 8px; border-radius: 4px; background: linear-gradient(90deg, color-mix(in srgb, var(--acc) 55%, #000), var(--acc)); }
+.jp-fader::-moz-range-thumb {
+  width: 16px; height: 30px; border: 0; border-radius: 4px;
+  background: linear-gradient(90deg, #5d6186 0%, #eef0ff 26%, #b9bedf 44%, #15172e 44% 56%, #b9bedf 56%, #eef0ff 74%, #5d6186 100%);
+  box-shadow: 0 0 0 1px #000, -3px 0 7px rgba(0, 0, 0, 0.7);
+}
+.jp-leds { display: flex; flex-direction: column; gap: 4px; padding: 6px 0; }
+.jp-led { flex: 1; width: 9px; border-radius: 2px; background: #1c1938; box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.6); transition: background .15s, box-shadow .15s; }
+.jp-led.is-on { background: var(--acc); box-shadow: 0 0 8px color-mix(in srgb, var(--acc) 80%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.5); }
+.jp-led--peak.is-on { background: #ff9d3d; box-shadow: 0 0 10px #ff9d3d, inset 0 1px 0 rgba(255, 255, 255, 0.5); }
+
+/* ── The leaderboard ───────────────────────────────────────────────────────── */
+
 .jp-boardhd { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .jp-formula { font-size: var(--fs-xs); color: var(--dim); }
 .jp-board { position: relative; display: flex; flex-direction: column; gap: 6px; }
 .jp-row {
-  display: grid; grid-template-columns: 28px minmax(120px, 250px) minmax(0, 1fr) 40px 124px; gap: 12px;
-  align-items: center; min-height: 40px; padding: 0 12px; text-align: left; color: var(--txt);
-  background: var(--panel); border: 1px solid var(--edge-soft); border-radius: 4px; cursor: pointer;
-  transition: transform .45s cubic-bezier(.2, .8, .2, 1), border-color .15s, background-color .15s;
+  position: relative; overflow: hidden; display: grid; grid-template-columns: 34px minmax(110px, 230px) minmax(0, 1fr) 54px 124px 38px; gap: 12px;
+  align-items: center; min-height: 46px; padding: 0 10px 0 8px; text-align: left; color: var(--txt); cursor: pointer;
+  background: linear-gradient(180deg, rgba(30, 25, 70, 0.8), rgba(15, 12, 38, 0.84));
+  border: 1px solid rgba(140, 150, 255, 0.12); border-radius: 12px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 6px 16px -12px #000;
+  transition: transform .55s cubic-bezier(.2, .8, .2, 1), border-color .2s, box-shadow .3s, background .3s, opacity .3s;
 }
-.jp-row:hover { border-color: var(--edge-hot); }
-.jp-row--on { background: var(--cy-dim); border-color: var(--edge-hot); }
-.jp-row__rank { font-family: var(--mono); font-size: 14px; font-weight: 700; color: var(--dim); }
-.jp-row__rank--top { color: var(--ok); }
-.jp-row__name { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.jp-row__track { height: 10px; background: color-mix(in srgb, var(--lane) 15%, transparent); }
-.jp-row__fill { display: block; height: 100%; background: var(--lane); transition: width .35s ease-out; }
-.jp-row__pts { font-family: var(--mono); font-size: var(--fs-md); text-align: right; }
+.jp-row:hover { border-color: color-mix(in srgb, var(--acc) 55%, transparent); }
+.jp-row--on { border-color: var(--acc); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acc) 45%, transparent), 0 0 22px -10px var(--acc); }
+.jp-row--wait { opacity: .55; }
+.jp-row--m1 { background: linear-gradient(90deg, rgba(255, 216, 77, 0.17), rgba(30, 25, 70, 0.8) 45%, rgba(15, 12, 38, 0.84)); border-color: rgba(255, 216, 77, 0.45); }
+.jp-row--rise { animation: jp-rise 1.2s ease-out; }
+.jp-row--fall { animation: jp-fall 1.2s ease-out; }
+@keyframes jp-rise { 0%, 25% { box-shadow: inset 0 0 0 1.5px var(--ok), 0 0 26px -8px var(--ok); } }
+@keyframes jp-fall { 0%, 25% { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--err) 70%, transparent); } }
+.jp-row__flash {
+  position: absolute; inset: 0; pointer-events: none; transform: translateX(-100%);
+  background: linear-gradient(100deg, transparent 25%, rgba(255, 240, 180, 0.32) 50%, transparent 75%);
+  animation: jp-sweep .9s var(--ease-out) forwards;
+}
+@keyframes jp-sweep { to { transform: translateX(100%); } }
+.jp-row__rank {
+  position: relative; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%;
+  font-family: var(--mono); font-size: 14px; font-weight: 800; color: var(--dim); background: rgba(0, 0, 0, 0.3); box-shadow: inset 0 0 0 1px var(--rule);
+  transition: background .3s, color .3s, box-shadow .3s;
+}
+.jp-row--m1 .jp-row__rank { color: #3a2800; background: radial-gradient(circle at 35% 30%, #fff7c8, #ffd84d 45%, #b88600); box-shadow: 0 0 14px -2px #ffd84d, inset 0 -2px 0 rgba(0, 0, 0, 0.25); }
+.jp-row--m2 .jp-row__rank { color: #1d2033; background: radial-gradient(circle at 35% 30%, #ffffff, #c3c9e6 45%, #6f7699); box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.25); }
+.jp-row--m3 .jp-row__rank { color: #2e1504; background: radial-gradient(circle at 35% 30%, #ffe0c2, #e3955a 45%, #8a4b1d); box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.25); }
+.jp-row__crown { position: absolute; top: -7px; right: -6px; font-size: 11px; line-height: 1; color: #ffe680; text-shadow: 0 0 6px #ffd84d; }
+.jp-row__name { font-size: 15px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jp-row--m1 .jp-row__name { color: #fff; }
+.jp-row__track { height: 12px; border-radius: 6px; overflow: hidden; background: color-mix(in srgb, var(--lane) 14%, rgba(0, 0, 0, 0.4)); box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.7); }
+.jp-row__fill {
+  display: block; height: 100%; border-radius: 6px; transform-origin: left center;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--lane) 50%, #000), var(--lane) 70%, color-mix(in srgb, var(--lane) 60%, #fff));
+  transition: transform .55s var(--ease-out);
+}
+.jp-row__pts { font-family: var(--mono); font-size: 20px; font-weight: 800; line-height: 1; text-align: right; color: #fff; }
+.jp-row--m1 .jp-row__pts { color: #ffe680; text-shadow: 0 0 12px rgba(255, 216, 77, 0.6); }
+.jp-row__wait { color: var(--dim); animation: dot-pulse 1s ease-in-out infinite; }
 .jp-row__dots { display: flex; gap: 4px; }
 .jp-dot {
-  display: flex; align-items: center; justify-content: center; width: 20px; height: 20px;
-  font-family: var(--mono); font-size: var(--fs-xs); font-weight: 700; color: var(--txt); border-radius: 2px;
+  display: flex; align-items: center; justify-content: center; width: 20px; height: 22px; border-radius: 4px;
+  font-family: var(--mono); font-size: var(--fs-xs); font-weight: 800; color: var(--txt); transition: opacity .3s;
 }
-.jp-dot--0 { background: color-mix(in srgb, var(--cy) 8%, transparent); }
-.jp-dot--1 { background: color-mix(in srgb, var(--cy) 26%, transparent); }
-.jp-dot--2 { background: color-mix(in srgb, var(--cy) 46%, transparent); }
-.jp-dot--3 { background: color-mix(in srgb, var(--cy) 68%, transparent); color: var(--void); }
-.jp-dot--4 { background: color-mix(in srgb, var(--cy) 90%, transparent); color: var(--void); }
+.jp-dot--0 { background: color-mix(in srgb, var(--acc) 8%, transparent); color: var(--dim); }
+.jp-dot--1 { background: color-mix(in srgb, var(--acc) 24%, transparent); }
+.jp-dot--2 { background: color-mix(in srgb, var(--acc) 44%, transparent); }
+.jp-dot--3 { background: color-mix(in srgb, var(--acc) 70%, transparent); color: #1a1300; }
+.jp-dot--4 { background: var(--acc); color: #1a1300; box-shadow: 0 0 8px -1px var(--acc); }
 .jp-dot--x { color: var(--dimmer); border: 1px dashed var(--rule); }
-@media (max-width: 700px) {
-  .jp-row { grid-template-columns: 22px minmax(0, 1fr) 36px; }
+.jp-dot--mute { opacity: .28; }
+.jp-row__move { display: flex; justify-content: flex-end; }
+.jp-move { padding: 2px 5px; border-radius: 6px; font: 800 12px/1.2 var(--mono); white-space: nowrap; animation: jp-move-in .45s var(--ease-spring) both, jp-move-out .35s 1.3s ease-in forwards; }
+.jp-move--up { color: var(--ok); background: var(--ok-dim); }
+.jp-move--down { color: var(--err); background: var(--err-dim); }
+@keyframes jp-move-in { from { opacity: 0; transform: scale(.4); } 55% { opacity: 1; transform: scale(1.25); } }
+@keyframes jp-move-out { to { opacity: 0; } }
+@media (max-width: 760px) {
+  .jp-row { grid-template-columns: 32px minmax(0, 1fr) 48px 34px; }
   .jp-row__track, .jp-row__dots { display: none; }
 }
 
-/* ── The spotlight, the rubric, the counter ── */
-.jp-spot__name { font-size: var(--fs-lg); font-weight: 700; color: var(--txt); }
+/* ── The podium ────────────────────────────────────────────────────────────── */
+
+.g-box.jp-podium { background: radial-gradient(90% 70% at 50% 100%, color-mix(in srgb, var(--acc) 14%, transparent), transparent 70%), linear-gradient(180deg, rgba(32, 26, 74, 0.72), rgba(16, 12, 40, 0.78)); }
+.jp-podium__stage { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; gap: 6px; padding-top: 4px; }
+.jp-step { display: flex; flex-direction: column; align-items: stretch; gap: 6px; min-width: 0; }
+.jp-step__who {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; padding: 5px 4px;
+  color: var(--txt); text-align: center; background: none; border: 1px solid transparent; border-radius: 10px; cursor: pointer;
+  animation: jp-drop .55s var(--ease-spring) both; transition: border-color .15s, background .2s;
+}
+.jp-step__who:hover { border-color: color-mix(in srgb, var(--acc) 45%, transparent); }
+.jp-step__who.is-on { border-color: var(--acc); background: color-mix(in srgb, var(--acc) 10%, transparent); }
+.jp-step__who--empty { color: var(--dimmer); cursor: default; animation: none; }
+@keyframes jp-drop { from { opacity: 0; transform: translateY(-20px) scale(.9); } }
+.jp-step__crown { font-size: 16px; line-height: 1; color: var(--acc); text-shadow: 0 0 10px var(--acc); animation: jp-crown 1.8s ease-in-out infinite alternate; }
+@keyframes jp-crown { to { transform: translateY(-3px) rotate(5deg); } }
+.jp-step__name { width: 100%; font-size: var(--fs-sm); font-weight: 700; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.jp-step__pts { font-family: var(--mono); font-size: 17px; font-weight: 800; line-height: 1.1; color: #fff; }
+.jp-step__pts small { font-size: 10px; font-weight: 600; color: var(--dim); }
+.jp-step--1 .jp-step__pts { color: #ffe680; text-shadow: 0 0 12px rgba(255, 216, 77, 0.6); }
+.jp-step__block {
+  display: grid; place-items: center; border-radius: 9px 9px 3px 3px; font-size: 18px; color: rgba(0, 0, 0, 0.5);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.5), inset 0 -8px 14px rgba(0, 0, 0, 0.25);
+}
+.jp-step--1 .jp-step__block { height: 76px; background: linear-gradient(180deg, #fff3b0, #ffd84d 40%, #b88600); box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.6), inset 0 -8px 14px rgba(0, 0, 0, 0.2), 0 0 26px -8px #ffd84d; }
+.jp-step--2 .jp-step__block { height: 54px; background: linear-gradient(180deg, #ffffff, #c3c9e6 45%, #6f7699); }
+.jp-step--3 .jp-step__block { height: 40px; background: linear-gradient(180deg, #ffe0c2, #e3955a 45%, #8a4b1d); }
+
+/* ── The spotlight, the rubric, the tally ──────────────────────────────────── */
+
+.g-box.jp-spot {
+  background:
+    radial-gradient(70% 45% at 50% 0%, color-mix(in srgb, var(--acc) 15%, transparent), transparent 75%),
+    linear-gradient(180deg, rgba(32, 26, 74, 0.72), rgba(16, 12, 40, 0.78));
+}
+.jp-spot__in { display: flex; flex-direction: column; gap: 6px; animation: jp-spot-in .45s var(--ease-out) both; }
+@keyframes jp-spot-in { from { opacity: 0; transform: translateX(12px); } }
+.jp-spot__name { font-family: var(--display); font-size: 24px; font-weight: 800; line-height: 1.15; color: #fff; text-shadow: 0 0 18px color-mix(in srgb, var(--acc) 45%, transparent); }
+.jp-spot__name:hover { color: var(--acc); text-decoration: none; }
 .jp-spot__lede { font-size: var(--fs-sm); line-height: 1.5; color: var(--dim); }
 .jp-dist { display: flex; flex-direction: column; gap: 8px; }
-.jp-dist__row { display: grid; grid-template-columns: 124px minmax(0, 1fr) 72px; gap: 10px; align-items: end; }
+.jp-dist__row { display: grid; grid-template-columns: 132px minmax(0, 1fr) 78px; gap: 10px; align-items: end; transition: opacity .3s; }
+.jp-dist__row--mute { opacity: .4; }
 .jp-dist__row .g-levels { width: 100%; }
 .jp-dist__k { font-size: var(--fs-sm); }
+.jp-dist__k small { margin-left: 6px; font-family: var(--mono); font-size: var(--fs-micro); font-weight: 700; color: var(--acc); }
 .jp-dist__none { align-self: center; font-family: var(--mono); font-size: var(--fs-xs); color: var(--dim); }
 .jp-dist__v { font-family: var(--mono); font-size: var(--fs-sm); text-align: right; }
+.jp-dist__v b { font-size: 15px; color: #fff; }
+.jp-dist__v small { color: var(--dim); }
 .jp-note { font-family: var(--mono); font-size: var(--fs-xs); color: var(--dim); }
-.jp-others { display: flex; flex-direction: column; gap: 4px; padding-top: 8px; border-top: 1px solid var(--rule); }
+.jp-others { display: flex; flex-direction: column; gap: 6px; padding-top: 8px; border-top: 1px solid var(--rule); }
 .jp-others__row { display: flex; align-items: center; gap: 8px; font-size: var(--fs-sm); }
 .jp-others__who { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dim); }
 .jp-others__v { display: flex; gap: 4px; font-family: var(--mono); }
-.jp-others__v span { width: 28px; text-align: center; }
+.jp-others__card {
+  display: inline-grid; place-items: center; min-width: 26px; height: 22px; padding: 0 4px; border-radius: 4px;
+  font-size: var(--fs-xs); font-weight: 800; color: #1a1300; background: linear-gradient(180deg, #fff, #f1dca0); box-shadow: 0 0 0 1px color-mix(in srgb, var(--acc) 70%, transparent);
+}
+.jp-others__card--foul { color: var(--err); background: var(--err-dim); box-shadow: 0 0 0 1px var(--err); }
+.jp-others__card--wait { color: var(--dim); background: none; box-shadow: inset 0 0 0 1px var(--rule); }
 
 .jp-rubric__q { font-size: var(--fs-md); }
 .jp-levels { list-style: none; display: flex; flex-direction: column; gap: 3px; }
 .jp-lv {
   display: grid; grid-template-columns: 16px minmax(0, 1fr) 92px; gap: 8px; align-items: center;
-  padding: 2px 4px; font-size: var(--fs-sm); color: var(--dim); border-radius: 2px;
+  padding: 3px 6px; font-size: var(--fs-sm); color: var(--dim); border-radius: 6px; transition: background .3s, color .3s;
 }
-.jp-lv--on { color: var(--txt); background: var(--cy-dim); }
-.jp-lv__n { font-family: var(--mono); color: var(--txt); }
+.jp-lv--on { color: #fff; background: linear-gradient(90deg, color-mix(in srgb, var(--acc) 22%, transparent), transparent); box-shadow: inset 3px 0 0 var(--acc); }
+.jp-lv__n { font-family: var(--mono); font-weight: 800; color: var(--txt); }
+.jp-lv__mark { font-family: var(--mono); font-size: var(--fs-micro); font-weight: 700; color: var(--acc); }
 .jp-lv__p { display: grid; grid-template-columns: minmax(0, 1fr) 32px; gap: 6px; align-items: center; font-family: var(--mono); font-size: var(--fs-xs); text-align: right; }
-.jp-lv__track { height: 8px; background: color-mix(in srgb, var(--lane) 15%, transparent); }
-.jp-lv__bar { display: block; height: 100%; background: var(--lane); }
+.jp-lv__track { height: 8px; border-radius: 4px; overflow: hidden; background: color-mix(in srgb, var(--lane) 14%, transparent); }
+.jp-lv__bar { display: block; height: 100%; border-radius: 4px; background: var(--lane); transform-origin: left center; transition: transform .45s var(--ease-out); }
 
-.jp-counter {
-  display: flex; flex-direction: column; gap: 6px; padding: 12px 16px;
-  font-family: var(--mono); font-size: var(--fs-sm); border: 1px solid var(--rule); border-radius: 4px;
+/* The tally: a scoreboard of what the ranking cost. */
+.jp-tally {
+  display: flex; flex-direction: column; gap: 7px; padding: 14px 16px;
+  font-family: var(--mono); font-size: var(--fs-sm); border-radius: 14px;
+  background: linear-gradient(180deg, #06051a, #0b0922);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acc) 22%, transparent), inset 0 0 24px rgba(0, 0, 0, 0.7);
 }
-.jp-counter > div { display: flex; justify-content: space-between; gap: 12px; }
-.jp-counter span { color: var(--dim); }
-.jp-counter b { font-weight: 600; color: var(--txt); text-align: right; }
-.jp-counter b.g-t-ok { color: var(--ok); }
-.jp-counter__who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jp-tally > div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.jp-tally span { color: var(--dim); }
+.jp-tally b { font-weight: 700; color: var(--txt); text-align: right; }
+.jp-tally__hot b { font-size: 20px; font-weight: 800; color: var(--acc); text-shadow: 0 0 12px color-mix(in srgb, var(--acc) 55%, transparent); }
+.jp-tally__hot b .fx-count__v { color: var(--acc); }
+.jp-tally b.jp-tally__zero { color: var(--ok); text-shadow: 0 0 14px rgba(62, 245, 160, 0.7); }
+.jp-tally__who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.jp-lanebody { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; font-size: var(--fs-sm); }
-.jp-lanebody__n { font-size: 26px; font-weight: 700; line-height: 1; }
-.jp-lanebody__n small { font-size: var(--fs-sm); font-weight: 400; color: var(--dim); }
+/* ── A lane ────────────────────────────────────────────────────────────────── */
+
+.jp-lanebody { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; font-size: var(--fs-sm); }
+.jp-lanebody__n { display: inline-flex; align-items: baseline; gap: 2px; }
+.jp-lanebody__n small { font-family: var(--mono); font-size: var(--fs-sm); color: var(--dim); }
+.jp-lanebody__t { flex-basis: 100%; }
+.jp-minis { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.jp-mini { display: grid; place-items: center; width: 13px; height: 17px; border-radius: 3px; font-size: 9px; font-weight: 900; line-height: 1; }
+.jp-mini--wait { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acc) 35%, transparent); animation: dot-pulse 1.4s ease-in-out infinite; }
+.jp-mini--up { background: linear-gradient(180deg, #fff, #f1dca0); box-shadow: 0 0 0 1px var(--acc), 0 0 8px -1px color-mix(in srgb, var(--acc) 80%, transparent); animation: jp-mini-in .45s var(--ease-spring) both; }
+.jp-mini--foul { color: var(--err); background: var(--err-dim); box-shadow: inset 0 0 0 1px var(--err); animation: jp-mini-in .45s var(--ease-spring) both; }
+@keyframes jp-mini-in { from { opacity: 0; transform: translateY(8px) scale(.6); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .jp-hold, .jp-row, .jp-row__fill { transition: none; }
+  .jp-hold, .jp-row, .jp-row__fill, .jp-lv__bar, .jp-seat__stage::before, .jp-seat__stage::after, .jp-led { transition: none; }
 }

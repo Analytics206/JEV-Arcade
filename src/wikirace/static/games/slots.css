@@ -1,100 +1,304 @@
-/* Slot Machine: every rule under .sl-… Over WikiRace's tokens (styles.css) only. */
+/* Slot Machine: every rule under .sl-… A real one-armed bandit in neon: a
+ * chrome cabinet in the lane's colour, bulbs round the marquee, cream reels
+ * behind glass, a payline, a coin tray and a lever. An outcome is a semantic
+ * colour with its glyph (✓ allow, ! warn, ✕ remove, ? uncertain, ∅ foul). */
 
 /* An outcome sets --tone; everything that wears it reads it. */
-.sl-tone--ok { --tone: var(--ok); }
-.sl-tone--warn { --tone: var(--warn); }
-.sl-tone--err { --tone: var(--err); }
-.sl-tone--vi { --tone: var(--vi); }
-.sl-tone--foul { --tone: var(--err); }
+.sl-tone--ok { --tone: var(--ok); --ink: #0a5a37; }
+.sl-tone--warn { --tone: var(--warn); --ink: #7a4a00; }
+.sl-tone--err { --tone: var(--err); --ink: #8a0f27; }
+.sl-tone--vi { --tone: var(--vi); --ink: #3a2c9e; }
+.sl-tone--foul { --tone: var(--err); --ink: #8a0f27; }
 
-/* ── Setup ── */
-.sl-setup { gap: 16px; }
-.sl-setup__post { font-size: var(--fs-md); line-height: 1.45; padding: 8px 10px; background: var(--void-2); border: 1px solid var(--rule); border-radius: 3px; }
+/* ── Setup ─────────────────────────────────────────────────────────────────── */
+
+.g-box.sl-setup { gap: 16px; }
+.sl-ticket {
+  position: relative; font-size: var(--fs-md); line-height: 1.45; padding: 9px 12px 9px 14px; border-radius: var(--r-sm);
+  background: rgba(0, 0, 0, 0.3); border: 1px solid color-mix(in srgb, var(--acc) 35%, transparent);
+  box-shadow: inset 3px 0 0 var(--acc); animation: sl-rise .35s var(--ease-out) both;
+}
 .sl-params { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.sl-thr input { accent-color: var(--cy); }
-.sl-thr b { font-family: var(--mono); font-size: var(--fs-md); color: var(--txt); }
+.sl-thr input { accent-color: var(--acc); }
+.sl-thr b { font-family: var(--mono); font-size: var(--fs-md); color: var(--acc); text-shadow: 0 0 10px color-mix(in srgb, var(--acc) 60%, transparent); }
 .sl-side { display: flex; flex-direction: column; gap: 16px; }
-.sl-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.g-box.sl-how {
+  background:
+    radial-gradient(420px 160px at 90% 0%, color-mix(in srgb, var(--acc) 12%, transparent), transparent 70%),
+    linear-gradient(180deg, rgba(32, 26, 74, 0.72), rgba(16, 12, 40, 0.78));
+}
 .sl-cook { font-size: var(--fs-sm); }
 
-/* ── The post ── */
-.sl-post__text { font-size: 17px; line-height: 1.45; }
+/* What's on the reels: the machine's glass, gold-edged, a tile per symbol. */
+.sl-symbols {
+  position: relative; display: flex; flex-direction: column; gap: 10px; padding: 14px 14px 12px; border-radius: 14px;
+  background: linear-gradient(180deg, #1b0b2c, #0c0620);
+  border: 2px solid #e8c14a;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6), inset 0 0 0 3px rgba(255, 225, 77, 0.12), inset 0 0 30px rgba(255, 77, 122, 0.12), 0 0 26px -10px rgba(255, 225, 77, 0.6);
+}
+.sl-symbols__hd { align-self: center; font-size: 16px; color: var(--yl); filter: drop-shadow(0 0 5px rgba(255, 225, 77, 0.75)); }
+.sl-symbols__list { list-style: none; display: flex; flex-direction: column; gap: 7px; }
+.sl-sym-row { display: grid; grid-template-columns: auto 104px minmax(0, 1fr); align-items: center; gap: 10px; font-size: var(--fs-sm); }
+.sl-sym-row__w { font-family: var(--mono); font-size: var(--fs-xs); letter-spacing: .08em; color: var(--tone); }
+.sl-sym-row__what { color: var(--txt-2); }
+.sl-sym-row--three { grid-template-columns: auto minmax(0, 1fr); padding-top: 8px; border-top: 1px dashed rgba(255, 225, 77, 0.3); }
+.sl-sym-row--three .sl-sym-row__w { color: var(--yl); }
+.sl-sym-row--three .sl-sym-row__what { grid-column: 1 / -1; font-size: var(--fs-xs); }
+.sl-tiles { display: inline-flex; gap: 3px; }
+/* A symbol as it sits on a reel: cream, with the glyph outlined in ink. */
+.sl-tile {
+  display: inline-grid; place-items: center; width: 30px; height: 34px; border-radius: 5px;
+  font-size: 20px; font-weight: 900; line-height: 1; color: var(--tone);
+  background: linear-gradient(180deg, #b9b0dc, #fbf9ff 35%, #fbf9ff 65%, #b9b0dc);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35), 0 2px 0 rgba(0, 0, 0, 0.5);
+  text-shadow: 0 1px 0 #07051a, 0 -1px 0 #07051a, 1px 0 0 #07051a, -1px 0 0 #07051a;
+}
+.sl-tiles .sl-tile { width: 22px; height: 28px; font-size: 15px; }
+
+/* ── The post ──────────────────────────────────────────────────────────────── */
+
+.g-box.sl-post { gap: 10px; }
+.sl-post__text {
+  position: relative; padding: 4px 0 2px 46px; font-family: var(--display); font-size: 21px; font-weight: 600; line-height: 1.35;
+  color: var(--txt); text-wrap: pretty;
+}
+.sl-post__text::before {
+  content: '“'; position: absolute; left: 4px; top: -10px; font-family: Georgia, serif; font-size: 64px; line-height: 1;
+  color: var(--acc); text-shadow: 0 0 16px color-mix(in srgb, var(--acc) 70%, transparent);
+}
 .sl-post__labels { font-size: var(--fs-xs); }
-.sl-post__why { font-size: var(--fs-md); line-height: 1.5; padding: 8px 12px; border-left: 3px solid var(--cy); background: var(--cy-dim); }
+.sl-post__why {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-size: var(--fs-md); line-height: 1.5; padding: 9px 12px;
+  border-radius: var(--r-sm); background: linear-gradient(90deg, rgba(255, 225, 77, 0.12), transparent 85%);
+  box-shadow: inset 3px 0 0 var(--yl); animation: sl-rise .6s var(--ease-spring) both;
+}
+.sl-post__why-k { font-family: var(--display); font-size: var(--fs-micro); font-weight: 800; letter-spacing: .14em; color: var(--yl); }
+@keyframes sl-rise { from { opacity: 0; transform: translateY(8px); } }
 
-/* ── The machines ── */
-.sl-machines { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); }
-.sl-cabinet { display: block; width: 100%; max-width: 460px; height: auto; margin: 0 auto; }
-.sl-body { fill: color-mix(in srgb, var(--lane) 12%, var(--void-2)); stroke: var(--lane); stroke-width: 2.5; }
-.sl-marquee { fill: var(--void); stroke: color-mix(in srgb, var(--lane) 55%, transparent); }
-.sl-marquee__t { font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: 2px; text-anchor: middle; fill: var(--txt); }
-.sl-cabinet--win .sl-marquee { fill: color-mix(in srgb, var(--lane) 28%, var(--void)); stroke: var(--lane); animation: sl-flash .5s ease-in-out 3 alternate; }
-@keyframes sl-flash { from { fill-opacity: 1; } to { fill-opacity: .4; } }
-.sl-window { fill: var(--void); stroke: var(--edge); }
+/* ── The machines ──────────────────────────────────────────────────────────── */
 
-.sl-cell { fill: var(--tone, var(--dimmer)); }
-.sl-cell--blank { fill: var(--void-2); stroke: var(--rule); }
-.sl-cell.sl-tone--foul { fill: var(--void-2); stroke: var(--err); stroke-width: 2; stroke-dasharray: 4 3; }
-.sl-cell__glyph { font-family: var(--mono); font-size: 30px; font-weight: 800; text-anchor: middle; fill: var(--lane-ink); }
-.sl-cell__word { font-family: var(--mono); font-size: 12px; font-weight: 800; letter-spacing: 1px; text-anchor: middle; fill: var(--lane-ink); }
-.sl-cell__n { font-family: var(--mono); font-size: 9px; text-anchor: end; fill: var(--lane-ink); opacity: .7; }
-.sl-tone--foul ~ .sl-cell__glyph, .sl-tone--foul ~ .sl-cell__word, .sl-tone--foul ~ .sl-cell__n { fill: var(--err); }
-.sl-cell__none { font-family: var(--mono); font-size: 24px; text-anchor: middle; fill: var(--dimmer); }
-.sl-cell__wait { display: none; font-family: var(--mono); font-size: 28px; font-weight: 700; text-anchor: middle; fill: var(--dim); }
+.sl-machines { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); }
+.sl-machine { gap: 12px; transition: box-shadow .4s; }
+.g-lane.sl-machine--win {
+  box-shadow: inset 0 3px 0 var(--lane), 0 0 0 2px var(--yl), 0 0 36px -6px rgba(255, 225, 77, 0.7), 0 16px 34px -22px rgba(0, 0, 0, 0.95);
+  animation: sl-glow 1.2s ease-in-out 3;
+}
+@keyframes sl-glow { 50% { box-shadow: inset 0 3px 0 var(--lane), 0 0 0 2px var(--yl), 0 0 54px -2px rgba(255, 225, 77, 0.95), 0 16px 34px -22px rgba(0, 0, 0, 0.95); } }
+.sl-machine__crown {
+  position: absolute; top: -11px; right: 14px; z-index: 1; padding: 2px 10px; border-radius: 999px;
+  font-family: var(--display); font-size: var(--fs-xs); font-weight: 800; letter-spacing: .12em; color: #2a1600;
+  background: linear-gradient(180deg, #fff09a, var(--yl)); box-shadow: 0 0 14px -2px rgba(255, 225, 77, 0.9);
+  animation: sl-pop .6s var(--ease-spring) both;
+}
+@keyframes sl-pop { 0% { transform: scale(.4); opacity: 0; } 60% { transform: scale(1.15); opacity: 1; } }
 
-/* A spinning reel: a strip of every symbol, twice over, sliding up for ever. */
-.sl-spin { animation: sl-spin .5s linear infinite; }
-.sl-spin .sl-cell { opacity: .85; }
-@keyframes sl-spin { from { transform: translateY(0); } to { transform: translateY(-368px); } }
-.sl-landed { animation: sl-land .28s cubic-bezier(.2, 1.4, .5, 1); }
-@keyframes sl-land { from { transform: translateY(-16px); opacity: .5; } to { transform: none; opacity: 1; } }
+/* The cabinet, and the sign over its marquee when the lane is done. */
+.sl-cabwrap { position: relative; width: 100%; max-width: 470px; margin: 0 auto; container-type: inline-size; }
+.sl-cabwrap--tilt { animation: sl-tilt .5s ease-in-out 2; }
+@keyframes sl-tilt {
+  0%, 100% { transform: none; }
+  20% { transform: translateX(-6px) rotate(-1.2deg); }
+  40% { transform: translateX(5px) rotate(1deg); }
+  60% { transform: translateX(-3px) rotate(-.6deg); }
+  80% { transform: translateX(2px); }
+}
+.sl-cab { display: block; width: 100%; height: auto; }
+.sl-sign {
+  position: absolute; left: 15.5%; top: 10%; width: 59%; height: 11.33%; display: grid; place-items: center;
+  font-size: 6.4cqw; line-height: 1; pointer-events: none;
+}
+.sl-sign .px { height: 1em; width: auto; max-width: 92%; }
+.sl-sign--held { color: var(--yl); filter: drop-shadow(0 0 4px rgba(255, 225, 77, 0.95)) drop-shadow(0 0 14px rgba(255, 79, 216, 0.6)); animation: sl-sign-in .6s var(--ease-spring) both, sl-sign-blink .5s steps(1) .6s 6; }
+.sl-sign--tilt { color: var(--err); filter: drop-shadow(0 0 4px rgba(255, 77, 106, 0.95)) drop-shadow(0 0 12px rgba(255, 77, 106, 0.5)); animation: neon-on 1.4s linear both; }
+@keyframes sl-sign-in { from { transform: scale(2.2); opacity: 0; } }
+@keyframes sl-sign-blink { 50% { opacity: .25; } }
 
-.sl-payline { stroke: var(--txt); stroke-opacity: .4; stroke-width: 1.5; stroke-dasharray: 6 4; }
-.sl-tray { fill: var(--void); stroke: var(--edge); }
-.sl-lever__base { fill: var(--dimmer); }
-.sl-lever__arm { stroke: var(--dim); stroke-width: 5; stroke-linecap: round; }
-.sl-lever__ball { fill: var(--lane); stroke: var(--void); stroke-width: 2; }
-.sl-lever { transform-box: view-box; transform-origin: 372px 110px; transition: transform .22s ease-in; }
-.sl-lever--down { transform: scaleY(-1); }
+/* The lane's colour stains the cabinet; chrome is drawn in the SVG. */
+.sl-st-body0 { stop-color: color-mix(in srgb, var(--lane) 62%, #1a0f3a); }
+.sl-st-body1 { stop-color: color-mix(in srgb, var(--lane) 30%, #0e0a26); }
+.sl-st-body2 { stop-color: color-mix(in srgb, var(--lane) 14%, #07051a); }
+.sl-st-top0 { stop-color: color-mix(in srgb, var(--lane) 45%, #160c34); }
+.sl-st-top1 { stop-color: #0c0822; }
+.sl-st-ball0 { stop-color: var(--lane); }
+.sl-st-ball1 { stop-color: color-mix(in srgb, var(--lane) 40%, #07051a); }
+.sl-body__inner { fill: none; stroke: rgba(255, 255, 255, 0.1); stroke-width: 1; }
+.sl-marquee { fill: #07051a; stroke: rgba(255, 225, 77, 0.35); stroke-width: 1.5; }
+.sl-marquee__t { font-family: var(--mono); font-size: 12px; font-weight: 800; letter-spacing: 2px; text-anchor: middle; fill: var(--txt); }
+.sl-cab--jackpot .sl-marquee__t, .sl-cab--spin .sl-marquee__t { fill: var(--yl); }
+.sl-cab--jackpot .sl-marquee { stroke: var(--yl); }
+
+/* The bulbs: resting, chasing while the reels spin, flashing on a win. */
+.sl-bulb { fill: #5a4a1e; stroke: rgba(0, 0, 0, 0.5); stroke-width: 1; }
+.sl-cab .sl-bulb { animation: sl-idle 2.4s steps(1) infinite; }
+.sl-bulb--1 { animation-delay: -.8s !important; }
+.sl-bulb--2 { animation-delay: -1.6s !important; }
+@keyframes sl-idle { 0% { fill: #ffe9a0; } 33% { fill: #5a4a1e; } }
+.sl-cab--spin .sl-bulb { animation: sl-chase .36s steps(1) infinite; }
+.sl-cab--spin .sl-bulb--1 { animation-delay: -.12s !important; }
+.sl-cab--spin .sl-bulb--2 { animation-delay: -.24s !important; }
+@keyframes sl-chase { 0% { fill: #fff6c8; } 33% { fill: #5a4a1e; } }
+.sl-cab--jackpot .sl-bulb, .sl-cab--held .sl-bulb { animation: sl-flash-bulb .3s steps(1) infinite; }
+.sl-cab--held .sl-bulb { animation-iteration-count: 12; fill: var(--yl); }
+@keyframes sl-flash-bulb { 0% { fill: #fff6c8; } 50% { fill: #b88a00; } }
+.sl-cab--tilt .sl-bulb { fill: #6a1624; animation: sl-tilt-bulb 1.6s steps(1) 3; }
+@keyframes sl-tilt-bulb { 0% { fill: var(--err); } 15% { fill: #6a1624; } 30% { fill: var(--err); } 45% { fill: #6a1624; } }
+
+/* The reels behind glass. */
+.sl-glass { fill: #07051a; stroke: rgba(0, 0, 0, 0.9); stroke-width: 2; }
+.sl-sheen { fill: #ffffff; opacity: .06; pointer-events: none; }
+.sl-shade { pointer-events: none; }
+.sl-sym {
+  font-family: var(--body); font-size: 44px; font-weight: 900; text-anchor: middle;
+  fill: var(--tone); stroke: #07051a; stroke-width: 5px; stroke-linejoin: round; paint-order: stroke fill;
+}
+.sl-word { font-family: var(--mono); font-size: 11px; font-weight: 800; letter-spacing: 1px; text-anchor: middle; fill: var(--ink); }
+.sl-no { font-family: var(--mono); font-size: 9px; font-weight: 700; text-anchor: end; fill: #3a3160; opacity: .8; }
+.sl-halo { fill: var(--tone); opacity: .22; }
+.sl-tone--foul .sl-sym { fill: #fbf9ff; stroke: var(--err); stroke-width: 3px; }
+.sl-none { font-family: var(--mono); font-size: 26px; text-anchor: middle; fill: #9a92c0; }
+.sl-wait { display: none; font-family: var(--mono); font-size: 30px; font-weight: 800; text-anchor: middle; fill: #3a3160; }
+
+/* A spinning reel: the strip of every symbol, twice over, sliding up for ever,
+ * smeared as it goes. A landed one drops in, overshoots and settles, with a
+ * flash as it clunks home. */
+.sl-spin { animation: sl-spin .42s linear infinite; }
+@keyframes sl-spin { from { transform: translateY(0); } to { transform: translateY(-416px); } }
+.sl-sym--ghost { opacity: .28; }
+.sl-sym--blur { opacity: .75; }
+.sl-stop { animation: sl-stop .5s cubic-bezier(.25, 1.6, .45, 1) both; }
+@keyframes sl-stop { from { transform: translateY(-58px); } }
+.sl-clunk { fill: #ffffff; opacity: 0; pointer-events: none; animation: sl-clunk .35s ease-out; }
+@keyframes sl-clunk { from { opacity: .7; } to { opacity: 0; } }
+
+/* The payline: dashed at rest, lit in the outcome's colour on three in a row;
+ * each lever that comes up three in a row flashes it. */
+.sl-payline { stroke: #ffffff; stroke-opacity: .45; stroke-width: 1.5; stroke-dasharray: 6 4; }
+.sl-payline--on { stroke: var(--tone); stroke-opacity: 1; stroke-width: 3; stroke-dasharray: none; }
+.sl-payarrow { fill: var(--yl); }
+.sl-reelframe { fill: none; stroke: var(--tone); stroke-width: 3; }
+.sl-winflash rect { fill: var(--tone); opacity: 0; animation: sl-winflash 1s steps(1) both; }
+.sl-winflash text { font-size: 16px; font-weight: 900; text-anchor: middle; fill: var(--yl); opacity: 0; animation: sl-winstar 1.2s var(--ease-out) both; transform-box: fill-box; transform-origin: center; }
+@keyframes sl-winflash { 0% { opacity: .95; } 20% { opacity: 0; } 40% { opacity: .95; } 60% { opacity: 0; } 80% { opacity: .95; } 100% { opacity: 0; } }
+@keyframes sl-winstar { 0% { opacity: 0; transform: scale(.3); } 25% { opacity: 1; transform: scale(1.5); } 70% { opacity: 1; transform: scale(1); } 100% { opacity: 0; } }
+
+/* The LED readout, the tray and its coins. */
+.sl-led { fill: #05030f; stroke: rgba(255, 225, 77, 0.25); stroke-width: 1; }
+.sl-led__t { font-family: var(--mono); font-size: 10.5px; font-weight: 800; letter-spacing: 1.2px; text-anchor: middle; fill: var(--yl); }
+.sl-cab--tilt .sl-led__t { fill: var(--err); }
+.sl-tray { fill: #05030f; stroke: rgba(0, 0, 0, 0.8); stroke-width: 2; }
+.sl-coin { animation: sl-coin .6s cubic-bezier(.3, 1.5, .5, 1) both; }
+@keyframes sl-coin { from { transform: translateY(-34px); opacity: 0; } 40% { opacity: 1; } }
+.sl-coin__rim { fill: none; stroke: #a87a00; stroke-width: 1; opacity: .8; }
+
+/* The lever: yanked down and sprung back for every pull. */
+.sl-lever { transform-box: view-box; transform-origin: 364px 155px; }
+.sl-lever--yank { animation: sl-yank .6s var(--ease-out) both; }
+@keyframes sl-yank { 0% { transform: scaleY(1); } 28% { transform: scaleY(-.92); } 55% { transform: scaleY(-.92); } 100% { transform: scaleY(1); } }
+.sl-lever__ball { stroke: rgba(0, 0, 0, 0.5); stroke-width: 1.5; }
+.sl-lever__hub { stroke: rgba(0, 0, 0, 0.6); stroke-width: 1.5; }
+
+/* ── Under the machine ─────────────────────────────────────────────────────── */
 
 .sl-caption { font-size: var(--fs-xs); }
-.sl-strip { list-style: none; display: grid; gap: 3px; }
-.sl-chip {
-  display: flex; align-items: center; justify-content: center; min-width: 0; height: 18px; overflow: hidden;
-  font-family: var(--mono); font-size: 11px; font-weight: 800; color: var(--lane-ink); background: var(--tone); border-radius: 2px;
-}
-.sl-chip--empty { background: none; border: 1px dashed var(--rule); }
-.sl-chip--spin { background: none; border: 1px solid var(--lane); animation: sl-blink .6s ease-in-out infinite alternate; }
-@keyframes sl-blink { from { opacity: 1; } to { opacity: .3; } }
-.sl-chip.sl-tone--foul { color: var(--err); background: var(--void-2); border: 1px solid var(--err); }
-.sl-agree { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; font-size: var(--fs-sm); }
-.sl-agree__same { font-weight: 700; }
-.sl-num--big .g-stat__v { font-size: 20px; font-weight: 700; }
 
+/* Every pull, three to a lever. */
+.sl-strip { list-style: none; display: grid; gap: 5px; }
+.sl-grp {
+  display: flex; gap: 2px; padding: 2px; min-width: 0; border-radius: 5px;
+  background: rgba(0, 0, 0, 0.3); box-shadow: inset 0 0 0 1px rgba(140, 150, 210, 0.12);
+}
+.sl-grp--win { background: color-mix(in srgb, var(--tone) 16%, rgba(0, 0, 0, 0.3)); box-shadow: inset 0 0 0 1px var(--tone), 0 0 12px -3px var(--tone); animation: sl-pop .5s var(--ease-spring) both; }
+.sl-chip {
+  flex: 1; display: flex; align-items: center; justify-content: center; min-width: 0; height: 20px; overflow: hidden;
+  font-family: var(--mono); font-size: 11px; font-weight: 800; color: var(--lane-ink); border-radius: 3px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tone) 70%, #fff), var(--tone));
+  animation: sl-chip-in .4s var(--ease-spring) both;
+}
+@keyframes sl-chip-in { from { transform: scale(.3); opacity: 0; } }
+.sl-chip--empty { background: none; border: 1px dashed rgba(140, 150, 210, 0.25); animation: none; }
+.sl-chip--spin { background: color-mix(in srgb, var(--lane) 25%, transparent); border: 1px solid var(--lane); animation: sl-blink .3s ease-in-out infinite alternate; }
+@keyframes sl-blink { from { opacity: 1; } to { opacity: .35; } }
+.sl-chip.sl-tone--foul { color: var(--err); background: var(--void-2); border: 1px solid var(--err); }
+
+/* The score: agreement as a lit number, and the outcomes as a win-line. */
+.sl-score { display: flex; align-items: stretch; gap: 12px; flex-wrap: wrap; }
+.sl-score__main {
+  --glow: var(--dim);
+  flex: 1 1 132px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; min-width: 132px; max-width: 100%; padding: 8px 12px;
+  border-radius: 10px; background: #05040f; border: 1px solid color-mix(in srgb, var(--glow) 45%, transparent);
+  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.9), inset 0 -12px 22px -14px var(--glow);
+  transition: border-color .4s, box-shadow .4s;
+}
+.sl-agr--ok { --glow: var(--ok); }
+.sl-agr--warn { --glow: var(--warn); }
+.sl-agr--err { --glow: var(--err); }
+.sl-score__main .sl-score__v { font-size: 30px; color: var(--glow); text-shadow: 0 0 14px color-mix(in srgb, var(--glow) 70%, transparent); }
+.sl-agr--neutral .sl-score__v { color: var(--dim); text-shadow: none; }
+.sl-score__same { font-size: var(--fs-xs); color: var(--txt-2); }
+.sl-pay { flex: 1 1 272px; list-style: none; display: flex; gap: 6px; min-width: 0; }
+.sl-pay__cell {
+  position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 0; padding: 6px 3px 5px;
+  border-radius: 8px; background: linear-gradient(180deg, color-mix(in srgb, var(--tone) 12%, rgba(255, 255, 255, 0.03)), rgba(0, 0, 0, 0.3));
+  border: 1px solid color-mix(in srgb, var(--tone) 35%, transparent);
+  transition: opacity .3s, border-color .3s, box-shadow .3s;
+}
+.sl-pay__cell.is-zero { opacity: .45; }
+.sl-pay__cell.is-top { border-color: var(--tone); box-shadow: 0 0 16px -4px var(--tone), inset 0 0 12px -6px var(--tone); }
+.sl-pay__sym { font-size: 18px; font-weight: 900; line-height: 1.1; color: var(--tone); }
+.sl-pay__n { font-family: var(--mono); font-size: 17px; font-weight: 800; line-height: 1.1; color: var(--txt); }
+.sl-pay__w { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--display); font-size: 9.5px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; color: var(--dim); }
+.sl-pay__star { position: absolute; top: -8px; right: -5px; font-size: 13px; color: var(--yl); text-shadow: 0 0 8px rgba(255, 225, 77, 0.9); animation: sl-pop .5s var(--ease-spring) both; }
+.sl-numbers { border-top: 1px solid var(--rule); }
+
+/* Jev's probabilities, pull by pull. */
 .sl-band { display: flex; flex-direction: column; gap: 6px; }
 .sl-band svg { display: block; width: 100%; height: auto; }
+.sl-band__bg { fill: rgba(0, 0, 0, 0.3); }
 .sl-band__grid { stroke: var(--rule); }
 .sl-band__axis { font-family: var(--mono); font-size: 9px; text-anchor: end; fill: var(--dim); }
-.sl-band__zone { fill: var(--tone); opacity: .16; }
+.sl-band__zone { fill: var(--tone); opacity: .14; }
+.sl-band__cur { stroke: var(--acc); stroke-width: 1; stroke-opacity: .5; stroke-dasharray: 2 3; animation: sl-fade .5s ease-out both; }
+@keyframes sl-fade { from { opacity: 0; } }
 .sl-band__thr { stroke: var(--vi); stroke-width: 1.5; stroke-dasharray: 5 3; }
 .sl-band__thr-t { font-family: var(--mono); font-size: 9px; text-anchor: end; fill: var(--vi); }
-.sl-band__line polyline { fill: none; stroke: var(--tone); stroke-width: 1.6; }
-.sl-band__line circle { fill: var(--tone); }
+.sl-band__line polyline { fill: none; stroke: var(--tone); stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
+.sl-band__line .sl-band__glow { stroke-width: 7; opacity: .16; }
+.sl-band__dot { fill: var(--tone); stroke: #07051a; stroke-width: 1; transform-box: fill-box; transform-origin: center; animation: sl-chip-in .45s var(--ease-spring) both; }
 .sl-band__q { font-family: var(--mono); font-size: 10px; font-weight: 800; text-anchor: middle; fill: var(--vi); }
 .sl-band__key { display: flex; flex-wrap: wrap; gap: 12px; font-size: var(--fs-xs); }
 .sl-key { color: var(--tone); }
 
+/* What a text model said, on a terminal. */
 .sl-said { display: flex; flex-direction: column; gap: 6px; }
-.sl-said__box { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; font-size: var(--fs-sm); background: var(--void-2); border: 1px solid var(--rule); border-radius: 3px; overflow-wrap: anywhere; }
+.sl-said__box {
+  display: flex; flex-direction: column; gap: 3px; padding: 9px 11px; font-size: var(--fs-sm); border-radius: var(--r-sm); overflow-wrap: anywhere;
+  color: var(--txt); background: #05040f; border: 1px solid var(--rule); box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.8);
+  animation: sl-fade .4s ease-out both;
+}
+.sl-said__k { color: var(--acc); }
 
-.sl-cookbook { display: flex; align-items: center; gap: 14px; padding: 10px 14px; border: 1px solid var(--rule); border-radius: 4px; }
+/* The cookbook's plaque. */
+.sl-cookbook {
+  display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: 14px;
+  background: linear-gradient(180deg, rgba(40, 20, 54, 0.8), rgba(16, 10, 34, 0.85));
+  border: 1px solid rgba(232, 193, 74, 0.45); box-shadow: inset 0 0 0 3px rgba(255, 225, 77, 0.05), 0 0 26px -14px rgba(255, 225, 77, 0.6);
+}
+.sl-cookbook__seal {
+  display: grid; place-items: center; width: 38px; height: 38px; flex-shrink: 0; border-radius: 50%;
+  font-size: 18px; color: #2a1600; background: radial-gradient(circle at 35% 30%, #fffbe0, var(--yl) 45%, #a87a00);
+  box-shadow: 0 0 16px -3px rgba(255, 225, 77, 0.8);
+}
 .sl-cookbook__text { flex: 1; display: flex; flex-direction: column; gap: 4px; font-size: var(--fs-md); line-height: 1.5; color: color-mix(in srgb, var(--txt) 75%, var(--dim)); }
 .sl-cookbook__us { font-size: var(--fs-xs); color: var(--txt); }
-@media (max-width: 700px) { .sl-cookbook { flex-direction: column; align-items: stretch; } }
+@media (max-width: 700px) {
+  .sl-cookbook { flex-direction: column; align-items: stretch; }
+  .sl-cookbook__seal { display: none; }
+  .sl-post__text { font-size: 18px; padding-left: 36px; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .sl-spin { display: none; }
-  .sl-cell__wait { display: block; }
-  .sl-lever { transition: none; }
-  .sl-landed, .sl-chip--spin, .sl-cabinet--win .sl-marquee { animation: none; }
+  .sl-wait { display: block; }
+  .sl-lever--yank, .sl-stop, .sl-clunk, .sl-chip--spin, .sl-cab .sl-bulb, .sl-cabwrap--tilt, .sl-sign--held, .sl-sign--tilt, .sl-winflash rect, .sl-winflash text { animation: none; }
+  .sl-winflash { display: none; }
 }

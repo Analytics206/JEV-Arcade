@@ -2,6 +2,7 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  LEVEL_MARK,
   POINTS,
   alignB,
   bestOf,
@@ -10,6 +11,9 @@ import {
   checks,
   goldChecks,
   goldOf,
+  perfectBoard,
+  perfectClaim,
+  podium,
   standings,
   tally,
   verdict,
@@ -72,5 +76,23 @@ describe('the board', () => {
     assert.equal(cellOf([cell], 1, 0), undefined)
     assert.deepEqual(goldChecks(GOLD[1]).map((c) => c.yes), [true, true, false])
     assert.equal(cardName('b', 2), 'B3')
+  })
+})
+
+describe('who won', () => {
+  it('names everyone sharing the best points, and leaves out whoever has none', () => {
+    const top = podium([{ key: 'you', points: 3 }, { key: 'l0', points: 5 }, { key: 'l1', points: 5 }, { key: 'l2', points: null }])
+    assert.deepEqual(top.map((e) => e.key), ['l0', 'l1'])
+    assert.deepEqual(podium([{ key: 'you', points: -1 }]).map((e) => e.key), ['you'])
+    assert.deepEqual(podium([{ key: 'l0', points: null }]), [])
+    assert.deepEqual(podium(null), [])
+  })
+  it('knows a perfect call and a perfect board', () => {
+    assert.ok(perfectClaim('same') && perfectClaim('related'))
+    assert.ok(!perfectClaim('cautious') && !perfectClaim('eager') && !perfectClaim('wrong'))
+    assert.ok(perfectBoard(5, GOLD))
+    assert.ok(!perfectBoard(4, GOLD))
+    assert.ok(!perfectBoard(0, []))
+    assert.deepEqual(LEVEL_MARK, ['≠', '≈', '='])
   })
 })

@@ -156,6 +156,110 @@ export function pupil(heading, d = 1.5) {
   return [dx * d, dy * d]
 }
 
+/**
+ * A ghost's body with a wavy skirt, as the arcade animates it: two frames
+ * (0, 1) whose scallops sit half a wave apart, shown in turn so the hem
+ * ripples. Dome of radius *s* centred at (cx, cy); the hem at cy + s.
+ */
+export function ghostBody(cx, cy, s = 12, frame = 0) {
+  const n = 12
+  const depth = s / 3.2
+  const bottom = cy + s
+  const phase = frame ? Math.PI : 0
+  const hem = (x) => bottom - depth * (0.5 - 0.5 * Math.cos((3 * 2 * Math.PI * (cx + s - x)) / (2 * s) + phase))
+  const p = (x, y) => `${r2(x)} ${r2(y)}`
+  let d = `M${p(cx - s, hem(cx - s))} V${r2(cy)} A${s} ${s} 0 0 1 ${p(cx + s, cy)} V${r2(hem(cx + s))}`
+  for (let i = 1; i <= n; i++) {
+    const x = cx + s - (i * 2 * s) / n
+    d += ` L${p(x, hem(x))}`
+  }
+  return `${d} Z`
+}
+
+/**
+ * The player as two halves that open and close round its centre, facing
+ * right (the page rotates the pair to the heading): the upper half and the
+ * lower, each a half disc of radius *r*. Chomping is the halves turning.
+ */
+export function pacHalves(r = 13) {
+  return {
+    top: `M${-r} 0 A${r} ${r} 0 0 1 ${r} 0 Z`,
+    bottom: `M${-r} 0 A${r} ${r} 0 0 0 ${r} 0 Z`,
+  }
+}
+
+/** The points a ghost was worth, read from a score's jump on the tick it was
+ *  eaten (200, 400, 800 … in one fright; a pellet eaten on the same tick is
+ *  less than 200): the largest such value the jump holds, or null. */
+export function ghostPoints(delta) {
+  if (!Number.isFinite(delta) || delta < 200) return null
+  let v = 200
+  while (v * 2 <= delta) v *= 2
+  return v
+}
+
+/**
+ * The ghosts eaten between two views of a lane: a ghost that was frightened
+ * (mode f) and is now eyes (mode e) under a new gen. `prev` and `next` are
+ * the streamed [tile, mode, gen, heading] lists. → the ghosts' names.
+ */
+export function ghostsEaten(prev, next) {
+  const out = []
+  ;(next ?? []).forEach((g, i) => {
+    const was = prev?.[i]
+    if (was && g?.[1] === 'e' && was[1] !== 'e' && g[2] !== was[2]) out.push(GHOST_NAMES[i] ?? `ghost ${i + 1}`)
+  })
+  return out
+}
+
+/** The last *n* tiles eaten, oldest first, each with what it was: the page
+ *  plays a sparkle on each as it joins. → [{cell, power}] */
+export function recentlyEaten(L, eaten, n = 4) {
+  const power = new Set(L?.power ?? [])
+  return (eaten ?? []).slice(-n).map((cell) => ({ cell, power: power.has(cell) }))
+}
+
+/** The arcade's "1UP" for a lane: its player number, then UP. */
+export const upOf = (index) => `${(index ?? 0) + 1}UP`
+
+/**
+ * Who won a round, by the game's rule: the most points among the lanes that
+ * played their game out (done: caught, cleared or out of time), ties sharing
+ * it. None in a round of one player, or when no lane played its game out.
+ * → lane indexes.
+ */
+export function winnersOf(run) {
+  const lanes = run?.lanes ?? []
+  if (lanes.length < 2) return []
+  const done = lanes.filter((l) => l.status === 'done')
+  if (!done.length) return []
+  const top = Math.max(...done.map((l) => Number(l.score) || 0))
+  return done.filter((l) => (Number(l.score) || 0) === top).map((l) => l.index)
+}
+
+/** What a finished round of one player says at its end: CLEARED, or GAME OVER
+ *  with its score. */
+export function soloFinale(run) {
+  const ln = run?.lanes?.[0]
+  if (!ln || (run?.lanes?.length ?? 0) !== 1) return null
+  const pts = `${fmtInt(Number(ln.score) || 0)} points`
+  if (ln.ended === 'cleared') return { headline: 'CLEARED!', sub: `${ln.label} · ${pts}` }
+  return { headline: 'GAME OVER', sub: `${ln.label} · ${pts}` }
+}
+
+/** What the screen says over the maze: READY! before the first tick and
+ *  after a catch, then how the lane's game ended. → {text, sub?, tone} | null */
+export function screenText(lane, still = false) {
+  if (still) return { text: 'READY!', tone: 'ready' }
+  const w = laneWorld(lane)
+  if (w.ended === 'cleared') return { text: 'CLEARED!', tone: 'ok' }
+  if (w.ended === 'caught') return { text: 'GAME OVER', sub: `caught on tick ${w.caughtAt ?? w.tick}`, tone: 'err' }
+  if (w.ended === 'time') return { text: 'TIME UP', sub: lives(w.lives), tone: 'neutral' }
+  if (w.pause > 0) return { text: 'READY!', sub: w.caughtAt != null ? `caught on tick ${w.caughtAt} · ${lives(w.lives)}` : null, tone: 'ready' }
+  if (!w.tick && (lane?.status === 'waiting' || lane?.status === 'playing')) return { text: 'READY!', tone: 'ready' }
+  return null
+}
+
 /* ── A lane's world ────────────────────────────────────────────────────────── */
 
 /** A lane's streamed world, read into names. `eaten` is a Set. */

@@ -1,118 +1,361 @@
-/* The Arcade's shell: the page header every view shares, the hub of games, and
- * the view that loads one game's page.
+/* The Arcade's shell: the floor every visit opens on, and the view that loads
+ * one game's page.
  *
- * The header is WikiRace's own (brand, tagline, tabs), with a third tab: Race and
- * History go back to WikiRace; Arcade is here. WikiRace itself is untouched — it
- * renders its own header, with the same third tab.
+ * The floor is an arcade at night: a big attract-mode screen cycling through
+ * the cabinets, an LED ticker of the latest plays, then the cabinets
+ * themselves, each playing its own little loop (attract.js). Arrow keys walk
+ * the floor, Enter starts a cabinet. What this browser has played is counted
+ * (profile.js) and shown as a plate on each cabinet and a meter at the top.
  */
 import { h } from 'preact'
-import { useEffect, useState } from 'preact/hooks'
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import htm from 'htm'
-import { Badge, Spacer, Tabs, Toolbar } from '../ui.js'
-import { Chip, GameFrame, Label, useGames } from './kit.js'
-import { CARDS, THUMBS, cardOf, loadGame } from './registry.js'
+import { useEndpoint } from '../api.js'
+import { PixelText, SiteHeader, Wordmark } from '../brand.js'
+import { usePlays } from '../profile.js'
+import { sfx } from '../sfx.js'
+import { GameFrame, useGames } from './kit.js'
+import { CARDS, SCENES, accentOf, cardOf, loadGame } from './registry.js'
 import { navigate, toGame } from './route.js'
 
 const html = htm.bind(h)
 
-export const TABS = [
-  ['race', 'Race'],
-  ['history', 'History'],
-  ['arcade', 'Arcade'],
-]
+const ATTRACT_MS = 7000
+const calm = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+const plainClick = (e) => e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey
+const hrefOf = (id) => (id === 'wikirace' ? '?tab=race' : `?game=${id}`)
+const openCab = (id) => (id === 'wikirace' ? navigate('?tab=race') : toGame(id))
 
-/** Where each tab goes. */
-export function goTab(tab) {
-  if (tab === 'arcade') navigate('?tab=arcade')
-  else if (tab === 'history') navigate('?tab=history')
-  else navigate('')
+/* ── Screens that play only while seen ─────────────────────────────────────── */
+
+const seen = new WeakMap()
+let observer = null
+function watch(el, f) {
+  if (typeof IntersectionObserver !== 'function') return () => {}
+  observer ??= new IntersectionObserver((entries) => entries.forEach((e) => seen.get(e.target)?.(e.isIntersecting)), { rootMargin: '80px' })
+  seen.set(el, f)
+  observer.observe(el)
+  return () => {
+    observer.unobserve(el)
+    seen.delete(el)
+  }
 }
 
-function Header({ crumb }) {
-  const home = (e) => {
-    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+/** One cabinet's attract-mode screen, paused while it is out of sight (and
+ *  always, for a visitor who asked for less motion). */
+function Scene({ id, u }) {
+  const ref = useRef(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const set = (on) => {
+      const svg = el.querySelector('svg')
+      el.classList.toggle('is-off', !on)
+      if (!svg?.pauseAnimations) return
+      if (on && !calm()) svg.unpauseAnimations()
+      else svg.pauseAnimations()
+    }
+    if (calm()) set(false)
+    return watch(el, set)
+  }, [id])
+  const draw = SCENES[id]
+  return html`<span class="scene" ref=${ref}>${draw ? draw(u) : null}</span>`
+}
+
+/* ── The big screen ────────────────────────────────────────────────────────── */
+
+function Attract({ cards, titleOf }) {
+  const [i, setI] = useState(0)
+  const [held, setHeld] = useState(false)
+  const card = cards[i % cards.length]
+  useEffect(() => {
+    if (held || calm()) return
+    const t = setTimeout(() => setI((n) => (n + 1) % cards.length), ATTRACT_MS)
+    return () => clearTimeout(t)
+  }, [i, held, cards.length])
+  const go = (n) => {
+    sfx.hover()
+    setI((n + cards.length) % cards.length)
+  }
+  const title = titleOf(card)
+  return html`
+    <div class="attract" style=${{ '--acc': card.accent }} onMouseEnter=${() => setHeld(true)} onMouseLeave=${() => setHeld(false)}
+      onfocusin=${() => setHeld(true)} onfocusout=${() => setHeld(false)}>
+      <div class="crt">
+        <a class="crt__screen" href=${hrefOf(card.id)} key=${card.id} aria-label=${`Play ${title}`}
+          onClick=${(e) => {
+            if (!plainClick(e)) return
+            e.preventDefault()
+            sfx.start()
+            openCab(card.id)
+          }}>
+          <${Scene} id=${card.id} u="hero" />
+          <span class="crt__hud">
+            <span class="crt__title"><${PixelText} text=${title} /></span>
+            <span class="crt__pitch">${card.pitch}</span>
+            <span class="crt__press"><${PixelText} text="PRESS START" /></span>
+          </span>
+          <span class="crt__glass" aria-hidden="true" />
+        </a>
+        <span class=${`crt__timer${held ? ' is-held' : ''}`} key=${`t${i}-${held}`} style=${{ animationDuration: `${ATTRACT_MS}ms` }} aria-hidden="true" />
+      </div>
+      <div class="attract__ctl">
+        <button type="button" class="attract__step" onClick=${() => go(i - 1)} aria-label="Previous cabinet">◂</button>
+        <div class="attract__lamps" role="group" aria-label="Cabinets on the big screen">
+          ${cards.map(
+            (c, n) => html`<button key=${c.id} type="button" class=${`attract__lamp${n === i ? ' is-on' : ''}`} style=${{ '--acc': c.accent }}
+              aria-label=${titleOf(c)} aria-pressed=${n === i} onClick=${() => go(n)} />`,
+          )}
+        </div>
+        <button type="button" class="attract__step" onClick=${() => go(i + 1)} aria-label="Next cabinet">▸</button>
+      </div>
+    </div>
+  `
+}
+
+/* ── The ticker ────────────────────────────────────────────────────────────── */
+
+const IDLE = ['INSERT COIN', 'FREE PLAY', 'PICK A CABINET', 'JEV CANNOT FOUL', 'EVERY MOVE LIVE, SCORED AND PRICED']
+
+function scoreText(v) {
+  if (!Number.isFinite(v)) return null
+  return Number.isInteger(v) ? String(v) : v.toFixed(1)
+}
+
+/** The latest plays, as the ticker spells them: a game and its lanes' scores,
+ *  or a race and its winner. Newest first. */
+function tickerLines(runs, races, titleOf) {
+  const out = []
+  for (const r of runs) {
+    const t = titleOf({ id: r.game })
+    if (r.status === 'running') {
+      out.push({ at: r.created_at, text: `NOW PLAYING: ${t}` })
+      continue
+    }
+    if (r.status !== 'finished') continue
+    const lanes = (r.lanes ?? []).filter((l) => scoreText(l.score) != null).slice(0, 3)
+    if (!lanes.length) continue
+    out.push({ at: r.created_at, text: `${t}: ${lanes.map((l) => `${l.label} ${scoreText(l.score)}`).join('  ·  ')}` })
+  }
+  for (const r of races) {
+    const w = r.lanes?.find((l) => l.index === r.winner)
+    if (r.status === 'running') out.push({ at: r.created_at, text: `NOW RACING: ${r.start?.title} → ${r.target?.title}` })
+    else if (w) out.push({ at: r.created_at, text: `WIKIRACE: ${w.label} WINS IN ${w.hops} HOP${w.hops === 1 ? '' : 'S'}` })
+  }
+  out.sort((a, b) => String(b.at).localeCompare(String(a.at)))
+  return out.slice(0, 10).map((x) => x.text)
+}
+
+function Ticker({ titleOf }) {
+  const runs = useEndpoint('/games/runs?limit=30', 30_000)
+  const races = useEndpoint('/races?limit=8', 30_000)
+  const lines = useMemo(
+    () => tickerLines(runs.data?.runs ?? [], races.data?.races ?? [], titleOf),
+    [runs.data, races.data, titleOf],
+  )
+  const text = `${(lines.length ? lines : IDLE).join('   ★   ')}   ★   `
+  const secs = Math.max(20, [...text].length * 0.22)
+  return html`
+    <section class="ticker" aria-label="Latest plays">
+      <span class="ticker__label">${lines.length ? 'LATEST PLAYS' : 'ATTRACT MODE'}</span>
+      <div class="ticker__win">
+        <div class="ticker__track" style=${{ animationDuration: `${secs}s` }}>
+          <${PixelText} text=${text} dots /><${PixelText} text=${text} dots />
+        </div>
+        <p class="sr-only">${(lines.length ? lines : IDLE).join('. ')}</p>
+      </div>
+    </section>
+  `
+}
+
+/* ── Cabinets ──────────────────────────────────────────────────────────────── */
+
+function Cabinet({ card, game, title, plays, kind }) {
+  const ready = card.id === 'wikirace' || !!game?.ready
+  const n = plays[card.id] ?? 0
+  const open = (e) => {
+    if (!plainClick(e)) return
     e.preventDefault()
-    navigate('')
+    sfx.start()
+    openCab(card.id)
+  }
+  const warm = () => {
+    sfx.hover()
+    if (card.id !== 'wikirace' && ready) loadGame(card.id).catch(() => {})
   }
   return html`
-    <header class="app-hd">
-      <${Toolbar} class="app-hd__bar">
-        <a class="app-brand" href="./" onClick=${home}><span aria-hidden="true">🏁</span> WikiRace</a>
-        <p class="app-tag">${crumb ?? 'The Arcade: one judgment model, many games'}</p>
-        <${Tabs} tabs=${TABS} value="arcade" onChange=${goTab} />
-        <${Spacer} />
-      <//>
-    </header>
-  `
-}
-
-/* ── The hub ───────────────────────────────────────────────────────────────── */
-
-function WikiRaceCard() {
-  return html`
-    <a class="g-hero" href="./" onClick=${(e) => { e.preventDefault(); navigate('') }}>
-      <svg class="g-hero__art" viewBox="0 0 420 150" aria-hidden="true">
-        <g stroke="rgba(125,139,166,0.14)"><line x1="30" y1="20" x2="410" y2="20" /><line x1="30" y1="55" x2="410" y2="55" /><line x1="30" y1="90" x2="410" y2="90" /><line x1="30" y1="125" x2="410" y2="125" /></g>
-        <path d="M30 125 H60 V112 H110 V98 H150 V84 H190 V70 H236 V56 H262" fill="none" stroke="var(--lane-1)" stroke-width="2.5" />
-        <path d="M30 125 H90 V112 H170 V98 H260 V84 H320 V70 H350" fill="none" stroke="var(--lane-2)" stroke-width="2.5" />
-        <path d="M30 125 H130 V112 H240 V98 H390" fill="none" stroke="var(--lane-3)" stroke-width="2.5" />
-        <path d="M30 125 H200 V112 H300 V98" fill="none" stroke="var(--lane-4)" stroke-width="2.5" />
-        <g transform="translate(250 38) scale(0.62)" fill="var(--lane-1)">
-          <rect x="8" y="12" width="22" height="9.5" rx="4.75" />
-          <path d="M23.6 15.6 C24.6 11 25.8 7.6 27.6 5.4 L33.2 6.6 C31.8 9.4 31 12.6 30.6 16 Z" />
-          <path d="M26.4 4.4 C28 1.6 33.6 1.2 38.4 4.4 C40.6 5.9 41.2 8.4 39.6 9.8 C38.2 11 35.8 10.6 34 9.6 L28.6 7.8 C26.8 7.2 25.8 5.8 26.4 4.4 Z" />
-          <path d="M8.6 13.6 C4.8 11.4 1.6 12.6 0.4 16.4 C2.6 15 4.6 15.4 5.8 17.4 C6.2 15.6 7.2 14.6 8.8 14.8 Z" />
-          <path d="M13.2 20.4 L10.2 24.6 L6 26.8 M11.4 19.8 L7.4 22.6 L2.6 23.6 M27.2 20.2 L30.4 24.4 L34.6 26.6 M28.6 19.6 L32.6 22.4 L37.4 23.4" stroke="var(--lane-1)" stroke-width="2" fill="none" stroke-linecap="round" />
-        </g>
-      </svg>
-      <div class="g-hero__body">
-        <div class="g-hero__title">WikiRace <${Badge} tone="ok">the original<//></div>
-        <p>Language models race across Wikipedia, link by link. Text models can name links that aren't on the page; Jev scores the real ones, so it can't foul.</p>
-        <div class="g-hero__chips"><${Chip}>Choice over up to 255 links<//><${Chip}>5 providers on one track<//></div>
-      </div>
-      <span class="btn btn--primary g-hero__go">Race</span>
-    </a>
-  `
-}
-
-function GameCard({ card, game, big }) {
-  const ready = game?.ready
-  const Thumb = THUMBS[card.id]
-  return html`
-    <a class=${`g-card${big ? ' g-card--big' : ''}${ready ? '' : ' g-card--soon'}`} href=${`?game=${card.id}`}
-      onClick=${(e) => { e.preventDefault(); toGame(card.id) }}>
-      <span class=${big ? 'g-card__art' : 'g-card__icon'}>${Thumb && html`<${Thumb} />`}</span>
-      <span class="g-card__title">${game?.title ?? card.id}</span>
-      ${big && html`<span class="g-card__pitch">${card.pitch ?? game?.tagline}</span>`}
-      <span class="g-card__foot">
-        <span class="g-card__chip">${card.chip}</span>
-        ${game && !ready && html`<${Badge} tone="warn">soon<//>`}
+    <a class=${`cab cab--${kind}${ready ? '' : ' cab--soon'}${n ? ' cab--played' : ''}`} href=${hrefOf(card.id)} style=${{ '--acc': card.accent }}
+      onClick=${open} onMouseEnter=${warm} onFocus=${warm} data-cab>
+      <span class="cab__marquee" aria-hidden="true"><${PixelText} text=${title} /></span>
+      <span class="cab__screen">
+        <${Scene} id=${card.id} u=${card.id} />
+        <span class="cab__glass" aria-hidden="true" />
+        <span class="cab__go" aria-hidden="true"><${PixelText} text="PRESS START" /></span>
+      </span>
+      <span class="cab__deck">
+        <span class="cab__name">${title}</span>
+        ${kind !== 'quick' && html`<span class="cab__pitch">${card.pitch}</span>`}
+        <span class="cab__foot">
+          <span class="cab__use">${card.chip}</span>
+          ${n
+            ? html`<span class="cab__played" title=${`You've played this ${n} time${n === 1 ? '' : 's'} in this browser`}>★ ${n}</span>`
+            : ready
+              ? html`<span class="cab__new">NEW</span>`
+              : html`<span class="cab__new cab__new--soon">SOON</span>`}
+        </span>
       </span>
     </a>
   `
 }
 
+/** Tilt the cabinet under the pointer toward it, and light the spot it's on. */
+function useTilt() {
+  const last = useRef(null)
+  const reset = () => {
+    const el = last.current
+    if (el) {
+      el.style.removeProperty('--rx')
+      el.style.removeProperty('--ry')
+    }
+    last.current = null
+  }
+  const move = (e) => {
+    if (e.pointerType === 'touch' || calm()) return
+    const el = e.target.closest?.('[data-cab]')
+    if (el !== last.current) reset()
+    if (!el) return
+    last.current = el
+    const r = el.getBoundingClientRect()
+    const x = (e.clientX - r.left) / r.width
+    const y = (e.clientY - r.top) / r.height
+    el.style.setProperty('--rx', `${((0.5 - y) * 7).toFixed(2)}deg`)
+    el.style.setProperty('--ry', `${((x - 0.5) * 9).toFixed(2)}deg`)
+    el.style.setProperty('--mx', `${(x * 100).toFixed(1)}%`)
+    el.style.setProperty('--my', `${(y * 100).toFixed(1)}%`)
+  }
+  return { onPointerMove: move, onPointerLeave: reset }
+}
+
+/** Arrow keys walk the floor: to the nearest cabinet that way. */
+function walk(e) {
+  const dirs = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }
+  const d = dirs[e.key]
+  const here = document.activeElement?.closest?.('[data-cab]')
+  if (!d || !here) return
+  const all = [...e.currentTarget.querySelectorAll('[data-cab]')]
+  const c = (el) => {
+    const r = el.getBoundingClientRect()
+    return [r.left + r.width / 2, r.top + r.height / 2]
+  }
+  const [hx, hy] = c(here)
+  let best = null
+  let bestScore = Infinity
+  for (const el of all) {
+    if (el === here) continue
+    const [x, y] = c(el)
+    const dx = x - hx
+    const dy = y - hy
+    const along = dx * d[0] + dy * d[1]
+    if (along <= 4) continue
+    const across = Math.abs(dx * d[1]) + Math.abs(dy * d[0])
+    const score = along + across * 2.5
+    if (score < bestScore) {
+      bestScore = score
+      best = el
+    }
+  }
+  if (!best) return
+  e.preventDefault()
+  best.focus()
+  best.scrollIntoView?.({ block: 'nearest', behavior: calm() ? 'auto' : 'smooth' })
+}
+
+/* ── The floor ─────────────────────────────────────────────────────────────── */
+
+function Collection({ cards, plays, titleOf }) {
+  const got = cards.filter((c) => plays[c.id]).length
+  const all = got === cards.length
+  return html`
+    <div class="collect" title="Cabinets you've played in this browser">
+      <span class="collect__k">${all ? 'EVERY CABINET PLAYED' : 'CABINETS PLAYED'}</span>
+      <span class="collect__cells" role="img" aria-label=${`${got} of ${cards.length} cabinets played`}>
+        ${cards.map((c) => html`<span key=${c.id} class=${`collect__cell${plays[c.id] ? ' is-lit' : ''}`} style=${{ '--acc': c.accent }} title=${titleOf(c)} />`)}
+      </span>
+      <b class="collect__n tnum">${got}<small>/${cards.length}</small></b>
+    </div>
+  `
+}
+
 export function Hub() {
   const games = useGames()
+  const plays = usePlays()
+  const tilt = useTilt()
   useEffect(() => {
-    document.title = 'Arcade · WikiRace'
+    document.title = 'JEV-Arcade'
   }, [])
+  const titleOf = useMemo(() => (c) => c.title ?? games.byId.get(c.id)?.title ?? cardOf(c.id)?.title ?? c.id, [games.data])
+  const ready = (c) => c.id === 'wikirace' || games.byId.get(c.id)?.ready
+  const cards = CARDS.filter(ready)
+  const feature = CARDS.filter((c) => c.section === 'feature')
   const main = CARDS.filter((c) => c.section === 'main')
   const quick = CARDS.filter((c) => c.section === 'quick')
+  const random = () => {
+    const pool = cards.filter((c) => !plays[c.id])
+    const pick = (pool.length ? pool : cards)[Math.floor(Math.random() * (pool.length || cards.length))]
+    if (!pick) return
+    sfx.coin()
+    openCab(pick.id)
+  }
+  const cab = (c, kind) => html`<${Cabinet} key=${c.id} card=${c} game=${games.byId.get(c.id)} title=${titleOf(c)} plays=${plays} kind=${kind} />`
   return html`
-    <main class="g-main scroll-y">
-      <div class="g-hub">
-        <${Label} note="unchanged: it's still the front door">THE ORIGINAL<//>
-        <${WikiRaceCard} />
-        <${Label} note="each shows a different thing Jev does well">THE ARCADE<//>
+    <main class="g-main scroll-y hub">
+      <div class="floor" aria-hidden="true"><div class="floor__grid" /></div>
+      <div class="hub__in">
+        <section class="hero">
+          <div class="hero__copy">
+            <p class="hero__eyebrow"><span class="hero__coin" aria-hidden="true" />${CARDS.length} cabinets · one judgment model · free play</p>
+            <h1 class="hero__title"><${Wordmark} class="wm--hero" /></h1>
+            <p class="hero__lede">
+              Fifteen games that pit <b>Jev</b>, a judgment model that answers with probabilities instead of words,
+              against the text models your keys reach. Every move streams live, scored and priced, and every cheat is caught.
+            </p>
+            <div class="hero__cta">
+              <button type="button" class="press" onClick=${() => {
+                sfx.start()
+                openCab('wikirace')
+              }}>
+                <${PixelText} text="PLAY WIKIRACE" />
+              </button>
+              <button type="button" class="btn btn--secondary hero__dice" onClick=${random} title="Open a cabinet you haven't played yet">
+                <span aria-hidden="true">⚄</span> Random cabinet
+              </button>
+            </div>
+            <${Collection} cards=${cards.length ? cards : CARDS} plays=${plays} titleOf=${titleOf} />
+          </div>
+          <${Attract} cards=${cards.length ? cards : CARDS} titleOf=${titleOf} />
+        </section>
+
+        <${Ticker} titleOf=${titleOf} />
         ${games.error && html`<p class="g-t-err">${games.error.message}</p>`}
-        <div class="g-grid g-grid--main">
-          ${main.map((c) => html`<${GameCard} key=${c.id} card=${c} game=${games.byId.get(c.id)} big />`)}
+
+        <div class="floorplan" ...${tilt} onKeyDown=${walk}>
+          <section class="aisle" aria-labelledby="aisle-main">
+            <h2 class="aisle__hd" id="aisle-main"><${PixelText} text="MAIN FLOOR" /><span class="aisle__note">each cabinet shows one thing Jev does well</span></h2>
+            <div class="cabs cabs--main">
+              ${feature.map((c) => cab(c, 'feature'))}
+              ${main.map((c) => cab(c, 'main'))}
+            </div>
+          </section>
+          <section class="aisle" aria-labelledby="aisle-quick">
+            <h2 class="aisle__hd" id="aisle-quick"><${PixelText} text="QUICK HITS" /><span class="aisle__note">small side games, one pattern each</span></h2>
+            <div class="cabs cabs--quick">${quick.map((c) => cab(c, 'quick'))}</div>
+          </section>
         </div>
-        <${Label} note="small side games, one pattern each">QUICK HITS<//>
-        <div class="g-grid g-grid--quick">
-          ${quick.map((c) => html`<${GameCard} key=${c.id} card=${c} game=${games.byId.get(c.id)} />`)}
-        </div>
+
+        <footer class="hub__foot">
+          <span><${PixelText} text="GAME ON" /></span>
+          <span>Arrow keys walk the floor, Enter plays. Every game runs on the server and keeps its history; the players are Jev and any text model your keys reach.</span>
+        </footer>
       </div>
     </main>
   `
@@ -126,10 +369,14 @@ function Soon({ game }) {
     <${GameFrame} game=${game}>
       <div class="g-soon">
         <p>${card?.pitch ?? game.tagline}</p>
-        <p class="g-muted">This game is still being built.</p>
+        <p class="g-muted">This cabinet is still being built.</p>
       </div>
     <//>
   `
+}
+
+function Loading({ what }) {
+  return html`<div class="g-boot"><${PixelText} text="LOADING" /><span class="g-muted">${what}</span></div>`
 }
 
 export function GameView({ route }) {
@@ -151,30 +398,30 @@ export function GameView({ route }) {
     }
   }, [game?.id, game?.ready])
   useEffect(() => {
-    if (game) document.title = `${game.title} · Arcade · WikiRace`
+    if (game) document.title = `${game.title} · JEV-Arcade`
   }, [game?.title])
 
   let body
   if (games.error) body = html`<p class="g-t-err g-pad">${games.error.message}</p>`
-  else if (!games.data) body = html`<p class="g-muted g-pad">Loading…</p>`
-  else if (!game) body = html`<p class="g-pad">There is no game called “${route.game}”. <a href="?tab=arcade">Back to the Arcade</a></p>`
+  else if (!games.data) body = html`<${Loading} what="Reading the floor…" />`
+  else if (!game) body = html`<p class="g-pad">There is no cabinet called “${route.game}”. <a href="./">Back to the floor</a></p>`
   else if (!game.ready) body = html`<${Soon} game=${game} />`
   else if (err) body = html`<p class="g-t-err g-pad">${err}</p>`
-  else if (!mod) body = html`<p class="g-muted g-pad">Loading ${game.title}…</p>`
+  else if (!mod) body = html`<${Loading} what=${game.title} />`
   else {
     const Page = mod
     body = html`<${Page} game=${game} runId=${route.run} />`
   }
-  return html`<main class="g-main scroll-y">${body}</main>`
+  return html`<main class="g-main scroll-y g-gameview" style=${{ '--acc': accentOf(route.game) }}>${body}</main>`
 }
 
-/** The Arcade: header, then the hub or a game. */
+/** The Arcade: the header, then the floor or a game. */
 export function Arcade({ route }) {
   const games = useGames()
   const crumb = route.view === 'game' ? games.byId.get(route.game)?.title : null
   return html`
     <div class="app">
-      <${Header} crumb=${crumb && `The Arcade · ${crumb}`} />
+      <${SiteHeader} active="arcade" crumb=${crumb} />
       ${route.view === 'game' ? html`<${GameView} route=${route} />` : html`<${Hub} />`}
     </div>
   `

@@ -92,3 +92,21 @@ export function standings(entries) {
 
 /** A card's name: A1 … An, B1 … Bn. */
 export const cardName = (side, i) => `${side.toUpperCase()}${i + 1}`
+
+/** A level's glyph, so a link reads without its colour: ≠ different, ≈ close, = same. */
+export const LEVEL_MARK = ['≠', '≈', '=']
+
+/** Who won: every entry sharing the best points; an entry with no points
+ *  (still hidden, or a lane that never made its claims) sits out. */
+export function podium(entries) {
+  const scored = (entries ?? []).filter((e) => Number.isFinite(e.points))
+  if (!scored.length) return []
+  const top = Math.max(...scored.map((e) => e.points))
+  return scored.filter((e) => e.points === top)
+}
+
+/** A claim that earned full marks: twins merged, or cousins sent to a curator. */
+export const perfectClaim = (v) => v === 'same' || v === 'related'
+
+/** A whole board played perfectly: the best the board allows, and not a point less. */
+export const perfectBoard = (points, gold) => bestOf(gold) > 0 && points === bestOf(gold)

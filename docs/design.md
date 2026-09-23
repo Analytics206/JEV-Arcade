@@ -1,4 +1,9 @@
-# WikiRace: design
+# JEV-Arcade: design
+
+JEV-Arcade is WikiRace and the Arcade beside it: fifteen games on one arcade floor, where
+language models play each other live. This document is mostly about WikiRace, the first game; the
+Arcade's games are in [arcade.md](arcade.md). The Python package and command are still `wikirace`,
+and the settings keep their `WIKIRACE_` names.
 
 Up to four language models race from one Wikipedia article to another using only the links on
 the page they are on. The race is watched live: hops, time, tokens and cost for every racer, with
@@ -41,8 +46,10 @@ src/wikirace/
     store.py       run history in SQLite, beside the races
     api.py         /api/games/*: the games, starting a run, its event stream
     registry.py    the games, in the hub's order; <game>.py and data/<game>.json for each
-  static/          the page: index.html, main.js (WikiRace or the Arcade), app.js (WikiRace),
-                   games/ (the Arcade: shell, kit, one module per game), styles.css, vendor/
+  static/          the page: index.html, main.js (the Arcade's floor, a game, or WikiRace),
+                   app.js (WikiRace), brand.js (pixel font, header), fx.js (effects), sfx.js
+                   (sounds), profile.js (plays in this browser), games/ (the Arcade: shell,
+                   kit, the attract-mode screens, one module per game), styles.css, vendor/
 tests/             pytest; tests/games/ for the Arcade; tests/js/ holds `node --test` tests for the
                    page's pure state
 ```
@@ -272,11 +279,18 @@ links that fit Ollama's window, when fewer than the page's).
 
 ## The page
 
-No build step. `static/index.html` loads `app.js` as an ES module, and an import map points
-`preact`, `preact/hooks` and `htm` at `static/vendor/`. Components are written with `htm`'s tagged
-templates. The pure half (`state.js`: the reducer, formatters, the race-trace geometry, the setup
-checks) has no DOM and is tested with `node --test tests/js`. Dark theme only; system fonts; nothing
-is fetched from a CDN.
+No build step. `static/index.html` loads `main.js` as an ES module, and an import map points
+`preact`, `preact/hooks` and `htm` at `static/vendor/`. The address picks the view
+(`games/route.js`): the bare address is the Arcade's floor, `?tab=race`, `?race=<id>` and
+`?tab=history` are WikiRace, `?game=<id>` is one of the Arcade's games. Components are written with
+`htm`'s tagged templates. The pure half (`state.js`: the reducer, formatters, the race-trace
+geometry, the setup checks) has no DOM and is tested with `node --test tests/js`.
+
+The look is a neon arcade at night, dark only. Fonts are the system's own; the pixel lettering
+(the wordmark, marquees, the LED ticker, clocks) is a 5×7 font drawn as SVG by `brand.js`, and the
+attract-mode screens are SVG with SMIL, paused while out of sight. Sounds are synthesised with Web
+Audio, on unless the visitor mutes them (from the first click, as browsers require). Nothing is fetched from a CDN, and nothing but the
+visitor's own sound setting and play counts is kept in the browser.
 
 ## Testing
 

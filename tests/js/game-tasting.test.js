@@ -2,14 +2,18 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  arcPath,
   axis,
   band,
   barWidth,
+  dialAngle,
   fateOf,
   fmtWeight,
   nearestLevel,
   parseGuess,
+  polar,
   scatter,
+  wineKind,
   winners,
 } from '../../src/wikirace/static/games/tasting.logic.js'
 
@@ -75,5 +79,35 @@ describe('your guess and the model', () => {
     assert.equal(axis(90, 220, 10), 110)
     assert.equal(axis(70, 220, 10), 10)
     assert.deepEqual(scatter([{ n: 1, pred: 80, critic: 100 }], 100), [{ n: 1, x: 0, y: 0 }])
+  })
+})
+
+describe('the dial and the glass', () => {
+  it('turns a score into the needle angle, 80 far left to 100 far right', () => {
+    assert.equal(dialAngle(80), -90)
+    assert.equal(dialAngle(90), 0)
+    assert.equal(dialAngle(100), 90)
+    assert.equal(dialAngle(95), 45)
+    assert.equal(dialAngle(120), 90)
+    assert.equal(dialAngle(null), -90)
+  })
+  it('places points and arcs clockwise from straight up', () => {
+    assert.deepEqual(polar(100, 100, 50, 0), [100, 50])
+    assert.deepEqual(polar(100, 100, 50, 90), [150, 100])
+    assert.deepEqual(polar(100, 100, 50, -90), [50, 100])
+    assert.equal(arcPath(100, 100, 50, -90, 90), 'M50 100 A50 50 0 0 1 150 100')
+    assert.equal(arcPath(100, 100, 50, 0, 90), 'M100 50 A50 50 0 0 1 150 100')
+  })
+  it('fills the glass by the style', () => {
+    assert.equal(wineKind('Cabernet Sauvignon'), 'red')
+    assert.equal(wineKind('Sauvignon Blanc'), 'white')
+    assert.equal(wineKind('Cabernet Franc'), 'red')
+    assert.equal(wineKind('Riesling'), 'white')
+    assert.equal(wineKind('Rhône white blend'), 'white')
+    assert.equal(wineKind('rosé'), 'rose')
+    assert.equal(wineKind('sparkling'), 'sparkling')
+    assert.equal(wineKind('sweet white'), 'sweet')
+    assert.equal(wineKind('Gewürztraminer'), 'white')
+    assert.equal(wineKind(undefined), 'red')
   })
 })

@@ -123,3 +123,69 @@ export function band(lane, total, threshold, box = { w: 360, h: 110, left: 34, r
 
 /** The next post's index, wrapping round. */
 export const nextPost = (index, count) => (count ? (index + 1) % count : 0)
+
+/**
+ * The pulls grouped by lever: one lever pull spins `reels` pulls at once
+ * (pulls n…n+reels−1 from n = lever × reels). Each group's `win` is the outcome
+ * when all its reels have landed on the same one (three in a row), else null;
+ * `landed` says every reel of it is in.
+ */
+export function leversOf(lane, total, reels = 3) {
+  const chips = chipsOf(lane, total)
+  const out = []
+  for (let at = 0; at < chips.length; at += reels) {
+    const group = chips.slice(at, at + reels)
+    const landed = group.every((c) => c.pull)
+    const o = landed ? group[0].pull.outcome : null
+    const win = landed && group.length === reels && group.every((c) => c.pull.outcome === o) ? o : null
+    out.push({ lever: at / reels, chips: group, landed, win })
+  }
+  return out
+}
+
+/** A lane that pulled every time and gave the same outcome on every pull. */
+export const held = (lane) => (lane?.pulls ?? []).length > 0 && lane.agreement === 1
+
+/**
+ * Who won a round with two lanes or more: the steadiest verdict, the highest
+ * agreement (the lane's score) among the lanes that finished every pull; a tie
+ * shares it. One lane alone has no one to beat.
+ */
+export function steadiest(lanes) {
+  if ((lanes?.length ?? 0) < 2) return []
+  const done = lanes.filter((ln) => ln.status === 'done' && Number.isFinite(ln.score))
+  if (!done.length) return []
+  const top = Math.max(...done.map((ln) => ln.score))
+  return done.filter((ln) => ln.score === top).map((ln) => ln.index)
+}
+
+/** How a lane's verdict fared, in words: "allow on all 15 pulls" or "the same
+ *  verdict 9/15, changed its mind 6×". */
+export function heldText(lane) {
+  const n = (lane?.pulls ?? []).length
+  if (!n) return 'no pulls'
+  if (held(lane)) return `${lane.consensus ?? byPull(lane)[0].outcome} on all ${n} pulls`
+  return `the same verdict ${share(lane.agreement, n)}, changed its mind ${flips(lane)}×`
+}
+
+/**
+ * The finale's words for a finished round: `winners` (lane indexes) by
+ * steadiest(); one lane alone gets VERDICT HELD or VERDICT WOBBLED instead.
+ * @returns {{winners: number[], headline?: string, sub?: string}}
+ */
+export function finale(run) {
+  const lanes = run?.lanes ?? []
+  if (lanes.length === 1) {
+    const ln = lanes[0]
+    if (ln.status !== 'done' || !(ln.pulls ?? []).length) return { winners: [] }
+    return { winners: [], headline: held(ln) ? 'VERDICT HELD' : 'VERDICT WOBBLED', sub: `${ln.label}: ${heldText(ln)}`, win: held(ln) }
+  }
+  const winners = steadiest(lanes)
+  const won = winners.map((i) => lanes.find((ln) => ln.index === i))
+  if (won.length === 1) return { winners, sub: `${won[0].label}: ${heldText(won[0])}` }
+  if (won.length > 1) {
+    const n = (won[0].pulls ?? []).length
+    return { winners, sub: `${won.map((ln) => ln.label).join(' · ')}: equally steady, the same verdict ${share(won[0].agreement, n)}` }
+  }
+  return { winners }
+}

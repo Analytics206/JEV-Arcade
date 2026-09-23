@@ -1,49 +1,39 @@
-/* The Arcade's games as the hub shows them: a card each, in the hub's order.
- * The server's listing (GET /api/games) says which are built and who may play;
- * this says how each looks. A game's page is `./<id>.js`, loaded when opened.
+/* The Arcade's cabinets as the floor shows them, in the floor's order: WikiRace
+ * first (the flagship), the main floor, then the quick hits. The server's
+ * listing (GET /api/games) says which games are built and who may play; this
+ * says how each cabinet looks: its neon (`accent`, the page's --acc), its pitch,
+ * the use case on its plate, and its attract-mode screen (attract.js). A game's
+ * page is `./<id>.js`, loaded when opened.
+ *
+ * section: feature | main | quick
  */
-import { h } from 'preact'
-import htm from 'htm'
+import { SCENES } from './attract.js'
 
-const html = htm.bind(h)
-
-/** section: main | quick · size: the rough build size shown on the card */
 export const CARDS = [
-  { id: 'chess', section: 'main', pitch: 'Chess puzzles. Jev picks from the real legal moves; text models can play illegal ones.', chip: 'typed actions · Choice' },
-  { id: 'switchboard', section: 'main', pitch: 'Calls pour in; Jev patches each to one of 150 intents, or to the operator when unsure.', chip: 'intent routing · confidence' },
-  { id: 'customs', section: 'main', pitch: 'Messages ride an X-ray belt; hazard gauges send each to pass, inspect or block.', chip: 'guardrails · Noul + Score' },
-  { id: 'wikiguessr', section: 'main', pitch: 'Where on Earth is this redacted article? Claim deeper for more points; a wrong claim costs.', chip: 'hierarchy · confidence rollup' },
-  { id: 'railyard', section: 'main', pitch: 'Jev throws the switches that send each prompt to the model that should answer it.', chip: 'model routing · fan-out' },
-  { id: 'twotruths', section: 'main', pitch: 'A text model writes three claims about an article; Jev finds the lie before you do.', chip: 'verification · Choice' },
-  { id: 'judges', section: 'main', pitch: 'Judges score every contestant; drag the weights and the ranking changes with no new request.', chip: 'composite scoring · Score' },
-  { id: 'ghostmaze', section: 'main', pitch: 'Two mazes, one clock. The world doesn’t wait for a model that’s still thinking.', chip: 'real-time · 10 decisions/s' },
-  { id: 'needle', section: 'quick', chip: 'line-by-line search' },
-  { id: 'slots', section: 'quick', chip: 'self-consistency' },
-  { id: 'drivethru', section: 'quick', chip: 'function calling' },
-  { id: 'memory', section: 'quick', chip: 'entity alignment' },
-  { id: 'bigsort', section: 'quick', chip: 'map-reduce at scale' },
-  { id: 'tasting', section: 'quick', chip: 'features for ML' },
+  { id: 'wikirace', section: 'feature', accent: '#3ef4ff', title: 'WikiRace', tagline: 'Language models race across Wikipedia, link by link', pitch: 'Up to four models race from one article to another using only the links on the page. Text models can name links that aren’t there; Jev scores the real ones, so it can’t foul.', chip: 'the original · Choice over 255 links' },
+  { id: 'chess', section: 'main', accent: '#b18cff', pitch: 'Chess puzzles, mate in one. Jev picks from the real legal moves; a text model can write an impossible one.', chip: 'typed actions' },
+  { id: 'switchboard', section: 'main', accent: '#3ef5a0', pitch: 'Calls pour in on a clock; each is patched to one of 150 lines, or to a human operator when unsure.', chip: 'intent routing' },
+  { id: 'customs', section: 'main', accent: '#ffb545', pitch: 'Messages ride an X-ray belt; hazard gauges send each to pass, inspect or block.', chip: 'LLM guardrails' },
+  { id: 'wikiguessr', section: 'main', accent: '#2ee6c5', pitch: 'Where on Earth is this redacted article? Claim deeper for more points; a wrong claim costs.', chip: 'hierarchical classification' },
+  { id: 'railyard', section: 'main', accent: '#ff8a3d', pitch: 'Every prompt is a train. Jev throws the switch that sends it to the model that should answer.', chip: 'model routing' },
+  { id: 'twotruths', section: 'main', accent: '#ff4fd8', pitch: 'A text model writes three claims about an article; Jev checks each against the source. Find the lie first.', chip: 'verification' },
+  { id: 'judges', section: 'main', accent: '#ffd84d', pitch: 'Every contestant scored once on five rubrics; drag the weights and the podium reorders, no new request.', chip: 'composite scoring' },
+  { id: 'ghostmaze', section: 'main', accent: '#5b7cff', pitch: 'Two mazes, one clock, ten ticks a second. The ghosts don’t wait for a model that’s still thinking.', chip: 'real-time decisions' },
+  { id: 'needle', section: 'quick', accent: '#b6ff3e', pitch: 'Find the line of the document that answers the question, or say it isn’t there.', chip: 'line-by-line search' },
+  { id: 'slots', section: 'quick', accent: '#ff4d7a', pitch: 'One borderline post, fifteen pulls of the lever. Does the verdict hold still?', chip: 'self-consistency' },
+  { id: 'drivethru', section: 'quick', accent: '#ff6a3d', pitch: 'Spoken orders in, typed function calls out, with a read-back when unsure.', chip: 'function calling' },
+  { id: 'memory', section: 'quick', accent: '#f0abfc', pitch: 'Two shops’ listings: the same product, a close variant, or not the same at all?', chip: 'entity alignment' },
+  { id: 'bigsort', section: 'quick', accent: '#4fa3ff', pitch: 'Hundreds of random Wikipedia articles sorted into topics while you watch.', chip: 'map-reduce at scale' },
+  { id: 'tasting', section: 'quick', accent: '#ff7eb6', pitch: 'Guess the critic’s score, closest without going over: Jev measures the note, code does the maths.', chip: 'features for ML' },
 ]
 
 export const cardOf = (id) => CARDS.find((c) => c.id === id)
 
-/** Each card's picture: a small drawing of the game (from the mockups). */
-export const THUMBS = {
-  chess: () => html`<svg viewBox="0 0 260 96" aria-hidden="true"><defs><pattern id="tChk" width="40" height="40" patternUnits="userSpaceOnUse"><rect width="40" height="40" fill="#6b7a96"/><rect width="20" height="20" fill="#b9c6db"/><rect x="20" y="20" width="20" height="20" fill="#b9c6db"/></pattern></defs><rect x="70" y="8" width="120" height="80" fill="url(#tChk)" rx="2"/><line x1="90" y1="78" x2="166" y2="22" stroke="#3ef4ff" stroke-width="6" stroke-linecap="round"/><path d="M176 14 L158 18 L170 30 Z" fill="#3ef4ff"/><line x1="110" y1="58" x2="130" y2="78" stroke="#3ef4ff" stroke-width="2" stroke-linecap="round" opacity="0.6"/></svg>`,
-  switchboard: () => html`<svg viewBox="0 0 260 96" aria-hidden="true"><defs><pattern id="tJk" width="16" height="16" patternUnits="userSpaceOnUse"><circle cx="8" cy="8" r="3.2" fill="none" stroke="#4d5871" stroke-width="1.2"/></pattern></defs><rect x="40" y="4" width="192" height="64" fill="url(#tJk)"/><circle cx="152" cy="28" r="4" fill="#3ef5a0"/><path d="M70 96 C70 60 150 70 152 30" fill="none" stroke="#3ef5a0" stroke-width="3"/><circle cx="216" cy="44" r="4" fill="#9085e9"/><path d="M120 96 C130 70 210 80 216 46" fill="none" stroke="#9085e9" stroke-width="3"/></svg>`,
-  customs: () => html`<svg viewBox="0 0 260 96" aria-hidden="true"><rect x="10" y="66" width="200" height="8" rx="4" fill="#1d2a44"/><path d="M96 70 V22 Q128 2 160 22 V70" fill="none" stroke="#3ef4ff" stroke-width="3"/><rect x="110" y="40" width="36" height="24" rx="4" fill="none" stroke="#ffb545" stroke-width="2" stroke-dasharray="4 3"/><path d="M122 40 V35 H134 V40" fill="none" stroke="#ffb545" stroke-width="2"/><rect x="28" y="44" width="34" height="22" rx="4" fill="#1d2a44" stroke="#7d8ba6" stroke-width="1.5"/><path d="M210 70 L248 30" stroke="#3ef5a0" stroke-width="3"/><path d="M210 70 L250 58" stroke="#ffb545" stroke-width="3"/><path d="M210 70 L248 90" stroke="#ff4d6a" stroke-width="3"/></svg>`,
-  wikiguessr: () => html`<svg viewBox="0 0 260 96" aria-hidden="true"><g fill="#111a2c" stroke="rgba(62,244,255,0.18)"><rect x="62" y="10" width="20" height="20" rx="2"/><rect x="86" y="10" width="20" height="20" rx="2"/><rect x="134" y="10" width="20" height="20" rx="2"/><rect x="158" y="10" width="20" height="20" rx="2"/><rect x="62" y="34" width="20" height="20" rx="2"/><rect x="134" y="34" width="20" height="20" rx="2"/><rect x="158" y="34" width="20" height="20" rx="2"/><rect x="182" y="34" width="20" height="20" rx="2"/><rect x="62" y="58" width="20" height="20" rx="2"/><rect x="134" y="58" width="20" height="20" rx="2"/><rect x="158" y="58" width="20" height="20" rx="2"/></g><rect x="86" y="34" width="20" height="20" rx="2" fill="#3ef4ff"/><rect x="110" y="34" width="20" height="20" rx="2" fill="rgba(62,244,255,0.40)"/><rect x="86" y="58" width="20" height="20" rx="2" fill="rgba(62,244,255,0.22)"/><rect x="110" y="10" width="20" height="20" rx="2" fill="rgba(62,244,255,0.22)"/><rect x="110" y="58" width="20" height="20" rx="2" fill="rgba(62,244,255,0.12)"/><path d="M96 36 C96 28 88 24 88 18 A8 8 0 0 1 104 18 C104 24 96 28 96 36 Z" fill="#ff4d6a"/></svg>`,
-  railyard: () => html`<svg viewBox="0 0 260 96" aria-hidden="true"><g fill="none" stroke="#2a3a55" stroke-width="7" stroke-dasharray="2 6"><path d="M0 50 H110 C150 50 160 16 200 16 H260"/><path d="M110 50 H260"/><path d="M110 50 C150 50 160 84 200 84 H260"/></g><g fill="none" stroke="#7d8ba6" stroke-width="2"><path d="M0 50 H110 C150 50 160 16 200 16 H260"/><path d="M110 50 H260" stroke="#3ef4ff"/><path d="M110 50 C150 50 160 84 200 84 H260"/></g><rect x="30" y="40" width="50" height="18" rx="3" fill="#c98500"/><rect x="36" y="44" width="10" height="6" fill="#04050a"/><rect x="52" y="44" width="10" height="6" fill="#04050a"/><circle cx="110" cy="50" r="6" fill="#3ef4ff"/></svg>`,
-  twotruths: () => html`<svg viewBox="0 0 260 96" aria-hidden="true"><g fill="#111a2c" stroke="rgba(62,244,255,0.18)"><rect x="18" y="12" width="66" height="72" rx="4"/><rect x="97" y="12" width="66" height="72" rx="4"/><rect x="176" y="12" width="66" height="72" rx="4"/></g><polyline points="24,52 34,50 44,54 54,49 64,53 78,51" fill="none" stroke="#3ef5a0" stroke-width="2"/><polyline points="103,52 113,54 123,49 133,53 143,50 157,52" fill="none" stroke="#3ef5a0" stroke-width="2"/><polyline points="182,52 188,50 192,24 197,76 202,30 207,70 212,40 218,58 236,52" fill="none" stroke="#ff4d6a" stroke-width="2"/></svg>`,
-  judges: () => html`<svg viewBox="0 0 260 96" aria-hidden="true"><g stroke="#4d5871" stroke-width="3"><line x1="72" y1="62" x2="72" y2="92"/><line x1="130" y1="56" x2="130" y2="92"/><line x1="188" y1="62" x2="188" y2="92"/></g><g fill="#dbe6f5"><rect x="50" y="14" width="44" height="50" rx="3"/><rect x="108" y="8" width="44" height="50" rx="3"/><rect x="166" y="14" width="44" height="50" rx="3"/></g><g fill="#04050a" font-size="30" font-weight="700" font-family="system-ui, sans-serif" text-anchor="middle"><text x="72" y="50">4</text><text x="130" y="44">3</text><text x="188" y="50">4</text></g></svg>`,
-  ghostmaze: () => html`<svg viewBox="0 0 260 96" aria-hidden="true"><g fill="none" stroke="#3987e5" stroke-width="3" stroke-linejoin="round"><rect x="20" y="6" width="220" height="84" rx="8"/><path d="M60 30 H110 M150 30 H200 M60 66 H110 M150 66 H200 M130 6 V30 M130 66 V90"/></g><path d="M60 48 L74 40 A16 16 0 1 0 74 56 Z" fill="#ffb545"/><g fill="#dbe6f5"><circle cx="100" cy="48" r="2.5"/><circle cx="116" cy="48" r="2.5"/><circle cx="132" cy="48" r="2.5"/><circle cx="148" cy="48" r="2.5"/></g><path d="M178 60 V46 A12 12 0 0 1 202 46 V60 L198 56 L194 60 L190 56 L186 60 L182 56 Z" fill="#ff4d6a"/><circle cx="186" cy="46" r="3" fill="#dbe6f5"/><circle cx="195" cy="46" r="3" fill="#dbe6f5"/></svg>`,
-  needle: () => html`<svg viewBox="0 0 40 40" aria-hidden="true"><g stroke-width="3" stroke-linecap="round"><line x1="6" y1="8" x2="30" y2="8" stroke="#2a3a55"/><line x1="6" y1="15" x2="34" y2="15" stroke="#2a3a55"/><line x1="6" y1="22" x2="28" y2="22" stroke="#3ef4ff"/><line x1="6" y1="29" x2="32" y2="29" stroke="rgba(62,244,255,0.4)"/><line x1="6" y1="36" x2="24" y2="36" stroke="#2a3a55"/></g></svg>`,
-  slots: () => html`<svg viewBox="0 0 40 40" aria-hidden="true"><rect x="3" y="8" width="34" height="24" rx="3" fill="none" stroke="#7d8ba6" stroke-width="2"/><g fill="#3ef5a0"><rect x="7" y="13" width="7" height="14" rx="1"/><rect x="16.5" y="13" width="7" height="14" rx="1"/><rect x="26" y="13" width="7" height="14" rx="1"/></g></svg>`,
-  drivethru: () => html`<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M8 4 H32 V36 L28 33 L24 36 L20 33 L16 36 L12 33 L8 36 Z" fill="none" stroke="#7d8ba6" stroke-width="2" stroke-linejoin="round"/><g stroke="#3ef4ff" stroke-width="2.5" stroke-linecap="round"><line x1="13" y1="12" x2="27" y2="12"/><line x1="13" y1="18" x2="24" y2="18"/><line x1="13" y1="24" x2="26" y2="24"/></g></svg>`,
-  memory: () => html`<svg viewBox="0 0 40 40" aria-hidden="true"><rect x="3" y="7" width="14" height="22" rx="2" fill="none" stroke="#7d8ba6" stroke-width="2"/><rect x="23" y="11" width="14" height="22" rx="2" fill="none" stroke="#7d8ba6" stroke-width="2"/><path d="M17 18 C20 14 20 26 23 22" fill="none" stroke="#3ef5a0" stroke-width="2.5"/></svg>`,
-  bigsort: () => html`<svg viewBox="0 0 40 40" aria-hidden="true"><rect x="4" y="4" width="8" height="8" fill="#3987e5"/><rect x="16" y="4" width="8" height="8" fill="#c98500"/><rect x="28" y="4" width="8" height="8" fill="#9085e9"/><rect x="4" y="16" width="8" height="8" fill="#199e70"/><rect x="16" y="16" width="8" height="8" fill="#3987e5"/><rect x="28" y="16" width="8" height="8" fill="#c98500"/><rect x="4" y="28" width="8" height="8" fill="#9085e9"/><rect x="16" y="28" width="8" height="8" fill="#2a3a55"/><rect x="28" y="28" width="8" height="8" fill="#2a3a55"/></svg>`,
-  tasting: () => html`<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M13 4 H27 L26 16 C26 21 23 24 20 24 C17 24 14 21 14 16 Z" fill="none" stroke="#7d8ba6" stroke-width="2" stroke-linejoin="round"/><path d="M14.6 13 H25.4 L25 16 C25 19 23 21.5 20 21.5 C17 21.5 15 19 15 16 Z" fill="#ff4d6a" opacity="0.8"/><line x1="20" y1="24" x2="20" y2="33" stroke="#7d8ba6" stroke-width="2"/><line x1="14" y1="34" x2="26" y2="34" stroke="#7d8ba6" stroke-width="2" stroke-linecap="round"/></svg>`,
-}
+/** A cabinet's neon, for its page (--acc). */
+export const accentOf = (id) => cardOf(id)?.accent ?? '#3ef4ff'
+
+/** Each cabinet's attract-mode screen: `SCENES[id](uniqueSuffix)`. */
+export { SCENES }
 
 /** A game's page module. */
 export const loadGame = (id) => import(`./${id}.js`)

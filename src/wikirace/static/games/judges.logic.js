@@ -105,6 +105,51 @@ export function cardOf(cell) {
 /** Which judge levels the card shows as dots: the mean rounded, or null. */
 export const dotOf = (cell) => (cell ? Math.max(0, Math.min(TOP, Math.round(cell.score))) : null)
 
+/**
+ * How far each contestant moved between two rankings: `{k: places}`, up
+ * positive, for those that moved only. `before` is a Map (or object) of
+ * contestant → rank from the last ranking; empty when there was none.
+ */
+export function rankMoves(before, rows) {
+  const out = {}
+  if (!before) return out
+  const was = before instanceof Map ? before : new Map(Object.entries(before).map(([k, v]) => [Number(k), v]))
+  for (const r of rows ?? []) {
+    const p = was.get(r.k)
+    if (p != null && p !== r.rank) out[r.k] = p - r.rank
+  }
+  return out
+}
+
+/** A ranking as a Map of contestant → rank, to compare the next one with. */
+export const ranksOf = (rows) => new Map((rows ?? []).map((r) => [r.k, r.rank]))
+
+/**
+ * The podium: the top three scored rows, laid out as a podium stands them,
+ * second, first, third. → [{row, place}] (fewer while fewer are scored).
+ */
+export function podiumOf(rows) {
+  const top = (rows ?? []).filter((r) => r.done && r.composite != null).slice(0, 3)
+  const at = [1, 0, 2].filter((i) => top[i])
+  return at.map((i) => ({ row: top[i], place: i + 1 }))
+}
+
+/** How brightly a judge's spotlight burns for its weight (0 … 5): dim when
+ *  it does not count, full at the top of the fader. */
+export const beamOf = (weight, max = 5) => Math.round((0.12 + 0.88 * Math.max(0, Math.min(1, (Number(weight) || 0) / max))) * 100) / 100
+
+/**
+ * What the finale says when a panel has scored everyone: the scores are in,
+ * and who tops the board as the visitor has weighted it (the game's own
+ * ranking, not a lane's win). null before anyone is ranked.
+ */
+export function finaleOf(topic, rows, preset) {
+  const first = (rows ?? []).find((r) => r.rank === 1 && r.done && r.composite != null)
+  if (!first) return null
+  const mix = preset ? `“${preset.label}”` : 'your weights'
+  return { headline: 'SCORES ARE IN!', sub: `${first.c.name} tops ${mix} · drag a weight to re-rank` }
+}
+
 /** The first sentence or two of an introduction, for the spotlight. */
 export function lede(text, max = 240) {
   const t = String(text ?? '').split('\n')[0]

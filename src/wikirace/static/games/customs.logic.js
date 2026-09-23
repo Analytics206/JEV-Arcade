@@ -184,3 +184,126 @@ export function loudest(answer) {
 export function marksFor(run, bagIndex) {
   return (run?.lanes ?? []).map((ln) => (ln.answers ?? []).find((a) => a.bag === bagIndex) ?? null)
 }
+
+/* ── Who won, and what each bag earned ─────────────────────────────────────── */
+
+/** The game's winners: the highest score among the lanes that screened their
+ *  whole belt (a lane that errored or was stopped is out). Ties share it. */
+export function winnersOf(lanes) {
+  const done = (lanes ?? []).filter((l) => l.status === 'done' && Number.isFinite(l.score))
+  if (!done.length) return []
+  const top = Math.max(...done.map((l) => l.score))
+  return done.filter((l) => l.score === top).map((l) => l.index)
+}
+
+/** A miss (should block, passed) or a false alarm (should pass, blocked), by
+ *  the game's own definitions, once a bag's label is known; otherwise null. */
+export function alarmOf(route, label) {
+  const c = routeOf(route).chute
+  if (label === 'block' && c === 'pass') return 'miss'
+  if (label === 'pass' && c === 'block') return 'false_alarm'
+  return null
+}
+
+/** The counts a lane's alarms are read from, live. */
+export const countsOf = (lane) => ({
+  screened: lane?.screened ?? 0,
+  missed: lane?.missed ?? 0,
+  false_alarms: lane?.false_alarms ?? 0,
+})
+
+/**
+ * Live, before the labels are out: whether the bag a lane has just tallied was
+ * a miss or a false alarm, read off its counters moving by exactly one bag
+ * since `prev` (countsOf, earlier). The server pushes a bag's answer before it
+ * tallies it, so the tallied bag is the lane's latest answer. Null when it
+ * cannot tell, so the page never calls out what it doesn't know.
+ * @returns {{bag: number, kind: 'miss'|'false_alarm'}|null}
+ */
+export function alarmFromCounts(prev, lane) {
+  const answers = lane?.answers ?? []
+  const a = answers[answers.length - 1]
+  const now = countsOf(lane)
+  if (!prev || !a || now.screened - prev.screened !== 1) return null
+  const c = routeOf(a.route).chute
+  if (now.missed > prev.missed && c === 'pass') return { bag: a.bag, kind: 'miss' }
+  if (now.false_alarms > prev.false_alarms && c === 'block') return { bag: a.bag, kind: 'false_alarm' }
+  return null
+}
+
+const signed = (n) => (n > 0 ? `+${n}` : n < 0 ? `−${-n}` : '0')
+
+/** What a routed bag earned, as the callout over it reads: a glyph, a word
+ *  and its points (from the run's own table). */
+export function calloutOf(answer, alarm, points) {
+  const p = points?.[answer?.verdict]
+  const pts = Number.isFinite(p) ? signed(p) : ''
+  switch (answer?.verdict) {
+    case 'right':
+      return { tone: 'ok', mark: '✓', word: 'RIGHT', pts }
+    case 'human':
+      return { tone: 'warn', mark: '◎', word: 'TO A HUMAN', pts }
+    case 'wrong':
+      return { tone: 'err', mark: '✕', word: alarm === 'miss' ? 'MISSED' : alarm === 'false_alarm' ? 'FALSE ALARM' : 'WRONG CHUTE', pts }
+    case 'foul':
+      return { tone: 'err', mark: '!', word: 'NO VERDICT', pts }
+    default:
+      return null
+  }
+}
+
+/** How many bags in a row a lane has routed right, up to its latest. */
+export function streakOf(lane) {
+  const answers = lane?.answers ?? []
+  let n = 0
+  for (let i = answers.length - 1; i >= 0 && answers[i].verdict === 'right'; i--) n++
+  return n
+}
+
+/** The bags a lane routed just before its latest, oldest first: the page
+ *  drops each into its chute. */
+export function dropsOf(lane, k = 2) {
+  const answers = lane?.answers ?? []
+  return answers.slice(Math.max(0, answers.length - 1 - k), Math.max(0, answers.length - 1))
+}
+
+/* ── Drawing helpers ───────────────────────────────────────────────────────── */
+
+/** A suitcase's colour, the same for a bag on every belt. */
+const SKINS = ['#3b3272', '#4b2e63', '#2c4468', '#3d3f58', '#55304a', '#2f4a57']
+export const skinOf = (i) => SKINS[((i % SKINS.length) + SKINS.length) % SKINS.length]
+
+/* What the X-ray sees inside a bag: three things, the same every time for the
+ * same bag. Paths in the bag's own box (BAG.w × BAG.h). */
+const THINGS = [
+  (x, y) => `M${x + 3} ${y} h4 v4 l2 3 v17 a2 2 0 0 1 -2 2 h-4 a2 2 0 0 1 -2 -2 v-17 l2 -3 z`, // a bottle
+  (x, y) => `M${x} ${y + 2} a2 2 0 0 1 2 -2 h10 a2 2 0 0 1 2 2 v22 a2 2 0 0 1 -2 2 h-10 a2 2 0 0 1 -2 -2 z`, // a phone
+  (x, y) => `M${x} ${y + 6} h24 v16 h-24 z M${x + 12} ${y + 6} v16`, // a book, open
+  (x, y) => `M${x + 6} ${y + 6} m-5 0 a5 5 0 1 0 10 0 a5 5 0 1 0 -10 0 M${x + 11} ${y + 6} h12 v4 M${x + 18} ${y + 6} v3`, // a key
+  (x, y) => `M${x} ${y + 20} q4 -14 12 -12 l6 -8 h6 v14 q0 6 -6 6 z`, // a shoe
+  (x, y) => `M${x} ${y + 4} h22 v14 h-22 z M${x - 3} ${y + 18} h28 v3 h-28 z`, // a laptop
+]
+export function xrayOf(i) {
+  let s = (Math.imul((i | 0) + 1, 2654435761) >>> 0) || 1
+  const rnd = () => {
+    s ^= s << 13
+    s ^= s >>> 17
+    s ^= s << 5
+    return (s >>> 0) / 4294967296
+  }
+  const kinds = []
+  while (kinds.length < 3) {
+    const k = Math.floor(rnd() * THINGS.length)
+    if (!kinds.includes(k)) kinds.push(k)
+  }
+  return kinds.map((k, j) => THINGS[k](10 + j * 31, 8 + Math.floor(rnd() * 12)))
+}
+
+/** A gauge's needle angle for p (0 points left, 1 right, 0.5 straight up). */
+export const dialDeg = (p) => -90 + 180 * Math.max(0, Math.min(1, Number(p) || 0))
+
+/** A point on a gauge's arc (centre cx, cy; radius r) at value t. */
+export function dialAt(cx, cy, r, t) {
+  const a = Math.PI * (1 - Math.max(0, Math.min(1, t)))
+  return [cx + r * Math.cos(a), cy - r * Math.sin(a)]
+}

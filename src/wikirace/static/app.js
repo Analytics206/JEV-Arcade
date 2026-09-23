@@ -17,12 +17,30 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import htm from 'htm'
 import { ApiError, api, useEndpoint, useRaceStream } from './api.js'
 import { navigate } from './games/route.js'
+import { SCENES } from './games/attract.js'
 import { RaceTrace } from './trace.js'
-import { Badge, Button, EmptyState, Panel, Spacer, StatDot, Tabs, Toolbar } from './ui.js'
+import { PixelText, SiteHeader } from './brand.js'
+import { Counter, Finale, LANE_COLORS, burstFrom, useJustEnded } from './fx.js'
+import { recordPlay } from './profile.js'
+import { sfx } from './sfx.js'
+import {
+  Badge,
+  Button,
+  CheckeredFlag,
+  Crown,
+  Die,
+  EmptyState,
+  Panel,
+  Pennant,
+  RankBadge,
+  StatDot,
+  WarnSign,
+} from './ui.js'
 import {
   DEFAULT_RULES,
   MAX_LANES,
   POOLS,
+  RULE_RANGE,
   STATUS_LABEL,
   VERDICT,
   ago,
@@ -52,6 +70,7 @@ import {
   providerState,
   raceBody,
   raceElapsed,
+  raceFinale,
   rematchLanes,
   reconcileLanes,
   sanitizeRules,
@@ -70,15 +89,8 @@ import {
 
 const html = htm.bind(h)
 
-const TABS = [
-  ['race', 'Race'],
-  ['history', 'History'],
-  ['arcade', 'Arcade'],
-]
-
 const TIME_LIMITS = [120, 300, 600, 1200, 1800, 3600]
 const LINK_CAPS = [0, 1000, 500, 250, 100]
-const MEDALS = ['🥇', '🥈', '🥉']
 const POOL_HINT = {
   classic: 'Well-known subjects — far apart, still winnable.',
   trending: 'Yesterday’s most-read articles on Wikipedia.',
@@ -89,6 +101,7 @@ const POOL_HINT = {
 const CUSTOM = '*custom:'
 
 const errText = (e) => (e instanceof Error ? e.message : String(e))
+const calm = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
 const timeLabel = (s) => (s % 60 === 0 ? `${s / 60} min` : fmtDuration(s * 1000))
 
 /* ── Hooks ─────────────────────────────────────────────────────────────────── */
@@ -129,6 +142,12 @@ function LaneNum({ i, out = false }) {
   return html`<b class=${`wr-num wr-f${i + 1}${out ? ' wr-num--out' : ''}`}>${i + 1}</b>`
 }
 
+/** A racer's slot, as the arcade's player select lights it: P1…P4 in the
+ *  lane's colour. Decorative — the words around it name the racer. */
+function Slot({ i, big = false }) {
+  return html`<span class=${`wr-slot wr-f${i + 1}${big ? ' wr-slot--lg' : ''}`} aria-hidden="true">P${i + 1}</span>`
+}
+
 function ArticleLink({ title, children }) {
   return html`
     <a href=${wikiUrl(title)} target="_blank" rel="noopener noreferrer" title=${`${title} on Wikipedia`}>
@@ -137,14 +156,31 @@ function ArticleLink({ title, children }) {
   `
 }
 
+/** A die's face for a subject: the same article always rolls the same number. */
+const dieFace = (text) => (text ? 1 + ([...text].reduce((n, c) => n + c.codePointAt(0), 0) % 6) : 5)
+
+/** A clock on a lit LED matrix, as the arcade's scoreboards show time; the
+ *  digits are a picture, so the time is also there as text. */
+function LedClock({ ms, title }) {
+  const t = fmtDuration(ms)
+  return html`
+    <span class="wr-clock" title=${title}>
+      <span class="sr-only">${t}</span>
+      <span class="wr-clock__led"><${PixelText} text=${t} dots /></span>
+    </span>
+  `
+}
+
 /* ── Setup ─────────────────────────────────────────────────────────────────── */
 
 function SubjectField({ label, value, state, onChange, onResolve, onPick, onRandom }) {
   const id = `wr-${label.toLowerCase()}`
   const what = `Draw a random ${label.toLowerCase()}`
+  const end = label === 'Target' ? 'target' : 'start'
+  const lit = state.status === 'ok' ? ' is-set' : state.status === 'error' ? ' is-bad' : ''
   return html`
-    <div class="wr-subject">
-      <label class="wr-lbl" for=${id}>${label}</label>
+    <div class=${`wr-subject wr-subject--${end}${lit}`}>
+      <label class="wr-lbl" for=${id}>${end === 'target' ? html`<${CheckeredFlag} />` : html`<${Pennant} />`}${label}</label>
       <div class="wr-subject__row">
         <input
           id=${id}
@@ -158,10 +194,18 @@ function SubjectField({ label, value, state, onChange, onResolve, onPick, onRand
           autocomplete="off"
           enterkeyhint="search"
         />
-        <button type="button" class="wr-die" onClick=${onRandom} title=${what} aria-label=${what}>🎲</button>
+        <button
+          type="button"
+          class=${`wr-die${state.status === 'pending' ? ' is-rolling' : ''}`}
+          onClick=${onRandom}
+          title=${what}
+          aria-label=${what}
+        >
+          <${Die} face=${dieFace(value)} />
+        </button>
       </div>
       <div class="wr-subject__state" aria-live="polite">
-        ${state.status === 'pending' && html`<span class="wr-muted">looking it up…</span>`}
+        ${state.status === 'pending' && html`<span class="wr-muted wr-looking">looking it up…</span>`}
         ${state.status === 'error' && html`<span class="wr-bad">${state.message}</span>`}
         ${state.status === 'idle' && value.trim() && html`<span class="wr-muted">press Enter to look it up</span>`}
         ${state.status === 'ok' && html`<${Resolved} res=${state.res} onPick=${onPick} />`}
@@ -216,13 +260,17 @@ function LaneRow({ i, lane, info, onChange, onRemove }) {
   const levels = info?.thinking_levels ?? []
   const choices = thinkingOptions(levels, m?.thinking)
   if (lane.thinking && !levels.includes(lane.thinking)) choices.push([lane.thinking, `thinking: ${lane.thinking}`])
+  // The slot lights once a racer that can race is in it.
+  const lit = m && m.model_id ? (m.available ? ' is-in' : ' is-off') : ''
 
-  const pick = (v) =>
+  const pick = (v) => {
+    sfx.select()
     onChange(v.startsWith(CUSTOM) ? { key: customKey(v.slice(CUSTOM.length), ''), thinking: '', custom: true } : { key: v, thinking: '' })
+  }
 
   return html`
-    <div class="wr-lanerow">
-      <${LaneNum} i=${i} />
+    <div class=${`wr-lanerow wr-b${i + 1}${lit}${judge ? ' is-judge' : ''}`}>
+      <${Slot} i=${i} />
       <div class="wr-lanerow__pick">
         <select
           class="wr-sel"
@@ -260,7 +308,7 @@ function LaneRow({ i, lane, info, onChange, onRemove }) {
           />
         `}
         ${judge
-          ? html`<span class="wr-lanerow__note">scores every link on the page · can't foul</span>`
+          ? html`<span class="wr-lanerow__note"><span class="wr-lanerow__shield" aria-hidden="true">✓</span>scores every link on the page · can't foul</span>`
           : html`
               <select
                 class="wr-sel wr-sel--thinking"
@@ -316,6 +364,7 @@ function SetupPanel(p) {
   const problem = setupProblem({ start: p.start, target: p.target, lanes: p.lanes, rules: p.rules }, info)
   const hasJudge = models.some((m) => m.kind === 'judgment')
   const canAdd = models.length > 0 || (info?.providers ?? []).some(takesCustom)
+  const rollingPair = p.startState.status === 'pending' && p.targetState.status === 'pending'
 
   // A number is clamped as it is typed, and written back when the clamp changed
   // it — but an emptied box is left empty until it loses focus, so a number can
@@ -332,101 +381,202 @@ function SetupPanel(p) {
   }
   const setRule = (k, v) => p.setRules({ ...p.rules, [k]: clampRule(k, v) })
 
+  /** A number rule as a control-panel dial: − the value +, the value typed or
+   *  nudged, clamped the same way either way. */
+  const numberRule = (k, id, label, min, max) => {
+    const v = p.rules[k]
+    const [lo, hi] = RULE_RANGE[k]
+    const nudge = (d) => {
+      sfx.hover()
+      setRule(k, v + d)
+    }
+    return html`
+      <div class="wr-rule">
+        <label class="wr-rule__k" for=${id}>${label}</label>
+        <div class="wr-dial">
+          <button type="button" class="wr-nudge" onClick=${() => nudge(-1)} disabled=${v <= lo} aria-label=${`${label}: one fewer`}>−</button>
+          <input id=${id} class="wr-in wr-dial__n tnum" type="number" min=${min} max=${max} value=${v} onInput=${onRule(k)} onBlur=${settle(k)} />
+          <button type="button" class="wr-nudge" onClick=${() => nudge(1)} disabled=${v >= hi} aria-label=${`${label}: one more`}>+</button>
+        </div>
+      </div>
+    `
+  }
+
   return html`
     <div class="wr-setup">
-      <h3 class="wr-h">Course</h3>
-      <${SubjectField}
-        label="Start"
-        value=${p.start}
-        state=${p.startState}
-        onChange=${(v) => p.setText('start', v)}
-        onResolve=${() => p.resolve('start')}
-        onPick=${(t, d, c) => p.pick('start', t, d, null, c)}
-        onRandom=${() => p.randomOne('start')}
-      />
-      <div class="wr-swaprow">
-        <button type="button" class="wr-swap" onClick=${p.swap} title="Swap start and target">⇅ swap</button>
-      </div>
-      <${SubjectField}
-        label="Target"
-        value=${p.target}
-        state=${p.targetState}
-        onChange=${(v) => p.setText('target', v)}
-        onResolve=${() => p.resolve('target')}
-        onPick=${(t, d, c) => p.pick('target', t, d, null, c)}
-        onRandom=${() => p.randomOne('target')}
-      />
-      <div class="wr-dice">
-        <select class="wr-sel" value=${p.pool} onChange=${(e) => p.setPool(e.currentTarget.value)} aria-label="Random pool">
-          ${POOLS.map(([id, label]) => html`<option key=${id} value=${id}>${label}</option>`)}
-        </select>
-        <${Button} size="sm" onClick=${p.randomPair}>🎲 Random pair<//>
-      </div>
-      <p class="wr-hint">${POOL_HINT[p.pool]}</p>
+      <header class="wr-sign">
+        <h2 class="wr-sign__title"><span class="sr-only">WikiRace</span><${PixelText} text="WIKIRACE" /></h2>
+        <p class="wr-sign__tag">Models race across Wikipedia, link by link</p>
+      </header>
 
-      <h3 class="wr-h">Racers <span class="wr-count">${p.lanes.length}/${MAX_LANES}</span></h3>
-      ${info && html`<${ProviderStrip} info=${info} onReload=${p.reloadModels} />`}
-      ${p.modelsError && html`<p class="wr-bad">Could not load the models: ${p.modelsError.message}</p>`}
-      ${p.lanes.map(
-        (ln, i) => html`
-          <${LaneRow}
-            key=${i}
-            i=${i}
-            lane=${ln}
-            info=${info}
-            onChange=${(l) => p.setLanes(p.lanes.map((x, j) => (j === i ? l : x)))}
-            onRemove=${() => p.setLanes(p.lanes.filter((_, j) => j !== i))}
+      <section class="wr-sec">
+        <h3 class="wr-h">Course</h3>
+        <div class="wr-course">
+          <${SubjectField}
+            label="Start"
+            value=${p.start}
+            state=${p.startState}
+            onChange=${(v) => p.setText('start', v)}
+            onResolve=${() => p.resolve('start')}
+            onPick=${(t, d, c) => p.pick('start', t, d, null, c)}
+            onRandom=${() => {
+              sfx.select()
+              p.randomOne('start')
+            }}
           />
-        `,
-      )}
-      <${Button}
-        size="sm"
-        variant="ghost"
-        disabled=${p.lanes.length >= MAX_LANES || !canAdd}
-        onClick=${() => p.setLanes([...p.lanes, { key: '', thinking: '' }])}
-      >
-        + Add racer
-      <//>
-      <p class="wr-hint">
-        Text models answer with a link title, so they can foul. ${hasJudge ? 'Jev' : 'A judgment model'} scores every
-        link on the page against the target instead — it cannot name one that is not there, and it never doubles back.
-      </p>
+          <div class="wr-swaprow">
+            <button
+              type="button"
+              class="wr-swap"
+              onClick=${() => {
+                sfx.select()
+                p.swap()
+              }}
+              title="Swap start and target"
+            >
+              <span class="wr-swap__ico" aria-hidden="true">⇅</span> swap
+            </button>
+          </div>
+          <${SubjectField}
+            label="Target"
+            value=${p.target}
+            state=${p.targetState}
+            onChange=${(v) => p.setText('target', v)}
+            onResolve=${() => p.resolve('target')}
+            onPick=${(t, d, c) => p.pick('target', t, d, null, c)}
+            onRandom=${() => {
+              sfx.select()
+              p.randomOne('target')
+            }}
+          />
+        </div>
+        <div class="wr-dice">
+          <select class="wr-sel" value=${p.pool} onChange=${(e) => p.setPool(e.currentTarget.value)} aria-label="Random pool">
+            ${POOLS.map(([id, label]) => html`<option key=${id} value=${id}>${label}</option>`)}
+          </select>
+          <button
+            type="button"
+            class=${`wr-roll${rollingPair ? ' is-rolling' : ''}`}
+            onClick=${() => {
+              sfx.coin()
+              p.randomPair()
+            }}
+          >
+            <span class="wr-roll__dice" aria-hidden="true"><${Die} face=${dieFace(p.start)} /><${Die} face=${dieFace(p.target)} /></span>
+            Random pair
+          </button>
+        </div>
+        <p class="wr-hint">${POOL_HINT[p.pool]}</p>
+      </section>
 
-      <h3 class="wr-h">Rules</h3>
-      <div class="wr-rulesgrid">
-        <label class="wr-lbl">
-          Hop limit
-          <input class="wr-in" type="number" min="1" max="40" value=${p.rules.max_hops} onInput=${onRule('max_hops')} onBlur=${settle('max_hops')} />
-        </label>
-        <label class="wr-lbl">
-          Fouls to DQ
-          <input class="wr-in" type="number" min="1" max="10" value=${p.rules.strikes} onInput=${onRule('strikes')} onBlur=${settle('strikes')} />
-        </label>
-        <label class="wr-lbl">
-          Time limit
-          <select class="wr-sel" value=${p.rules.time_limit_s} onChange=${(e) => setRule('time_limit_s', e.currentTarget.value)}>
-            ${withValue(TIME_LIMITS, p.rules.time_limit_s).map((s) => html`<option key=${s} value=${s}>${timeLabel(s)}</option>`)}
-          </select>
-        </label>
-        <label class="wr-lbl">
-          Links shown
-          <select class="wr-sel" value=${p.rules.max_links} onChange=${(e) => setRule('max_links', e.currentTarget.value)}>
-            ${withValue(LINK_CAPS, p.rules.max_links).map(
-              (n) => html`<option key=${n} value=${n}>${n ? `first ${fmtInt(n)}` : 'all'}</option>`,
-            )}
-          </select>
-        </label>
+      <section class="wr-sec">
+        <h3 class="wr-h">Racers <span class="wr-count">${p.lanes.length}/${MAX_LANES}</span></h3>
+        ${info && html`<${ProviderStrip} info=${info} onReload=${p.reloadModels} />`}
+        ${p.modelsError && html`<p class="wr-bad">Could not load the models: ${p.modelsError.message}</p>`}
+        <div class="wr-players">
+          ${p.lanes.map(
+            (ln, i) => html`
+              <${LaneRow}
+                key=${i}
+                i=${i}
+                lane=${ln}
+                info=${info}
+                onChange=${(l) => p.setLanes(p.lanes.map((x, j) => (j === i ? l : x)))}
+                onRemove=${() => {
+                  sfx.hover()
+                  p.setLanes(p.lanes.filter((_, j) => j !== i))
+                }}
+              />
+            `,
+          )}
+          <button
+            type="button"
+            class="wr-join"
+            disabled=${p.lanes.length >= MAX_LANES || !canAdd}
+            onClick=${() => {
+              sfx.coin()
+              p.setLanes([...p.lanes, { key: '', thinking: '' }])
+            }}
+          >
+            <span class="wr-join__plus" aria-hidden="true">+</span> Add racer
+            ${p.lanes.length < MAX_LANES && html`<span class="wr-join__sub" aria-hidden="true">P${p.lanes.length + 1} · press to join</span>`}
+          </button>
+        </div>
+        <p class="wr-hint">
+          Text models answer with a link title, so they can foul. ${hasJudge ? 'Jev' : 'A judgment model'} scores every
+          link on the page against the target instead — it cannot name one that is not there, and it never doubles back.
+        </p>
+      </section>
+
+      <section class="wr-sec">
+        <h3 class="wr-h">Rules</h3>
+        <div class="wr-rulesgrid">
+          ${numberRule('max_hops', 'wr-rule-hops', 'Hop limit', 1, 40)}
+          ${numberRule('strikes', 'wr-rule-strikes', 'Fouls to DQ', 1, 10)}
+          <div class="wr-rule">
+            <label class="wr-rule__k" for="wr-rule-time">Time limit</label>
+            <select id="wr-rule-time" class="wr-sel" value=${p.rules.time_limit_s} onChange=${(e) => setRule('time_limit_s', e.currentTarget.value)}>
+              ${withValue(TIME_LIMITS, p.rules.time_limit_s).map((s) => html`<option key=${s} value=${s}>${timeLabel(s)}</option>`)}
+            </select>
+          </div>
+          <div class="wr-rule">
+            <label class="wr-rule__k" for="wr-rule-links">Links shown</label>
+            <select id="wr-rule-links" class="wr-sel" value=${p.rules.max_links} onChange=${(e) => setRule('max_links', e.currentTarget.value)}>
+              ${withValue(LINK_CAPS, p.rules.max_links).map(
+                (n) => html`<option key=${n} value=${n}>${n ? `first ${fmtInt(n)}` : 'all'}</option>`,
+              )}
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <div class="wr-start">
+        <button type="button" class="wr-go" disabled=${!!problem || p.starting} onClick=${p.onStart}>
+          <span class="sr-only">${p.starting ? 'Starting…' : 'Start race'}</span>
+          <${CheckeredFlag} class="wr-go__flag" /><${PixelText} text=${p.starting ? 'STARTING' : 'START RACE'} /><${CheckeredFlag} class="wr-go__flag" />
+        </button>
+        ${problem
+          ? html`<p class="wr-hint wr-start__why">${problem}</p>`
+          : !p.starting && html`<p class="wr-start__ready" aria-hidden="true"><${PixelText} text="READY · PRESS START" /></p>`}
+        ${p.startError && html`<p class="wr-bad">${p.startError}</p>`}
       </div>
-
-      <${Button} variant="primary" class="wr-go" disabled=${!!problem || p.starting} onClick=${p.onStart}>
-        ${p.starting ? 'Starting…' : '🏁 Start race'}
-      <//>
-      ${problem && html`<p class="wr-hint">${problem}</p>`}
-      ${p.startError && html`<p class="wr-bad">${p.startError}</p>`}
       <p class="wr-hint">
         Every turn sends each text racer the whole list of links on its article — about 6k input tokens for a 1,000-link
         page. Cost shows as billed where the provider reports it, as ≈ list price where it does not, and as $0 for a
         model on your own Ollama.
+      </p>
+    </div>
+  `
+}
+
+/* ── The empty track: attract mode ─────────────────────────────────────────── */
+
+/** No race on the track: the cabinet plays to itself, as it does on the floor
+ *  (the same loop, games/attract.js) — held still for a visitor who asked for
+ *  less motion. */
+function TrackAttract() {
+  const ref = useRef(null)
+  useEffect(() => {
+    const svg = ref.current?.querySelector('svg')
+    if (!svg?.pauseAnimations || !calm()) return
+    svg.setCurrentTime?.(3.2)
+    svg.pauseAnimations()
+  }, [])
+  const scene = SCENES.wikirace
+  return html`
+    <div class="wr-attract">
+      <div class="wr-crt">
+        <span class="wr-crt__screen" ref=${ref}>
+          ${scene ? scene('-track') : null}
+          <span class="wr-crt__glass" aria-hidden="true" />
+        </span>
+      </div>
+      <p class="wr-attract__press" aria-hidden="true"><${PixelText} text="INSERT COIN" /></p>
+      <h2 class="wr-attract__title">No race on the track</h2>
+      <p class="wr-attract__desc">
+        Pick a start and a target — or roll the dice — put up to four models on the line, and press Start. Each
+        racer may only follow links on the article it is on; naming a link that is not there, or jumping
+        straight to the target, is a foul.
       </p>
     </div>
   `
@@ -442,7 +592,7 @@ function StartRow({ start }) {
       <span class="wr-step__n tnum">0</span>
       <div class="wr-step__body">
         <div class="wr-step__line">
-          <span class="wr-step__glyph" aria-hidden="true">⚐</span>
+          <span class="wr-step__glyph" aria-hidden="true"><${Pennant} /></span>
           <${ArticleLink} title=${start.title} />
           <span class="wr-step__tag">start</span>
         </div>
@@ -481,7 +631,7 @@ function StepRow({ step: s }) {
   const meta = [fmtDuration(s.latency_ms), `${fmtTokens(s.tokens_in + s.tokens_out)} tok`, ...stepNotes(s)]
   if (s.verdict === 'ok' && s.to) {
     return html`
-      <li class="wr-step">
+      <li class=${`wr-step wr-step--move${s.revisit ? ' is-back' : ''}`}>
         <span class="wr-step__n tnum">${s.turn}</span>
         <div class="wr-step__body">
           <div class="wr-step__line">
@@ -516,74 +666,135 @@ function StepRow({ step: s }) {
   `
 }
 
+/** Hops as a row of lamps, one per hop the rules allow: lit in the lane's
+ *  colour as the racer moves. Decoration beside the number. */
+function HopMeter({ hops, max }) {
+  return html`
+    <span class="wr-meter" aria-hidden="true">
+      ${Array.from({ length: max }, (_, k) => html`<i key=${k} class=${k < hops ? 'is-on' : undefined} />`)}
+    </span>
+  `
+}
+
+/** Fouls as warning lamps, one per foul the rules allow before a DQ. */
+function StrikeLamps({ strikes, max }) {
+  return html`
+    <span class="wr-lamps" aria-hidden="true">
+      ${Array.from({ length: max }, (_, k) => html`<i key=${k} class=${k < strikes ? 'is-on' : undefined} />`)}
+    </span>
+  `
+}
+
+const OUT = new Set(['dnf', 'dq', 'error', 'stopped'])
+
 function LaneCard({ lane, race, now }) {
   const steps = lane.steps ?? []
   const thinking = turnElapsed(lane, now)
   const listRef = useRef(null)
+  const cardRef = useRef(null)
   useEffect(() => {
     const el = listRef.current
     if (el) el.scrollTop = el.scrollHeight
   }, [steps.length, lane.status])
-  const medal = lane.rank ? (MEDALS[lane.rank - 1] ?? `#${lane.rank}`) : null
   const live = isLive(lane)
+  const raceLive = race.status === 'running'
   const f = lane.fouls
+  const winner = lane.rank === 1 && !raceLive
+
+  // Crossing the line in front of you: confetti in the lane's own colour. Going
+  // out (a DQ, an error): a thud. A replay opened later does neither.
+  const [crossed] = useJustEnded(live)
+  useEffect(() => {
+    if (!crossed) return
+    if (lane.status === 'finished') {
+      sfx.coin()
+      burstFrom(cardRef.current, { colors: [LANE_COLORS[lane.index % 4], '#ffffff'], count: 46, power: 0.7 })
+    } else if (OUT.has(lane.status)) sfx.down()
+  }, [crossed])
+
+  // A foul seen landing flashes the card red; fouls already there when the page
+  // attached do not.
+  const firstStrikes = useRef(lane.strikes)
+  const lastStrikes = useRef(lane.strikes)
+  useEffect(() => {
+    if (lane.strikes > lastStrikes.current) sfx.down()
+    lastStrikes.current = lane.strikes
+  }, [lane.strikes])
+
+  const cls = [
+    'wr-lane',
+    `wr-b${lane.index + 1}`,
+    live ? 'is-live' : 'is-done',
+    lane.status === 'finished' && 'is-finished',
+    OUT.has(lane.status) && 'is-out',
+    thinking != null && 'is-thinking',
+    winner && 'is-winner',
+    crossed && (lane.status === 'finished' ? 'just-finished' : 'just-out'),
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   return html`
-    <article
-      class=${`wr-lane wr-b${lane.index + 1}${live ? '' : ' is-done'}`}
-      aria-label=${`Racer ${lane.index + 1}: ${lane.label}`}
-    >
+    <article ref=${cardRef} class=${cls} aria-label=${`Racer ${lane.index + 1}: ${lane.label}`}>
+      ${winner && html`<span class="wr-lane__crown"><${Crown} /></span>`}
+      ${lane.strikes > firstStrikes.current && html`<span key=${`foul${lane.strikes}`} class="wr-lane__flash" aria-hidden="true" />`}
       <header class="wr-lane__hd">
-        <${LaneNum} i=${lane.index} />
+        <${Slot} i=${lane.index} big />
         <div class="wr-lane__who">
           <div class="wr-lane__name" title=${lane.model_id}>${lane.label}</div>
           <div class="wr-lane__sub">${laneSub(lane)}</div>
         </div>
-        ${medal && html`<span class="wr-lane__medal" title=${`Rank ${lane.rank}`}>${medal}</span>`}
+        ${lane.rank && html`<${RankBadge} rank=${lane.rank} />`}
         <${Badge} tone=${statusTone(lane.status)}>
           ${live && lane.status !== 'waiting' && html`<${StatDot} tone="live" />`}${STATUS_LABEL[lane.status] ?? lane.status}
         <//>
       </header>
 
       <dl class="wr-kpis">
-        <div>
+        <div class="wr-kpi wr-kpi--hops">
           <dt>Hops</dt>
-          <dd class="tnum">${lane.hops}<small>/${race.rules.max_hops}</small></dd>
+          <dd class="tnum">
+            <span class="wr-kpi__big"><${Counter} value=${lane.hops} sound=${raceLive} /><small>/${race.rules.max_hops}</small></span>
+            <${HopMeter} hops=${lane.hops} max=${race.rules.max_hops} />
+          </dd>
         </div>
-        <div>
+        <div class=${`wr-kpi wr-kpi--fouls${lane.strikes ? ' is-foul' : ''}`}>
+          <dt>Fouls</dt>
+          <dd class="tnum" title=${`${f.off_page} off-page, ${f.teleport} jumps to the target, ${f.no_pick} no pick`}>
+            <span class="wr-kpi__big">${lane.strikes ? html`<${WarnSign} />` : ''}<${Counter} value=${lane.strikes} /><small>/${race.rules.strikes}</small></span>
+            <${StrikeLamps} strikes=${lane.strikes} max=${race.rules.strikes} />
+          </dd>
+        </div>
+        <div class="wr-kpi">
           <dt>Time</dt>
           <dd class="tnum">${fmtDuration(laneElapsed(lane, race, now))}</dd>
         </div>
-        <div>
+        <div class="wr-kpi">
           <dt>Thinking</dt>
           <dd class="tnum">${fmtDuration(lane.think_ms + (thinking ?? 0))}</dd>
         </div>
-        <div>
+        <div class="wr-kpi">
           <dt>Tokens in / out</dt>
           <dd class="tnum" title=${`${fmtInt(lane.tokens_in)} in, ${fmtInt(lane.tokens_out)} out`}>
             ${fmtTokens(lane.tokens_in)}<small> / </small>${fmtTokens(lane.tokens_out)}
           </dd>
         </div>
-        <div>
+        <div class="wr-kpi">
           <dt>Cost</dt>
           <dd class="tnum" title=${costTitle(lane)}>${fmtLaneCost(lane)}</dd>
-        </div>
-        <div class=${lane.strikes ? 'is-foul' : undefined}>
-          <dt>Fouls</dt>
-          <dd class="tnum" title=${`${f.off_page} off-page, ${f.teleport} jumps to the target, ${f.no_pick} no pick`}>
-            ${lane.strikes ? '⚠ ' : ''}${lane.strikes}<small>/${race.rules.strikes}</small>
-          </dd>
         </div>
       </dl>
 
       <div class="wr-lane__at">
-        <span class="wr-lane__pin" aria-hidden="true">◉</span>
+        ${lane.status === 'finished'
+          ? html`<span class="wr-lane__pin wr-lane__pin--flag" aria-hidden="true"><${CheckeredFlag} wave /></span>`
+          : html`<span class="wr-lane__pin" aria-hidden="true">◉</span>`}
         <${ArticleLink} title=${lane.page} />
-        ${thinking != null && html`<span class="wr-lane__timer tnum">thinking ${fmtDuration(thinking)}</span>`}
+        ${thinking != null && html`<span class="wr-lane__timer tnum"><${StatDot} tone="live" />thinking ${fmtDuration(thinking)}</span>`}
         ${lane.status === 'moving' && html`<span class="wr-lane__timer">loading the next article…</span>`}
       </div>
 
-      <ol ref=${listRef} class="wr-steps scroll-y">
+      <ol ref=${listRef} class=${`wr-steps scroll-y${raceLive ? ' is-live' : ''}`}>
         <${StartRow} start=${race.start} />
         ${steps.map((s) => html`<${StepRow} key=${s.turn} step=${s} />`)}
         ${!steps.length && html`<li class="wr-step wr-step--hint">${live ? 'First move coming…' : 'No moves.'}</li>`}
@@ -599,12 +810,13 @@ function CheatLog({ race }) {
   const cheats = race.lanes.reduce((n, ln) => n + cheatCount(ln), 0)
   return html`
     <${Panel}
+      class=${`wr-cheatlog${cheats ? ' has-cheats' : ''}`}
       title="Cheat log"
       actions=${html`<span class="wr-count">${cheats} cheat${cheats === 1 ? '' : 's'} · ${fouls.length - cheats} no-pick</span>`}
     >
       ${fouls.length === 0
-        ? html`<p class="wr-muted">
-            No fouls${race.status === 'running' ? ' yet' : ''} — every pick was a real link on its page.
+        ? html`<p class="wr-clean">
+            <span class="wr-clean__ok" aria-hidden="true">✓</span> No fouls${race.status === 'running' ? ' yet' : ''} — every pick was a real link on its page.
           </p>`
         : html`
             <div class="scroll-x">
@@ -618,13 +830,13 @@ function CheatLog({ race }) {
                     <th>While on</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody class=${race.status === 'running' ? 'is-live' : undefined}>
                   ${fouls.map(
                     (f) => html`
                       <tr key=${`${f.lane}-${f.turn}`} title=${f.note}>
                         <td class="tnum">${fmtDuration(f.at_ms)}</td>
                         <td><${LaneNum} i=${f.lane} /> ${f.label}</td>
-                        <td class=${`wr-kind wr-kind--${VERDICT[f.kind].tone}`}>${VERDICT[f.kind].glyph} ${VERDICT[f.kind].label}</td>
+                        <td class=${`wr-kind wr-kind--${VERDICT[f.kind].tone}`}><span class="wr-kind__g">${VERDICT[f.kind].glyph}</span> ${VERDICT[f.kind].label}</td>
                         <td>${f.claimed ? `“${f.claimed}”` : '—'}</td>
                         <td>${f.from}</td>
                       </tr>
@@ -645,12 +857,12 @@ function Results({ race, now }) {
     .sort((a, b) => Number(isLive(b)) - Number(isLive(a)) || b.hops - a.hops || a.think_ms - b.think_ms)
   const winner = race.winner != null ? race.lanes[race.winner] : null
   return html`
-    <${Panel} title=${race.status === 'running' ? 'Standings' : 'Results'}>
+    <${Panel} class="wr-results" title=${race.status === 'running' ? 'Standings' : 'Results'}>
       ${race.status !== 'running' &&
       html`
-        <p class=${winner ? 'wr-verdict' : 'wr-verdict wr-verdict--none'}>
+        <p class=${winner ? `wr-verdict wr-b${winner.index + 1}` : 'wr-verdict wr-verdict--none'}>
           ${winner
-            ? html`🏁 <b>${winner.label}</b> wins — ${winner.hops} hop${winner.hops === 1 ? '' : 's'}, ${fmtDuration(winner.think_ms)} thinking`
+            ? html`<${CheckeredFlag} wave /><span><${LaneNum} i=${winner.index} /> <b>${winner.label}</b> wins — ${winner.hops} hop${winner.hops === 1 ? '' : 's'}, ${fmtDuration(winner.think_ms)} thinking</span>`
             : `Nobody reached ${race.target.title}.`}
         </p>
       `}
@@ -672,8 +884,8 @@ function Results({ race, now }) {
           <tbody>
             ${[...ranked, ...rest].map(
               (ln) => html`
-                <tr key=${ln.index}>
-                  <td>${ln.rank ? (MEDALS[ln.rank - 1] ?? ln.rank) : '—'}</td>
+                <tr key=${ln.index} class=${ln.rank === 1 ? 'is-winner' : undefined}>
+                  <td>${ln.rank ? html`<${RankBadge} rank=${ln.rank} />` : '—'}</td>
                   <td><${LaneNum} i=${ln.index} /> ${ln.label}</td>
                   <td><${Badge} tone=${statusTone(ln.status)}>${STATUS_LABEL[ln.status] ?? ln.status}<//></td>
                   <td class="num tnum">${ln.hops}</td>
@@ -681,7 +893,7 @@ function Results({ race, now }) {
                   <td class="num tnum">${fmtDuration(laneElapsed(ln, race, now))}</td>
                   <td class="num tnum">${fmtTokens(ln.tokens_in + ln.tokens_out)}</td>
                   <td class="num tnum" title=${costTitle(ln)}>${fmtLaneCost(ln)}</td>
-                  <td class="num tnum">${ln.strikes}</td>
+                  <td class=${`num tnum${ln.strikes ? ' wr-t-err' : ''}`}>${ln.strikes}</td>
                 </tr>
               `,
             )}
@@ -690,6 +902,24 @@ function Results({ race, now }) {
       </div>
       <p class="wr-hint">Ranked by fewest hops, then least thinking time; a racer that did not finish is unranked.</p>
     <//>
+  `
+}
+
+/** The sign over the page when a race ends in front of you — the winner in
+ *  lights and confetti in their lane's colour, or GAME OVER. Mounted per race
+ *  (the track is keyed by it), so a replay opened later never plays it. */
+function RaceFinale({ race }) {
+  const [ended, close] = useJustEnded(race.status === 'running')
+  const f = raceFinale(race)
+  return html`
+    <${Finale}
+      show=${ended && race.status === 'finished'}
+      headline=${f.headline}
+      sub=${f.sub}
+      win=${f.win}
+      colors=${f.lane != null ? [LANE_COLORS[f.lane % 4]] : undefined}
+      onClose=${close}
+    />
   `
 }
 
@@ -704,7 +934,7 @@ function Track({ race, error, onReconnect, onStop, onRematch, onClose }) {
   if (!race) {
     return error
       ? html`
-          <${EmptyState} icon="⚠" title="Could not attach to this race">
+          <${EmptyState} icon=${html`<${WarnSign} />`} title="Could not attach to this race">
             ${error}
             <div class="wr-actions">
               <${Button} size="sm" onClick=${onReconnect}>Try again<//>
@@ -712,7 +942,7 @@ function Track({ race, error, onReconnect, onStop, onRematch, onClose }) {
             </div>
           <//>
         `
-      : html`<${EmptyState} icon="🏁" title="Attaching to the race…" />`
+      : html`<${EmptyState} icon=${html`<${CheckeredFlag} wave />`} title="Attaching to the race…" />`
   }
 
   const statusBadge =
@@ -723,54 +953,64 @@ function Track({ race, error, onReconnect, onStop, onRematch, onClose }) {
     void onStop().then((ok) => ok || setStopping(false))
   }
 
+  // The finale sits beside the track, not in it: the track is a size container,
+  // which would pin the finale's fixed overlay to it instead of to the screen.
   return html`
     <div class="wr-track">
-      <header class="wr-track__hd">
+      <header class="wr-marquee">
         <div class="wr-route">
-          <div class="wr-route__end">
-            <span class="wr-lbl">Start</span>
-            <${ArticleLink} title=${race.start.title} />
+          <div class="wr-route__end wr-route__end--start">
+            <span class="wr-route__k"><${Pennant} />Start</span>
+            <span class="wr-route__t"><${ArticleLink} title=${race.start.title} /></span>
             ${race.start.description && html`<span class="wr-route__desc">${race.start.description}</span>`}
           </div>
-          <span class="wr-route__arrow" aria-hidden="true">⟶</span>
-          <div class="wr-route__end">
-            <span class="wr-lbl">Target</span>
-            <${ArticleLink} title=${race.target.title} />
+          <span class="wr-route__arrow" aria-hidden="true">
+            <svg viewBox="0 0 100 20" preserveAspectRatio="none" focusable="false">
+              <path class="wr-route__dash" d="M2 10 H90" />
+              <path class="wr-route__head" d="M84 3 L96 10 L84 17" />
+            </svg>
+          </span>
+          <div class="wr-route__end wr-route__end--target">
+            <span class="wr-route__k"><${CheckeredFlag} wave=${running} />Target</span>
+            <span class="wr-route__t"><${ArticleLink} title=${race.target.title} /></span>
             ${race.target.description && html`<span class="wr-route__desc">${race.target.description}</span>`}
           </div>
         </div>
-        <${Spacer} />
+      </header>
+
+      <div class=${`wr-runbar${running ? ' is-live' : ''}`}>
+        <${Badge} tone=${statusBadge}>${running && html`<${StatDot} tone="live" />`}${race.status}<//>
+        <${LedClock} ms=${raceElapsed(race, now)} title="Race clock" />
+        <p class="wr-rulesline">
+          ${race.rules.max_hops} hops · ${race.rules.strikes} foul${race.rules.strikes === 1 ? '' : 's'} disqualify ·
+          ${' '}${fmtDuration(race.rules.time_limit_s * 1000)} limit · ${linksRule}${race.start.links
+            ? ` · the start has ${fmtInt(race.start.links)} links`
+            : ''}
+        </p>
+        <span class="spacer" />
         <div class="wr-track__ctl">
-          <${Badge} tone=${statusBadge}>${running && html`<${StatDot} tone="live" />`}${race.status}<//>
-          <span class="wr-clock tnum" title="Race clock">${fmtDuration(raceElapsed(race, now))}</span>
           ${running
             ? html`<${Button} size="sm" variant="danger" disabled=${stopping} onClick=${stop}>
                 ${stopping ? 'Stopping…' : 'Stop race'}
               <//>`
-            : html`<${Button} size="sm" onClick=${() => onRematch(race)} title="Put the same course and racers back in the setup">
+            : html`<${Button} size="sm" variant="primary" onClick=${() => onRematch(race)} title="Put the same course and racers back in the setup">
                 Race again
               <//>`}
           <${Button} size="sm" variant="ghost" onClick=${onClose}>Close<//>
         </div>
-      </header>
+      </div>
       ${error &&
       html`
         <div class="wr-banner" role="status">
           ${error} <${Button} size="sm" variant="ghost" onClick=${onReconnect}>Reconnect<//>
         </div>
       `}
-      <p class="wr-rulesline">
-        ${race.rules.max_hops} hops · ${race.rules.strikes} foul${race.rules.strikes === 1 ? '' : 's'} disqualify ·
-        ${' '}${fmtDuration(race.rules.time_limit_s * 1000)} limit · ${linksRule}${race.start.links
-          ? ` · the start has ${fmtInt(race.start.links)} links`
-          : ''}
-      </p>
 
-      <${Panel} title="Race trace" actions=${html`<span class="wr-count">hops over time</span>`}>
+      <${Panel} class="wr-tracepanel" title="Race trace" actions=${html`<span class="wr-count">hops over time</span>`}>
         <${RaceTrace} race=${race} now=${now} />
       <//>
 
-      <div class="wr-lanes">
+      <div class=${`wr-lanes wr-lanes--${race.lanes.length}`}>
         ${race.lanes.map((ln) => html`<${LaneCard} key=${ln.index} lane=${ln} race=${race} now=${now} />`)}
       </div>
 
@@ -779,6 +1019,7 @@ function Track({ race, error, onReconnect, onStop, onRematch, onClose }) {
         <${CheatLog} race=${race} />
       </div>
     </div>
+    <${RaceFinale} race=${race} />
   `
 }
 
@@ -799,17 +1040,21 @@ function History({ onOpen }) {
     }
   }
 
-  if (loading && !data) return html`<${EmptyState} icon="🏁" title="Loading races…" />`
-  if (error) return html`<${EmptyState} icon="⚠" title="Could not load the history">${error.message}<//>`
+  if (loading && !data) return html`<${EmptyState} icon=${html`<${CheckeredFlag} wave />`} title="Loading races…" />`
+  if (error) return html`<${EmptyState} icon=${html`<${WarnSign} />`} title="Could not load the history">${error.message}<//>`
   if (!races.length) {
     return html`
-      <${EmptyState} icon="🏁" title="No races yet">
+      <${EmptyState} icon=${html`<${CheckeredFlag} />`} title="No races yet">
         Races land here when they start, and stay for replay after they end.
       <//>
     `
   }
   return html`
     <div class="wr-history">
+      <header class="wr-hof">
+        <h2 class="wr-hof__title"><span class="sr-only">Hall of fame</span><${PixelText} text="HALL OF FAME" /></h2>
+        <p class="wr-hof__note">${races.length} race${races.length === 1 ? '' : 's'}, newest first — pick one to watch or replay it</p>
+      </header>
       ${err && html`<p class="wr-bad">${err}</p>`}
       <table class="wr-table wr-table--history">
         <thead>
@@ -824,13 +1069,15 @@ function History({ onOpen }) {
         <tbody>
           ${races.map(
             (r) => html`
-              <tr key=${r.id} class="wr-hrow" onClick=${() => onOpen(r.id)}>
+              <tr key=${r.id} class=${`wr-hrow wr-hrow--${r.status}`} onClick=${() => onOpen(r.id)}>
                 <td class="wr-h-when tnum" title=${r.created_at}>${ago(r.created_at)} ago</td>
                 <td class="wr-h-course">
-                  <b>${r.start.title}</b> <span class="wr-muted">⟶</span> <b>${r.target.title}</b>
+                  <b>${r.start.title}</b> <span class="wr-h-arrow" aria-hidden="true">⟶</span><span class="sr-only">to</span> <b>${r.target.title}</b>
                 </td>
                 <td class="wr-h-status">
-                  <${Badge} tone=${r.status === 'finished' ? 'ok' : r.status === 'running' ? 'live' : 'warn'}>${r.status}<//>
+                  <${Badge} tone=${r.status === 'finished' ? 'ok' : r.status === 'running' ? 'live' : 'warn'}>
+                    ${r.status === 'running' && html`<${StatDot} tone="live" />`}${r.status}
+                  <//>
                 </td>
                 <td class="wr-h-racers">
                   <div class="wr-hracers">
@@ -838,13 +1085,14 @@ function History({ onOpen }) {
                       (ln) => html`
                         <span
                           key=${ln.index}
-                          class="wr-hracer"
+                          class=${`wr-hracer${ln.rank === 1 ? ' is-winner' : ''}`}
                           title=${`${ln.label}: ${STATUS_LABEL[ln.status] ?? ln.status}${ln.note ? ` — ${ln.note}` : ''}`}
                         >
                           <${LaneNum} i=${ln.index} out=${ln.status !== 'finished'} />
                           ${ln.label}
+                          ${ln.rank === 1 && html`<${RankBadge} rank=${1} class="wr-rank--sm" />`}
                           <span class="wr-muted tnum">
-                            ${ln.rank === 1 ? ' 🥇' : ''} ${ln.hops}h${cheatCount(ln) ? ` · ${cheatCount(ln)}✕` : ''}
+                            ${ln.hops}h${cheatCount(ln) ? html` · <span class="wr-t-err">${cheatCount(ln)}✕</span>` : ''}
                           </span>
                         </span>
                       `,
@@ -852,7 +1100,7 @@ function History({ onOpen }) {
                   </div>
                 </td>
                 <td class="wr-hactions" onClick=${(e) => e.stopPropagation()}>
-                  <${Button} size="sm" variant="ghost" onClick=${() => onOpen(r.id)}>
+                  <${Button} size="sm" variant=${r.status === 'running' ? 'secondary' : 'ghost'} onClick=${() => onOpen(r.id)}>
                     ${r.status === 'running' ? 'Watch' : 'Replay'}
                   <//>
                   ${r.status !== 'running' &&
@@ -908,7 +1156,7 @@ function WikiRace({ tab, raceId, go, reloadList }) {
 
   const race = stream.race
   useEffect(() => {
-    document.title = race && tab === 'race' ? `${race.start.title} ⟶ ${race.target.title} · WikiRace` : 'WikiRace'
+    document.title = race && tab === 'race' ? `${race.start.title} ⟶ ${race.target.title} · WikiRace · JEV-Arcade` : 'WikiRace · JEV-Arcade'
   }, [race?.start?.title, race?.target?.title, tab])
 
   const textOf = (w) => (w === 'start' ? start : target)
@@ -1010,6 +1258,8 @@ function WikiRace({ tab, raceId, go, reloadList }) {
       const t = await resolveNow('target')
       if (!s || !t) return
       const created = await api.post('/races', raceBody({ start: s, target: t, lanes, rules }))
+      recordPlay('wikirace')
+      sfx.start()
       go({ race: created.id })
       reloadList()
     } catch (e) {
@@ -1093,6 +1343,7 @@ function WikiRace({ tab, raceId, go, reloadList }) {
         ${raceId
           ? html`
               <${Track}
+                key=${raceId}
                 race=${race}
                 error=${stream.error}
                 onReconnect=${stream.reconnect}
@@ -1101,13 +1352,7 @@ function WikiRace({ tab, raceId, go, reloadList }) {
                 onClose=${() => go({})}
               />
             `
-          : html`
-              <${EmptyState} icon="🏁" title="No race on the track">
-                Pick a start and a target — or roll the dice — put up to four models on the line, and press Start. Each
-                racer may only follow links on the article it is on; naming a link that is not there, or jumping
-                straight to the target, is a foul.
-              <//>
-            `}
+          : html`<${TrackAttract} />`}
       </section>
     </main>
   `
@@ -1130,34 +1375,21 @@ function App() {
 
   const runningElsewhere = (list.data?.running ?? []).filter((id) => id !== raceId)
   const runningRace = list.data?.races?.find((r) => r.id === runningElsewhere[0])
-  const home = (e) => {
-    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
-    e.preventDefault()
-    go({})
-  }
-
   return html`
     <div class="app">
-      <header class="app-hd">
-        <${Toolbar} class="app-hd__bar">
-          <a class="app-brand" href="./" onClick=${home}><span aria-hidden="true">🏁</span> WikiRace</a>
-          <p class="app-tag">Language models race across Wikipedia, link by link</p>
-          <${Tabs}
-            tabs=${TABS}
-            value=${tab}
-            onChange=${(t) =>
-              t === 'arcade' ? navigate('?tab=arcade') : go(t === 'history' ? { tab: 'history' } : { race: lastRace.current })}
-          />
-          <${Spacer} />
-          ${runningRace &&
-          tab === 'race' &&
-          html`
-            <button type="button" class="wr-live" onClick=${() => go({ race: runningRace.id })}>
-              <${StatDot} tone="live" /> racing: ${runningRace.start.title} ⟶ ${runningRace.target.title} — watch
-            </button>
-          `}
-        <//>
-      </header>
+      <${SiteHeader}
+        active=${tab}
+        crumb="WikiRace"
+        onNav=${(t) => (t === 'race' ? go({ race: lastRace.current }) : t === 'history' ? go({ tab: 'history' }) : navigate(''))}
+      >
+        ${runningRace &&
+        tab === 'race' &&
+        html`
+          <button type="button" class="wr-live" onClick=${() => go({ race: runningRace.id })}>
+            <${StatDot} tone="live" /> racing: ${runningRace.start.title} ⟶ ${runningRace.target.title} — watch
+          </button>
+        `}
+      <//>
       <${WikiRace} tab=${tab} raceId=${raceId} go=${go} reloadList=${list.reload} />
     </div>
   `

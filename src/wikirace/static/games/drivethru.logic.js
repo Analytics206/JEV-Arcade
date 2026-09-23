@@ -214,3 +214,51 @@ export function latestCar(run) {
   const cars = run?.cars ?? []
   return cars.length ? cars[cars.length - 1].i : null
 }
+
+/* ── What the page lights up ───────────────────────────────────────────────── */
+
+const TOKEN = /("(?:[^"\\]|\\.)*")|([A-Za-z_]\w*)(?=\()|([A-Za-z_]\w*)(?==)|(-?\d+(?:\.\d+)?)|([()[\],=])|(\s+)|([^\s"()[\],=]+)/g
+
+/** A call line as tokens to colour: [{t, k}], k one of fn, key, str, num,
+ *  punct, space, word, or comment for a whole `# …` line. Joined, the tokens
+ *  are the line. */
+export function callTokens(line) {
+  const s = String(line ?? '')
+  if (/^\s*#/.test(s)) return [{ t: s, k: 'comment' }]
+  const out = []
+  for (const m of s.matchAll(TOKEN)) {
+    const k = m[1] ? 'str' : m[2] ? 'fn' : m[3] ? 'key' : m[4] ? 'num' : m[5] ? 'punct' : m[6] ? 'space' : 'word'
+    out.push({ t: m[0], k })
+  }
+  return out
+}
+
+/** Who is ahead by the game's own rule: a window's score is its points (they
+ *  can go below nought), so the windows with the most, all of them on a tie. */
+export function leadersOf(run) {
+  const lanes = run?.lanes ?? []
+  if (!lanes.length) return []
+  const best = Math.max(...lanes.map((ln) => ln.score ?? 0))
+  return lanes.filter((ln) => (ln.score ?? 0) === best).map((ln) => ln.index)
+}
+
+/** How many exact orders in a row a window has just rung up (its latest
+ *  tickets; cars still in line don't break it). statuses: windowCars(…). */
+export function streakOf(statuses) {
+  const done = (statuses ?? []).filter((s) => s.ticket)
+  let n = 0
+  for (let j = done.length - 1; j >= 0 && done[j].status === 'exact'; j--) n++
+  return n
+}
+
+/** A line's length over time as a sparkline path in a w×h box, the longest
+ *  line at the top ({d, max}; d is '' with fewer than two samples). */
+export function sparkPath(values, { width = 110, height = 24, pad = 2 } = {}) {
+  const v = (values ?? []).filter(Number.isFinite)
+  const max = Math.max(1, ...v)
+  if (v.length < 2) return { d: '', max }
+  const step = (width - 2 * pad) / (v.length - 1)
+  const y = (n) => Math.round((height - pad - (n / max) * (height - 2 * pad)) * 10) / 10
+  const d = v.map((n, j) => `${j ? 'L' : 'M'}${Math.round((pad + j * step) * 10) / 10} ${y(n)}`).join(' ')
+  return { d, max }
+}

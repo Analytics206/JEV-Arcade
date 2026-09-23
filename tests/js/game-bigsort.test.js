@@ -10,10 +10,15 @@ import {
   fmtN,
   fmtSpan,
   fmtUsd,
+  freshCells,
   heat,
   labelArrays,
+  landscape,
+  sortOutcome,
+  sortWinners,
   stepCursor,
   tally,
+  topicAbbr,
   wallGrid,
   wallOrder,
   wallSummary,
@@ -78,6 +83,44 @@ describe('reading the answers', () => {
     const topics = [{ name: 'science & tech' }, { name: 'people' }, { name: 'places' }]
     const { topic } = labelArrays(labels, 5)
     assert.equal(wallSummary('Jev', topics, tally(topic, 3), 5), "Jev's wall: 3 of 5 articles sorted: 2 places, 1 science & tech, 1 fouls.")
+  })
+})
+
+describe('drawing the machine', () => {
+  it('finds the cells that landed since the last draw', () => {
+    const before = labelArrays([[0, 2, 0.9]], 5).topic
+    const after = labelArrays([[0, 2, 0.9], [3, 1, 0.5], [4, FOUL, null, 'x']], 5).topic
+    assert.deepEqual(freshCells(before, after), [3, 4])
+    assert.deepEqual(freshCells(after, after), [])
+    assert.deepEqual(freshCells(null, after), [])
+  })
+  it('shortens a topic for a narrow bin', () => {
+    assert.deepEqual(['science', 'people', 'places', 'other'].map(topicAbbr), ['SCI', 'PPL', 'GEO', 'OTH'])
+    assert.equal(topicAbbr('mystery'), 'MYS')
+  })
+  it('lays a lane out as its share of every topic, the fouls and the rest', () => {
+    const segs = landscape({ counts: [3, 0, 1], fouls: 1, unsorted: 5 }, 10)
+    assert.deepEqual(segs.map((s) => [s.kind, s.n]), [['topic', 3], ['topic', 0], ['topic', 1], ['foul', 1], ['unsorted', 5]])
+    assert.ok(Math.abs(segs.reduce((a, s) => a + s.share, 0) - 1) < 1e-9)
+  })
+})
+
+describe('who won', () => {
+  const lane = (index, score, extra = {}) => ({ index, label: `m${index}`, score, ...extra })
+  it('is the lane that sorted the most, and lanes level at the top tie', () => {
+    assert.deepEqual(sortWinners([lane(0, 250), lane(1, 118), lane(2, 48)]), [0])
+    assert.deepEqual(sortWinners([lane(0, 90), lane(1, 90), lane(2, 12)]), [0, 1])
+    assert.deepEqual(sortWinners([lane(0, 0), lane(1, 0)]), [])
+    assert.deepEqual(sortWinners([lane(0, 40)]), [], 'no winner alone')
+  })
+  it('says so in the finale', () => {
+    assert.deepEqual(sortOutcome({ total: 250, lanes: [lane(0, 250), lane(1, 118)] }), { winners: [0], sub: 'm0 · 250 of 250 sorted' })
+    assert.deepEqual(sortOutcome({ total: 20, lanes: [lane(0, 20), lane(1, 20)] }),
+      { winners: [0, 1], headline: 'ALL SORTED', sub: 'every lane sorted all 20 articles' })
+    assert.equal(sortOutcome({ total: 20, lanes: [lane(0, 20)] }).headline, 'ALL SORTED')
+    assert.deepEqual(sortOutcome({ total: 2000, lanes: [lane(0, 1234, { timed_out: true })] }),
+      { winners: [], headline: "TIME'S UP", sub: 'm0 sorted 1,234 of 2,000 articles' })
+    assert.deepEqual(sortOutcome({ total: 20, lanes: [lane(0, 7), lane(1, 7)] }), { winners: [0, 1] })
   })
 })
 

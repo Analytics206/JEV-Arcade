@@ -113,6 +113,36 @@ export function trackPose(layout, s, t) {
 /** An eased 0…1, so a train pulls away and brakes. */
 export const ease = (t) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2)
 
+/**
+ * A train's whole trip on track *s* as one path, for SVG motion: from the
+ * front of the queue, over the switch and round the curve, to its platform.
+ * The path is relative to its start {x, y}, so a train drawn at the start
+ * waits there until it leaves. It ends where trackPose(…, 1) does.
+ */
+export function tripPath(layout, s) {
+  const tr = layout.tracks[s]
+  const x0 = FRONT_X
+  const y0 = layout.mainY
+  if (!tr) return { x: x0, y: y0, d: 'M0 0' }
+  const r = ([x, y]) => `${x - x0} ${y - y0}`
+  const [, p1, p2, p3] = tr.bezier
+  return { x: x0, y: y0, d: `M0 0 H${SWITCH_X - x0} C${r(p1)} ${r(p2)} ${r(p3)} H${END_X - CAR_HALF - x0}` }
+}
+
+/** The line a set route lights: the main line, over the switch, down track *s* to its platform. */
+export function routePath(layout, s) {
+  const tr = layout.tracks[s]
+  return tr ? `${layout.main} ${tr.d.slice(tr.d.indexOf('C'))}` : layout.main
+}
+
+/** Which way the switch points lie for track *s*: the angle, in degrees, from the switch towards it. */
+export function bladeAngle(layout, s) {
+  const tr = layout.tracks[s]
+  if (!tr) return 0
+  const [x, y] = cubic(tr.bezier, 0.3)
+  return Math.round(((Math.atan2(y - layout.mainY, x - SWITCH_X) * 180) / Math.PI) * 10) / 10
+}
+
 /** What a train's label says of its prompt: a prompt that carries a block
  *  (code, after a blank line) is labelled by the block, its lines joined. */
 export function trainText(text) {
@@ -206,9 +236,32 @@ export function yardSummary(run) {
   const traffic = stations.map((_, s) => {
     const mine = trains.filter((t) => t.to === s)
     const got = mine.filter((t) => t.verdict)
-    return { received: mine.length, delivered: got.length, cost: got.reduce((a, t) => a + (t.cost ?? 0), 0), last: got[got.length - 1] ?? null }
+    return {
+      received: mine.length, delivered: got.length, right: got.filter((t) => t.verdict === 'right').length,
+      cost: got.reduce((a, t) => a + (t.cost ?? 0), 0), last: got[got.length - 1] ?? null,
+    }
   })
   return { router, always, traffic }
+}
+
+/**
+ * The round's close, as the finale says it. Rail Yard has no winner: the tower
+ * and the stations are teammates. What it has is the router against always the
+ * top-tier station, over the same trains, so that is what the finale reads out.
+ * Null before any train is delivered.
+ * @returns {{headline: string, sub: string} | null}
+ */
+export function yardOutcome(run, summary) {
+  const router = summary?.router
+  if (!router?.n) return null
+  const pct = (x) => (Number.isFinite(x) ? `${Math.round(x * 100)}%` : '—')
+  const big = bigStation((summary.always ?? []).filter((a) => a.accuracy != null))
+  const vs = big ? costAgainst(router.cost, big.cost) : null
+  const all = router.n >= (run?.total ?? Infinity)
+  const parts = [`Jev's routing ${pct(router.accuracy)} right for ${fmtUsd(router.cost)}`]
+  if (big) parts.push(`always ${big.tier} ${pct(big.accuracy)} for ${fmtUsd(big.cost)}`)
+  if (vs) parts.push(vs.share ? `${pct(vs.share)} ${vs.word}` : vs.word)
+  return { headline: all ? 'ALL TRAINS IN' : 'YARD CLOSED', sub: parts.join(' · ') }
 }
 
 /* ── The chart ─────────────────────────────────────────────────────────────── */

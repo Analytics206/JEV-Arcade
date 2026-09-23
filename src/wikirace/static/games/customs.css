@@ -1,172 +1,439 @@
-/* Customs: every rule under .cu-… Over WikiRace's tokens (styles.css) only. */
+/* Customs: every rule under .cu-… An airport X-ray line at night: the belt
+ * rolls, the beam sweeps, the stamp comes down, the bag drops down its chute.
+ * Chrome wears the cabinet's neon (--acc); the X-ray is cyan; state wears the
+ * semantic colours with a glyph; lanes wear their colour and number. */
 
 /* A tone sets --tone; everything that wears it reads it. */
 .cu-t-ok { --tone: var(--ok); color: var(--ok); }
 .cu-t-warn { --tone: var(--warn); color: var(--warn); }
 .cu-t-err { --tone: var(--err); color: var(--err); }
+.cu-t-cy { --tone: var(--cy); color: var(--cy); }
 .cu-f-ok { fill: var(--ok); }
 .cu-f-warn { fill: var(--warn); }
 .cu-f-err { fill: var(--err); }
 .cu-s-ok { --tone: var(--ok); }
 .cu-s-warn { --tone: var(--warn); }
 .cu-s-err { --tone: var(--err); }
+.cu-stop-ok { stop-color: var(--ok); }
+.cu-stop-warn { stop-color: var(--warn); }
+.cu-stop-err { stop-color: var(--err); }
+
+/* The finale is fixed over the viewport: the page's power-on animation must
+ * not leave a transform behind (a transform makes the page its containing box). */
+.g-page.cu-page { animation-fill-mode: backwards; }
 
 /* ── Setup ── */
 .cu-setup { gap: 16px; }
-.cu-toggle { display: flex; border: 1px solid var(--edge-hot); border-radius: 4px; overflow: hidden; }
-.cu-toggle__b {
-  flex: 1; min-height: 36px; padding: 0 12px; font-size: var(--fs-md); color: var(--txt);
-  background: none; border: none; cursor: pointer;
+.cu-toggle {
+  display: flex; padding: 3px; gap: 3px; border-radius: 12px;
+  background: rgba(0, 0, 0, 0.3); border: 1px solid color-mix(in srgb, var(--acc) 45%, transparent);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5);
 }
-.cu-toggle__b + .cu-toggle__b { border-left: 1px solid var(--edge); }
-.cu-toggle__b--on { color: var(--void); background: var(--cy); font-weight: 600; }
-.cu-toggle__b:focus-visible { outline: 2px solid var(--cy); outline-offset: -3px; }
+.cu-toggle__b {
+  flex: 1; min-height: 38px; padding: 0 10px; font-size: var(--fs-sm); font-weight: 600; line-height: 1.2; color: var(--txt-2);
+  background: none; border: none; border-radius: 9px; cursor: pointer; transition: color .15s, background .2s, box-shadow .2s;
+}
+.cu-toggle__b:hover:not(.cu-toggle__b--on) { color: var(--txt); background: rgba(255, 255, 255, 0.05); }
+.cu-toggle__b--on {
+  color: #1d1100; background: linear-gradient(180deg, color-mix(in srgb, var(--acc) 60%, #fff), var(--acc));
+  box-shadow: 0 0 16px -4px var(--acc), inset 0 -2px 0 rgba(0, 0, 0, 0.2);
+}
+.cu-toggle__b:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
 .cu-params { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.cu-thr input { accent-color: var(--cy); }
+.cu-thr input { accent-color: var(--acc); }
+.cu-thr--warn input { accent-color: var(--warn); }
+.cu-thr--err input { accent-color: var(--err); }
 .cu-thr b { font-family: var(--mono); font-size: var(--fs-md); color: var(--txt); }
+.cu-thr--warn b { color: var(--warn); }
+.cu-thr--err b { color: var(--err); }
 .cu-setup__note { font-size: var(--fs-sm); }
 .cu-side { display: flex; flex-direction: column; gap: 16px; }
 .cu-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.cu-routes { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; background: var(--void-2); border: 1px solid var(--rule); border-radius: 3px; }
-.cu-routes__row { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 10px; font-size: var(--fs-sm); }
-.cu-routes__row dt { color: var(--dim); }
-.cu-routes__row dd { margin: 0; font-weight: 600; }
+.cu-how__demo {
+  display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 14px;
+  background: radial-gradient(420px 120px at 50% 0%, rgba(62, 244, 255, 0.07), transparent 70%), rgba(4, 3, 15, 0.55);
+  border: 1px solid var(--rule); box-shadow: inset 0 2px 12px rgba(0, 0, 0, 0.5);
+}
+.cu-how__cap { font-size: var(--fs-xs); color: var(--dim); text-align: center; }
+.cu-routes {
+  display: flex; flex-direction: column; gap: 4px; padding: 8px; border-radius: 12px;
+  background: rgba(4, 3, 15, 0.6); border: 1px solid var(--rule);
+}
+.cu-routes__row {
+  display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 10px; align-items: center; padding: 5px 10px;
+  font-size: var(--fs-sm); border-radius: 8px; background: color-mix(in srgb, var(--tone) 7%, transparent);
+  box-shadow: inset 3px 0 0 var(--tone);
+}
+.cu-routes__row dt { color: var(--txt-2); }
+.cu-routes__row dd { margin: 0; font-weight: 700; }
+.cu-routes__arrow { opacity: .6; }
 
 /* ── The belts ── */
-.cu-belts { gap: 12px; }
-.cu-belt { display: flex; flex-direction: column; gap: 4px; overflow-x: auto; }
-.cu-belt__who {
-  display: flex; align-items: center; gap: 10px; align-self: flex-start; padding: 3px 8px;
-  font-size: var(--fs-md); color: var(--txt); background: none; border: 1px solid transparent; border-radius: 3px; cursor: pointer;
+.cu-belts { gap: 14px; }
+.cu-belt {
+  display: flex; flex-direction: column; gap: 8px; padding: 8px 8px 10px; border-radius: 16px;
+  background: rgba(4, 3, 15, 0.35); border: 1px solid transparent; transition: border-color .25s, box-shadow .25s;
 }
-button.cu-belt__who:hover { border-color: var(--rule); }
-div.cu-belt__who { cursor: default; }
-.cu-belt--focus .cu-belt__who { border-color: var(--lane); background: color-mix(in srgb, var(--lane) 10%, transparent); }
-.cu-belt__name { font-weight: 700; }
+.cu-belt--focus { border-color: color-mix(in srgb, var(--lane) 55%, transparent); box-shadow: 0 0 30px -14px var(--lane), inset 0 0 0 1px rgba(255, 255, 255, 0.02); }
+.cu-belt__hd { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 0 4px; }
+.cu-belt__who {
+  display: flex; align-items: center; gap: 9px; padding: 4px 12px 4px 5px; min-width: 0;
+  font-size: var(--fs-md); color: var(--txt); background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--rule); border-radius: 999px; transition: border-color .15s, background .15s, box-shadow .2s;
+}
+button.cu-belt__who { cursor: pointer; }
+button.cu-belt__who:hover { border-color: color-mix(in srgb, var(--lane) 60%, transparent); }
+.cu-belt--focus .cu-belt__who { border-color: var(--lane); background: color-mix(in srgb, var(--lane) 14%, transparent); box-shadow: 0 0 16px -6px var(--lane); }
+.cu-belt__name { font-family: var(--display); font-size: 16px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cu-belt__rate { font-size: var(--fs-xs); white-space: nowrap; }
+.cu-kind {
+  padding: 1px 7px; font-family: var(--mono); font-size: var(--fs-micro); font-weight: 800; letter-spacing: .12em; border-radius: 999px;
+  border: 1px solid currentColor;
+}
+.cu-kind--jev { color: var(--cy); background: var(--cy-dim); }
+.cu-kind--text { color: var(--vi); background: var(--vi-dim); }
+.cu-belt__score { display: inline-flex; align-items: baseline; gap: 10px; padding-right: 30px; }
+.cu-belt__k { font-family: var(--display); font-size: var(--fs-micro); font-weight: 700; letter-spacing: .18em; color: var(--dim); }
+.cu-belt__n.g-score { font-size: 28px; }
+.cu-belt__scroll { overflow-x: auto; border-radius: 12px; }
 .cu-belt__svg { display: block; width: 100%; min-width: 720px; height: auto; }
 
-.cu-bg { fill: var(--void-2); stroke: var(--edge-soft); }
+.cu-bg { stroke: rgba(140, 150, 255, 0.16); stroke-width: 1; }
 .cu-belt--focus .cu-bg { stroke: color-mix(in srgb, var(--lane) 55%, transparent); }
-.cu-rail { fill: color-mix(in srgb, var(--dimmer) 45%, var(--void)); }
-.cu-rollers circle { fill: var(--void); stroke: var(--dimmer); stroke-width: 1.5; }
-.cu-dash { stroke: var(--dimmer); stroke-width: 1.5; stroke-dasharray: 3 5; }
-.cu-belt--moving .cu-dash { animation: cu-roll .6s linear infinite; }
-@keyframes cu-roll { to { stroke-dashoffset: -8; } }
-.cu-over { font-family: var(--mono); font-size: 12px; font-weight: 700; fill: var(--warn); }
+.cu-glow { opacity: .45; transition: opacity .4s; }
+.cu-belt--scanning .cu-glow { opacity: 1; }
+.cu-floor { stroke: rgba(140, 150, 255, 0.1); stroke-width: 1; }
 .cu-hint { font-family: var(--mono); font-size: 12px; fill: var(--dim); }
 
-.cu-scan__bg { fill: color-mix(in srgb, var(--cy) 4%, var(--void)); }
-.cu-scan__grid line { stroke: color-mix(in srgb, var(--cy) 22%, transparent); stroke-width: 1; }
-.cu-scan__frame { fill: none; stroke: var(--cy); stroke-width: 3; }
-.cu-scan__head { fill: color-mix(in srgb, var(--cy) 12%, var(--void-2)); stroke: var(--cy); stroke-width: 3; }
-.cu-scan__name { font-family: var(--display); font-size: 13px; font-weight: 700; letter-spacing: 2px; fill: var(--cy); }
-.cu-scan__read { font-family: var(--mono); font-size: 11.5px; font-weight: 700; text-anchor: middle; fill: var(--tone, var(--txt)); }
-.cu-scan__read--2 { font-weight: 400; fill: var(--dim); }
-.cu-light { fill: var(--dimmer); transition: fill .2s; }
-.cu-light--busy { fill: var(--cy); animation: cu-blink .7s ease-in-out infinite alternate; }
-@keyframes cu-blink { from { opacity: 1; } to { opacity: .35; } }
-.cu-beam { fill: var(--cy); opacity: .85; filter: drop-shadow(0 0 4px var(--cy)); animation: cu-sweep 1.1s ease-in-out infinite alternate; }
-@keyframes cu-sweep { from { transform: translateX(0); } to { transform: translateX(193px); } }
-.cu-foulnote { font-family: var(--mono); font-size: 11px; font-weight: 700; fill: var(--err); }
+/* The belt's own lit counters. */
+.cu-led { color: var(--txt); --tone: var(--txt); }
+.cu-led__box { fill: #05040f; stroke: rgba(140, 150, 255, 0.22); stroke-width: 1; }
+.cu-led__k { font-family: var(--mono); font-size: 9.5px; font-weight: 700; letter-spacing: 1.6px; fill: var(--dim); }
+.cu-led__v {
+  font-family: var(--mono); font-size: 20px; font-weight: 800; letter-spacing: 1px; fill: var(--tone);
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--tone) 70%, transparent)); animation: cu-led .5s ease-out both;
+}
+@keyframes cu-led { from { opacity: .35; } }
+.cu-led.cu-t-dim { --tone: var(--dim); }
+.cu-led--hot .cu-led__box { stroke: var(--ok); stroke-width: 1.5; }
+.cu-led--hot .cu-led__v { animation: cu-led .5s ease-out both, cu-hot .9s ease-in-out infinite alternate; }
+@keyframes cu-hot { to { opacity: .6; } }
 
-.cu-fork__lane { fill: none; stroke: var(--tone); stroke-width: 3; stroke-linecap: round; opacity: .45; transition: opacity .25s, stroke-width .25s; }
-.cu-fork__lane--lit { opacity: 1; stroke-width: 4.5; }
-.cu-chute rect { fill: color-mix(in srgb, var(--tone) 9%, transparent); stroke: var(--tone); stroke-width: 1.5; transition: fill .25s; }
-.cu-chute--lit rect { fill: color-mix(in srgb, var(--tone) 24%, transparent); stroke-width: 2.5; }
+/* The belt itself: a skirt, a rolling surface of slats, turning rollers. */
+.cu-skirt { fill: #0a0820; stroke: #2f2966; stroke-width: 1.2; }
+.cu-slats { stroke: rgba(255, 255, 255, 0.1); stroke-width: 10; stroke-dasharray: 3 9; }
+.cu-belt--moving .cu-slats { animation: cu-roll .45s linear infinite; }
+@keyframes cu-roll { to { stroke-dashoffset: -12; } }
+.cu-belt__hi { stroke: rgba(255, 255, 255, 0.22); stroke-width: 1; }
+.cu-roller circle { fill: #0f0c2a; stroke: #5a5494; stroke-width: 1.5; }
+.cu-roller path { stroke: #5a5494; stroke-width: 1.2; }
+.cu-roller { transform-box: fill-box; transform-origin: center; }
+.cu-belt--moving .cu-roller { animation: cu-spin .7s linear infinite; }
+@keyframes cu-spin { to { transform: rotate(360deg); } }
+
+.cu-stack rect { fill: #2a2458; stroke: #5a5494; stroke-width: 1; }
+.cu-stack .cu-stack__badge { fill: var(--warn); stroke: none; }
+.cu-stack__n { font-family: var(--mono); font-size: 11.5px; font-weight: 800; text-anchor: middle; fill: #1d1100; }
+
+/* The scanner: a housing with its tunnel, a screen, a beam that sweeps. */
+.cu-scan__grid line { stroke: rgba(62, 244, 255, 0.1); stroke-width: 1; }
+.cu-screen { fill: rgba(62, 244, 255, 0.05); stroke: rgba(62, 244, 255, 0.3); stroke-width: 1; }
+.cu-scan__read { font-family: var(--mono); font-size: 11px; font-weight: 700; text-anchor: middle; fill: var(--tone, var(--txt)); animation: cu-led .4s ease-out both; }
+.cu-scan__read--2 { font-weight: 400; fill: var(--txt-2); animation: none; }
+.cu-hous { stroke: rgba(160, 170, 255, 0.4); stroke-width: 1.5; }
+.cu-hous__hi { stroke: rgba(255, 255, 255, 0.35); stroke-width: 1.5; stroke-linecap: round; }
+.cu-mouth { fill: none; stroke: var(--cy); stroke-width: 1.5; opacity: .5; transition: opacity .3s; }
+.cu-belt--scanning .cu-mouth { opacity: 1; }
+.cu-head { fill: #07051a; stroke: rgba(62, 244, 255, 0.35); stroke-width: 1; }
+.cu-scan__name { font-family: var(--display); font-size: 13px; font-weight: 700; letter-spacing: 2.5px; fill: var(--cy); }
+.cu-halo { fill: var(--dimmer); opacity: .25; }
+.cu-halo--busy { fill: var(--cy); animation: cu-halo .7s ease-in-out infinite alternate; }
+@keyframes cu-halo { from { opacity: .45; } to { opacity: .08; } }
+.cu-light { fill: var(--dimmer); stroke: rgba(255, 255, 255, 0.35); stroke-width: 1; transition: fill .2s; }
+.cu-light--busy { fill: var(--cy); animation: cu-blink .7s ease-in-out infinite alternate; }
+@keyframes cu-blink { from { opacity: 1; } to { opacity: .45; } }
+.cu-hazard { stroke: var(--yl); stroke-width: 4; stroke-dasharray: 7 7; opacity: .28; }
+.cu-curtain rect { fill: rgba(170, 180, 255, 0.16); }
+.cu-wash { fill: var(--cy); opacity: .05; animation: cu-wash 1.6s ease-in-out infinite alternate; }
+@keyframes cu-wash { to { opacity: .13; } }
+.cu-beam { animation: cu-sweep .9s ease-in-out infinite alternate; }
+.cu-beam__core { fill: #d8fdff; opacity: .9; }
+@keyframes cu-sweep { from { transform: translateX(0); } to { transform: translateX(166px); } }
+
+/* A bag: slides between its places; the X-ray sees through it in the scanner. */
+.cu-bag { transition: transform .5s cubic-bezier(.3, .7, .4, 1); }
+.cu-bag__in { animation: cu-bag-in .45s var(--ease-out) both; }
+@keyframes cu-bag-in { from { opacity: 0; transform: translateX(-36px); } }
+.cu-bag__shadow { fill: #000; opacity: .5; }
+.cu-bag__skin { transition: opacity .3s; }
+.cu-bag__handle { fill: none; stroke: #8f96c8; stroke-width: 3; stroke-linecap: round; }
+.cu-bag__strap { fill: rgba(0, 0, 0, 0.3); }
+.cu-bag__body { stroke: rgba(255, 255, 255, 0.2); stroke-width: 1; transition: stroke .3s, stroke-width .3s; }
+.cu-bag__tag { fill: #eef1ff; }
+.cu-bag__hole { fill: #07051a; opacity: .45; }
+.cu-bag__txt { font-family: var(--mono); font-size: 9.5px; font-weight: 600; fill: #0b0930; }
+.cu-bag__xray { opacity: 0; transition: opacity .3s; }
+.cu-xr__body { fill: rgba(62, 244, 255, 0.08); stroke: var(--cy); stroke-width: 1.5; stroke-dasharray: 5 3; }
+.cu-xr__handle { fill: none; stroke: var(--cy); stroke-width: 1.5; stroke-dasharray: 3 2; }
+.cu-xr__item { fill: rgba(62, 244, 255, 0.22); stroke: #a8fcff; stroke-width: 1.2; stroke-linejoin: round; }
+.cu-bag--scan .cu-bag__skin { opacity: .1; }
+.cu-bag--scan .cu-bag__xray { opacity: 1; }
+.cu-bag--out .cu-bag__body { stroke: var(--tone); stroke-width: 2.5; }
+
+/* The stamp comes down. */
+.cu-stamp { transform-box: fill-box; transform-origin: center; animation: cu-stamp .42s cubic-bezier(.2, 1.5, .4, 1) both; }
+@keyframes cu-stamp {
+  0% { opacity: 0; transform: scale(2.6) rotate(10deg); }
+  60% { opacity: 1; transform: scale(.9) rotate(-2deg); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.cu-stamp__box { fill: rgba(7, 5, 26, 0.9); stroke: var(--tone); stroke-width: 2.5; }
+.cu-stamp__rim { fill: none; stroke: var(--tone); stroke-width: 1; opacity: .55; }
+.cu-stamp__txt { font-family: var(--display); font-size: 13px; font-weight: 800; letter-spacing: 3px; text-anchor: middle; fill: var(--tone); }
+
+/* What the latest bag earned. */
+.cu-callout__in { transform-box: fill-box; transform-origin: center; animation: cu-callout .45s var(--ease-spring) both; }
+.cu-callout.cu-t-err .cu-callout__in { animation: cu-callout .45s var(--ease-spring) both, cu-shake .36s .42s ease-in-out; }
+@keyframes cu-callout { from { opacity: 0; transform: translateY(12px) scale(.5); } }
+@keyframes cu-shake { 25% { transform: translateX(-4px); } 50% { transform: translateX(4px); } 75% { transform: translateX(-2px); } }
+.cu-callout__box { fill: rgba(7, 5, 26, 0.92); stroke: var(--tone); stroke-width: 1.5; }
+.cu-callout__txt { font-family: var(--mono); font-size: 12px; font-weight: 800; letter-spacing: .5px; text-anchor: middle; fill: var(--tone); white-space: pre; }
+
+/* The bags before it drop down their chutes. */
+.cu-drop { opacity: 0; animation: cu-drop .8s cubic-bezier(.45, 0, .6, 1) both; }
+.cu-drop--foul { animation-name: cu-drop-foul; }
+@keyframes cu-drop {
+  0% { opacity: 1; transform: translate(var(--x0), var(--y0)); }
+  30% { opacity: 1; transform: translate(calc(var(--x0) + 90px), var(--y0)) scale(.85); }
+  100% { opacity: 0; transform: translate(var(--x1), var(--y1)) scale(.3); }
+}
+@keyframes cu-drop-foul {
+  0% { opacity: 1; transform: translate(var(--x0), var(--y0)); }
+  100% { opacity: 0; transform: translate(calc(var(--x0) + 70px), calc(var(--y0) + 60px)) rotate(26deg) scale(.7); }
+}
+.cu-drop__body { stroke: var(--tone); stroke-width: 2.5; }
+.cu-drop__mark { font-family: var(--mono); font-size: 26px; font-weight: 800; text-anchor: middle; fill: var(--tone); }
+
+/* The fork: three tubes from the gate to the chutes; the latest route lit and flowing. */
+.cu-tube__out { fill: none; stroke: color-mix(in srgb, var(--tone) 16%, #0b0922); stroke-width: 13; stroke-linecap: round; }
+.cu-tube__in { fill: none; stroke: var(--tone); stroke-width: 2.5; stroke-linecap: round; opacity: .3; transition: opacity .25s, stroke-width .25s; }
+.cu-tube--lit .cu-tube__out { stroke: color-mix(in srgb, var(--tone) 30%, #0b0922); }
+.cu-tube--lit .cu-tube__in { opacity: 1; stroke-width: 3.5; }
+.cu-tube__flow {
+  fill: none; stroke: color-mix(in srgb, var(--tone) 45%, #fff); stroke-width: 4; stroke-linecap: round; stroke-dasharray: 3 16;
+  animation: cu-flow .5s linear infinite;
+}
+@keyframes cu-flow { to { stroke-dashoffset: -19; } }
+.cu-gate { fill: #0f0c2a; stroke: var(--dim); stroke-width: 2; transition: stroke .2s, fill .2s; }
+.cu-gate--ok { stroke: var(--ok); fill: color-mix(in srgb, var(--ok) 25%, #0f0c2a); }
+.cu-gate--warn { stroke: var(--warn); fill: color-mix(in srgb, var(--warn) 25%, #0f0c2a); }
+.cu-gate--err { stroke: var(--err); fill: color-mix(in srgb, var(--err) 25%, #0f0c2a); }
+.cu-gate__pin { fill: var(--txt); opacity: .8; }
+
+/* A chute: a lit bin, a count that pops as a bag lands. */
+.cu-chute__slot { fill: color-mix(in srgb, var(--tone) 35%, #07051a); stroke: var(--tone); stroke-width: 1.2; }
+.cu-chute__bin { stroke: var(--tone); stroke-width: 1.5; transition: stroke-width .25s; }
+.cu-chute--lit .cu-chute__bin { stroke-width: 2.6; }
+.cu-chute__bevel { fill: none; stroke: rgba(255, 255, 255, 0.07); stroke-width: 1; transition: stroke .25s; }
+.cu-chute--lit .cu-chute__bevel { stroke: rgba(255, 255, 255, 0.2); }
+.cu-chute__flash { fill: var(--tone); opacity: 0; animation: cu-flash .6s ease-out both; pointer-events: none; }
+@keyframes cu-flash { from { opacity: .5; } to { opacity: 0; } }
 .cu-chute__k { font-family: var(--display); font-size: 13px; font-weight: 700; letter-spacing: 2px; fill: var(--tone); }
 .cu-chute__rule { font-family: var(--mono); font-size: 11px; fill: color-mix(in srgb, var(--txt) 75%, var(--dim)); }
-.cu-chute__n { font-family: var(--display); font-size: 28px; font-weight: 700; text-anchor: end; fill: var(--txt); }
-
-/* A bag slides between its places: the belt, the scanner, the exit. */
-.cu-bag { transition: transform .45s cubic-bezier(.3, .7, .4, 1); }
-.cu-bag__handle { fill: none; stroke: var(--dim); stroke-width: 2; }
-.cu-bag__body { fill: color-mix(in srgb, var(--dimmer) 45%, var(--void)); stroke: var(--dim); stroke-width: 1.5; }
-.cu-bag__tag { fill: var(--txt); }
-.cu-bag__txt { font-family: var(--mono); font-size: 10px; fill: var(--void); }
-.cu-bag--scan .cu-bag__body {
-  fill: color-mix(in srgb, var(--cy) 12%, transparent); stroke: var(--cy); stroke-width: 2; stroke-dasharray: 6 4;
-  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--cy) 70%, transparent));
+.cu-chute__n { font-family: var(--display); font-size: 30px; font-weight: 700; text-anchor: end; fill: var(--txt); }
+.cu-chute__n--bump { transform-box: fill-box; transform-origin: center; animation: cu-pop .5s var(--ease-spring) both; }
+@keyframes cu-pop { from { transform: scale(1.5); fill: var(--tone); } }
+.cu-chute__plus { font-family: var(--mono); font-size: 13px; font-weight: 800; fill: var(--tone); text-anchor: end; animation: cu-plus .9s var(--ease-out) both; }
+@keyframes cu-plus {
+  0% { opacity: 0; transform: translateY(6px); }
+  20% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-14px); }
 }
-.cu-bag--scan .cu-bag__handle { stroke: var(--cy); stroke-dasharray: 4 3; }
-.cu-bag--scan .cu-bag__tag, .cu-bag--scan .cu-bag__txt { opacity: .22; }
-.cu-bag--out .cu-bag__body, .cu-bag--out .cu-bag__handle { stroke: var(--tone); stroke-width: 2; }
-.cu-stamp rect { fill: var(--void); stroke: var(--tone); stroke-width: 2; }
-.cu-stamp text { font-family: var(--display); font-size: 12px; font-weight: 800; letter-spacing: 2px; text-anchor: middle; fill: var(--tone); }
 
 /* ── The readout and the comparison ── */
 .cu-stage { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 16px; align-items: start; }
 @media (max-width: 1100px) { .cu-stage { grid-template-columns: minmax(0, 1fr); } }
 
-.cu-readout__hd { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cu-readout { overflow: clip; }
+.cu-readout__hd { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-height: 34px; }
 .cu-decision {
-  padding: 2px 10px; font-family: var(--mono); font-size: var(--fs-sm); font-weight: 700; border-radius: 3px;
-  border: 1px solid currentColor;
+  padding: 4px 14px; font-family: var(--display); font-size: 15px; font-weight: 800; letter-spacing: .12em; white-space: nowrap;
+  border: 2px solid currentColor; border-radius: 8px; transform: rotate(-3deg);
+  box-shadow: 0 0 18px -5px currentColor, inset 0 0 12px -5px currentColor;
+  animation: cu-decide .4s var(--ease-spring) both;
 }
+@keyframes cu-decide { from { opacity: 0; transform: scale(1.7) rotate(4deg); } }
 .cu-decision--ok { color: var(--ok); background: var(--ok-dim); }
 .cu-decision--warn { color: var(--warn); background: var(--am-dim); }
 .cu-decision--err { color: var(--err); background: var(--err-dim); }
 .cu-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
 .cu-tab {
-  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; font-size: var(--fs-sm);
-  color: var(--dim); background: none; border: 1px solid var(--rule); border-radius: 3px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 7px; padding: 4px 12px 4px 5px; font-size: var(--fs-sm); color: var(--dim);
+  background: rgba(255, 255, 255, 0.025); border: 1px solid var(--rule); border-radius: 999px; cursor: pointer;
+  transition: color .15s, border-color .15s, background .15s, box-shadow .2s;
 }
-.cu-tab--on { color: var(--txt); border-color: var(--edge-hot); background: var(--cy-dim); }
+.cu-tab:hover { color: var(--txt); border-color: color-mix(in srgb, var(--lane) 55%, transparent); }
+.cu-tab--on { color: var(--txt); border-color: var(--lane); background: color-mix(in srgb, var(--lane) 14%, transparent); box-shadow: 0 0 14px -6px var(--lane); }
+.cu-readout__empty { padding: 20px 0; text-align: center; }
+.cu-readout__bag { display: flex; flex-direction: column; gap: 6px; animation: cu-fade .3s ease-out both; }
+@keyframes cu-fade { from { opacity: .25; transform: translateY(4px); } }
 .cu-readout__user { font-size: var(--fs-sm); color: var(--dim); }
-.cu-readout__msg { font-size: 15px; line-height: 1.45; }
-.cu-meters { display: flex; flex-direction: column; gap: 8px; }
-.cu-meters .g-meter { grid-template-columns: 150px minmax(0, 1fr) 44px; }
-.cu-meters .g-meter__k { min-width: 0; }
-.cu-sev { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
-.cu-sev__k { width: 150px; font-size: var(--fs-md); }
-.cu-sev__v { font-size: var(--fs-xs); }
-.cu-sevcols { display: flex; align-items: flex-end; gap: 6px; }
-.cu-sevcol { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px; height: 58px; }
-.cu-sevcol__bar { display: block; width: 44px; background: var(--dim); opacity: .6; }
-.cu-sevcol__bar--top { opacity: 1; background: var(--lane); }
-.cu-sevcol__bar--2, .cu-sevcol__bar--3 { background: var(--warn); }
-.cu-sevcol__k { font-family: var(--mono); font-size: 10px; color: var(--dim); }
-.cu-said { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; font-size: var(--fs-md); background: var(--void-2); border: 1px solid var(--rule); border-radius: 3px; overflow-wrap: anywhere; }
-.cu-said--foul { border-color: color-mix(in srgb, var(--err) 50%, transparent); }
+.cu-readout__msg {
+  display: flex; align-items: baseline; gap: 10px; padding: 10px 14px; font-size: 16px; line-height: 1.45;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--acc) 8%, transparent), rgba(255, 255, 255, 0.02));
+  border-radius: 10px; box-shadow: inset 3px 0 0 var(--acc);
+}
+.cu-readout__no {
+  flex-shrink: 0; padding: 1px 7px; font-size: var(--fs-micro); font-weight: 800; letter-spacing: .08em; border-radius: 5px;
+  color: var(--acc); background: color-mix(in srgb, var(--acc) 16%, transparent);
+}
+
+/* Jev's gauges: four dials, a needle each. */
+.cu-dials { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 640px) { .cu-dials { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.cu-dial {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 6px 10px; min-width: 0; border-radius: 14px;
+  background:
+    radial-gradient(120px 70px at 50% 75%, color-mix(in srgb, var(--tone) 13%, transparent), transparent 75%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(0, 0, 0, 0.25));
+  border: 1px solid color-mix(in srgb, var(--tone) 32%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), inset 0 -12px 22px rgba(0, 0, 0, 0.35);
+  transition: border-color .3s, background .3s;
+}
+.cu-dial svg { display: block; width: 100%; max-width: 150px; height: auto; overflow: visible; }
+.cu-dial__track { fill: none; stroke: #0d0b26; stroke-width: 13; }
+.cu-dial__zone { fill: none; stroke: var(--tone); stroke-width: 8; opacity: .33; transition: stroke-dasharray .3s, stroke-dashoffset .3s; }
+.cu-dial__val {
+  fill: none; stroke: var(--tone); stroke-width: 5; stroke-linecap: round;
+  filter: drop-shadow(0 0 3px var(--tone)); transition: stroke-dasharray .55s var(--ease-out), stroke .3s;
+}
+.cu-dial__tick { stroke: var(--txt); stroke-width: 2; stroke-linecap: round; opacity: .85; }
+.cu-dial__needle { transform-box: fill-box; transform-origin: center; transition: transform .6s var(--ease-spring); }
+.cu-dial__needle path { fill: var(--txt); }
+.cu-dial__needle circle { fill: none; stroke: none; }
+.cu-dial__hub { fill: #1a1640; stroke: var(--tone); stroke-width: 2; }
+.cu-dial__pin { fill: var(--txt); }
+.cu-dial__v { font-family: var(--mono); font-size: 13px; font-weight: 800; text-anchor: middle; fill: var(--tone); }
+.cu-dial__k { font-size: var(--fs-xs); line-height: 1.25; color: var(--txt-2); text-align: center; }
+.cu-dials--demo { gap: 8px; }
+.cu-dial--demo { padding: 6px 4px 8px; }
+.cu-dial--demo svg { max-width: 132px; }
+.cu-dial--demo .cu-dial__needle { animation: cu-wobble 2.4s ease-in-out infinite alternate; }
+.cu-dial--demo:nth-child(2) .cu-dial__needle { animation-duration: 1.9s; animation-delay: -.6s; }
+.cu-dial--demo:nth-child(3) .cu-dial__needle { animation-duration: 2.8s; animation-delay: -1.2s; }
+.cu-dial--demo:nth-child(4) .cu-dial__needle { animation-duration: 2.1s; animation-delay: -.3s; }
+@keyframes cu-wobble { from { rotate: -5deg; } to { rotate: 5deg; } }
+
+/* Severity: four lit columns of segments. */
+.cu-sev { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; padding: 10px 12px; border-radius: 12px; background: rgba(4, 3, 15, 0.45); border: 1px solid var(--rule); }
+.cu-sev__k { display: flex; flex-direction: column; font-size: var(--fs-md); font-weight: 600; }
+.cu-sev__k small { font-size: var(--fs-xs); font-weight: 400; color: var(--dim); }
+.cu-sev__v { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-family: var(--mono); }
+.cu-sev__v b { font-size: 28px; font-weight: 800; line-height: 1; color: var(--txt); }
+.cu-sev__v small { font-size: var(--fs-sm); color: var(--dim); }
+.cu-sev__esc { font-size: var(--fs-xs); font-weight: 700; color: var(--warn); }
+.cu-ticks { font-size: var(--fs-xs); }
+.cu-sevcols { display: flex; align-items: flex-end; gap: 8px; }
+.cu-sevcol { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.cu-sevcol--0 { --c: var(--ok); }
+.cu-sevcol--1 { --c: color-mix(in srgb, var(--ok) 45%, var(--warn)); }
+.cu-sevcol--2 { --c: var(--warn); }
+.cu-sevcol--3 { --c: var(--err); }
+.cu-sevcol__well {
+  display: flex; align-items: flex-end; width: 46px; height: 58px; overflow: hidden; border-radius: 7px;
+  background: repeating-linear-gradient(to top, rgba(255, 255, 255, 0.045) 0 5px, transparent 5px 7px), #07051a;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(140, 150, 255, 0.12);
+}
+.cu-sevcol__bar {
+  display: block; width: 100%; opacity: .5;
+  background: repeating-linear-gradient(to top, var(--c) 0 5px, transparent 5px 7px);
+  transition: height .45s var(--ease-out), opacity .3s;
+}
+.cu-sevcol--top .cu-sevcol__bar { opacity: 1; filter: drop-shadow(0 0 5px var(--c)); }
+.cu-sevcol__k { font-family: var(--mono); font-size: 10.5px; color: var(--dim); white-space: nowrap; }
+.cu-sevcol--top .cu-sevcol__k { color: var(--txt); font-weight: 700; }
+
+/* A text model's answer, as its terminal printed it. */
+.cu-said {
+  display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; font-size: var(--fs-md); color: #d5e6ff; overflow-wrap: anywhere;
+  background: repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 3px), #05040f;
+  border: 1px solid rgba(62, 244, 255, 0.22); border-radius: 10px; box-shadow: inset 0 0 22px rgba(62, 244, 255, 0.05);
+}
+.cu-said__k { color: var(--dim); }
+.cu-said--foul { border-color: color-mix(in srgb, var(--err) 55%, transparent); box-shadow: inset 0 0 22px rgba(255, 77, 106, 0.08); }
+.cu-said__bad { color: var(--err); font-weight: 700; }
 .cu-why { font-size: var(--fs-md); font-weight: 600; }
 .cu-why .g-muted { font-weight: 400; }
 .cu-against { font-size: var(--fs-sm); }
 
 .cu-compare { gap: 12px; }
-.cu-flow { display: flex; flex-direction: column; gap: 4px; }
+.cu-flow { display: flex; flex-direction: column; gap: 5px; }
 .cu-flow__row { display: flex; justify-content: space-between; gap: 10px; font-size: var(--fs-md); }
-.cu-flow__who { display: inline-flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cu-flow__who { display: inline-flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 .cu-flow__row .g-mono { font-size: var(--fs-sm); white-space: nowrap; }
-.cu-flow__track { display: block; height: 10px; background: rgba(125, 139, 166, 0.15); }
-.cu-flow__fill { display: block; height: 100%; background: var(--lane); transition: width .3s; }
+.cu-flow__track { display: block; height: 10px; border-radius: 5px; background: rgba(255, 255, 255, 0.05); box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6); }
+.cu-flow__fill {
+  display: block; height: 100%; border-radius: 5px; transition: width .4s var(--ease-out);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--lane) 55%, #000), var(--lane));
+  box-shadow: 0 0 10px -2px var(--lane);
+}
+.cu-flow--live .cu-flow__fill {
+  background:
+    repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.16) 0 6px, transparent 6px 12px),
+    linear-gradient(90deg, color-mix(in srgb, var(--lane) 55%, #000), var(--lane));
+  background-size: 17px 17px, 100% 100%;
+  animation: cu-stripes .6s linear infinite;
+}
+@keyframes cu-stripes { to { background-position: 17px 0, 0 0; } }
 .cu-flow__rate { font-size: var(--fs-xs); }
 .cu-board th[scope="row"] { font-family: var(--mono); font-size: var(--fs-sm); letter-spacing: 0; text-transform: none; color: var(--txt); font-weight: 400; }
 .cu-board thead th { vertical-align: middle; }
-.cu-board td { font-size: var(--fs-sm); }
+.cu-board td { font-size: var(--fs-sm); white-space: nowrap; }
 .cu-board__hint { display: block; font-size: var(--fs-xs); color: var(--dim); }
-.cu-board__score th, .cu-board__score td { font-weight: 700; font-size: var(--fs-md); border-bottom: none; }
+.cu-board__score th, .cu-board__score td { font-weight: 800; font-size: 18px; border-bottom: none; }
+.cu-board__score td { font-family: var(--mono); }
+.cu-board__lead { color: var(--txt); text-shadow: 0 0 12px var(--lane); }
+.cu-board__lead::before { content: '▲ '; font-size: 10px; color: var(--yl); vertical-align: 2px; }
 .cu-note { font-size: var(--fs-sm); line-height: 1.5; color: color-mix(in srgb, var(--txt) 75%, var(--dim)); }
 
 /* ── The lanes ── */
-.cu-tally__row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-.cu-tally__score { display: flex; flex-direction: column; align-items: center; min-width: 64px; }
-.cu-tally__score span { font-size: 30px; font-weight: 700; line-height: 1; }
+.cu-tally__row { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.cu-tally__score { display: flex; flex-direction: column; align-items: center; min-width: 76px; }
 .cu-tally__score small { font-size: var(--fs-xs); color: var(--dim); }
 .cu-tally__stats { flex: 1; border-top: none; padding-top: 0; }
-.cu-queue { display: flex; flex-direction: column; gap: 2px; width: 120px; }
-.cu-queue svg { width: 120px; height: 22px; }
-.cu-spark { fill: none; stroke: var(--lane); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.cu-mix { display: flex; gap: 3px; height: 24px; }
+.cu-mix__seg {
+  display: flex; align-items: center; justify-content: center; flex-basis: 0; min-width: 40px; overflow: hidden;
+  font-family: var(--mono); font-size: var(--fs-xs); font-weight: 800; white-space: nowrap; border-radius: 6px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tone) 24%, transparent), color-mix(in srgb, var(--tone) 8%, transparent));
+  box-shadow: inset 0 2px 0 var(--tone), inset 0 0 0 1px color-mix(in srgb, var(--tone) 30%, transparent);
+  transition: flex-grow .5s var(--ease-out);
+}
+.cu-queue { display: flex; flex-direction: column; gap: 3px; }
+.cu-queue svg { display: block; width: 100%; height: 28px; }
+.cu-spark { fill: none; stroke: var(--lane); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.cu-spark__area { fill: color-mix(in srgb, var(--lane) 18%, transparent); }
 
 /* ── The manifest ── */
 .cu-manifest__scroll { max-height: 460px; overflow: auto; }
+.cu-man__row { animation: cu-row .6s ease-out both; }
+@keyframes cu-row { from { background: color-mix(in srgb, var(--acc) 16%, transparent); } }
 .cu-man__msg { max-width: 60ch; }
+.cu-man__no { margin-right: 8px; font-size: var(--fs-micro); color: var(--dim); }
 .cu-man__note { display: block; margin-top: 2px; font-size: var(--fs-xs); color: var(--dim); }
 .cu-man__label { white-space: nowrap; font-weight: 600; }
 .cu-man__hz { display: block; font-size: var(--fs-xs); font-weight: 400; color: var(--dim); }
-.cu-mark { font-family: var(--mono); font-weight: 700; }
-.cu-mark__v { margin-left: 3px; font-family: var(--mono); font-size: var(--fs-xs); }
+.cu-mark {
+  display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 5px;
+  font-family: var(--mono); font-weight: 800; font-size: var(--fs-xs);
+  background: color-mix(in srgb, var(--tone) 14%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 45%, transparent);
+}
+.cu-mark__v { margin-left: 4px; font-family: var(--mono); font-size: var(--fs-xs); font-weight: 700; }
 
 @media (prefers-reduced-motion: reduce) {
-  .cu-bag, .cu-flow__fill, .cu-fork__lane, .cu-chute rect, .cu-light { transition: none; }
-  .cu-belt--moving .cu-dash, .cu-light--busy { animation: none; }
-  .cu-beam { animation: none; transform: translateX(96px); }
+  .cu-bag, .cu-flow__fill, .cu-tube__in, .cu-chute__bin, .cu-light, .cu-dial__needle, .cu-dial__val, .cu-sevcol__bar, .cu-mix__seg { transition: none; }
+  .cu-belt--moving .cu-slats, .cu-belt--moving .cu-roller, .cu-light--busy, .cu-halo--busy, .cu-wash, .cu-tube__flow,
+  .cu-flow--live .cu-flow__fill, .cu-dial--demo .cu-dial__needle { animation: none; }
+  .cu-beam { animation: none; transform: translateX(83px); }
+  .cu-drop { animation: none; opacity: 0; }
 }

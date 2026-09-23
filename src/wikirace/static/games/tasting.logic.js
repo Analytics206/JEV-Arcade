@@ -69,5 +69,34 @@ export function scatter(points, size, pad = 0) {
   return (points ?? []).map((p) => ({ n: p.n, x: axis(p.pred, size, pad), y: size - axis(p.critic, size, pad) }))
 }
 
+/* ── The dial ──────────────────────────────────────────────────────────────── */
+
+/** A score (80 … 100) as the dial's angle: −90° (80, far left) to +90° (100,
+ *  far right), 0° straight up at 90. Clamped to the scale. */
+export const dialAngle = (v) => -90 + ((clamp(Number(v) || LOW, LOW, HIGH) - LOW) / (HIGH - LOW)) * 180
+
+/** The point *r* from (cx, cy) at *deg* degrees clockwise from straight up. */
+export function polar(cx, cy, r, deg) {
+  const a = (deg * Math.PI) / 180
+  return [Math.round((cx + r * Math.sin(a)) * 100) / 100, Math.round((cy - r * Math.cos(a)) * 100) / 100]
+}
+
+/** An SVG arc of radius *r* about (cx, cy), clockwise from *a0* to *a1* degrees. */
+export function arcPath(cx, cy, r, a0, a1) {
+  const [x0, y0] = polar(cx, cy, r, a0)
+  const [x1, y1] = polar(cx, cy, r, a1)
+  return `M${x0} ${y0} A${r} ${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1} ${y1}`
+}
+
+/** What is in the glass, from the note's style: red, white, rose, sparkling or sweet. */
+export function wineKind(style) {
+  const s = String(style ?? '').toLowerCase()
+  if (/ros[eé]/.test(s)) return 'rose'
+  if (/sparkling|champagne|cava|prosecco|cr[eé]mant/.test(s)) return 'sparkling'
+  if (/sweet|sauternes|port|tokaji|ice ?wine/.test(s)) return 'sweet'
+  if (/white|blanc|riesling|chardonnay|chenin|grigio|gris|gew[uü]rz|viognier|albari|gr[uü]ner|semillon|s[eé]millon|muscadet|verdejo|vermentino|marsanne|roussanne/.test(s)) return 'white'
+  return 'red'
+}
+
 /** The level whose words are nearest a mean, for a tooltip. */
 export const nearestLevel = (mean, levels) => levels?.[clamp(Math.round(Number(mean) || 0), 0, (levels?.length ?? 1) - 1)]

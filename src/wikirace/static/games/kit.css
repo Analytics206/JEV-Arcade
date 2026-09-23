@@ -1,0 +1,246 @@
+/* The Arcade's kit (kit.js): what every game's page is built from, `g-*`.
+ * Loaded by games.css before the games' own stylesheets. */
+
+/* ── Layout ────────────────────────────────────────────────────────────────── */
+
+.g-main { flex: 1; min-height: 0; }
+.g-pad { padding: var(--sp-4); }
+.g-muted { color: var(--dim); font-size: var(--fs-md); }
+
+.g-l1 { --lane: var(--lane-1); }
+.g-l2 { --lane: var(--lane-2); }
+.g-l3 { --lane: var(--lane-3); }
+.g-l4 { --lane: var(--lane-4); }
+
+/* A section label: a lit tick, then the words. */
+.g-label {
+  display: flex; align-items: baseline; gap: 12px;
+  font-family: var(--display); font-size: var(--fs-label); font-weight: 700; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--acc);
+}
+.g-label > span:first-child { display: inline-flex; align-items: center; gap: 8px; }
+.g-label > span:first-child::before {
+  content: ''; width: 6px; height: 6px; border-radius: 1px; background: var(--acc); box-shadow: 0 0 8px var(--acc); flex-shrink: 0;
+}
+.g-label__note { font-family: var(--mono); font-size: var(--fs-xs); font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--dim); }
+
+.g-boot { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 80px 20px; }
+.g-boot .px { font-size: 26px; color: var(--acc); filter: drop-shadow(0 0 6px var(--acc)); animation: blink 0.9s steps(1) infinite; }
+
+/* ── A game's page ─────────────────────────────────────────────────────────── */
+
+.g-page {
+  display: flex; flex-direction: column; gap: 18px; padding: 22px 26px 50px; max-width: 1440px; margin: 0 auto;
+  animation: g-power .5s var(--ease-out) backwards; /* backwards: no transform left behind to trap fixed overlays */
+}
+@keyframes g-power { from { opacity: 0; transform: translateY(10px); } }
+
+.g-page__hd {
+  position: relative; display: flex; align-items: center; gap: 14px 18px; flex-wrap: wrap; padding: 14px 18px;
+  border-radius: 16px; overflow: hidden;
+  background:
+    radial-gradient(600px 140px at 12% 0%, color-mix(in srgb, var(--acc) 22%, transparent), transparent 70%),
+    linear-gradient(180deg, rgba(34, 27, 80, 0.85), rgba(16, 12, 40, 0.85));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--acc) 35%, transparent), 0 20px 40px -24px rgba(0, 0, 0, 0.9), 0 0 50px -24px var(--acc);
+}
+.g-page__hd::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--acc), transparent); opacity: .8;
+}
+.g-marquee { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.g-page__title { font-size: clamp(22px, 2.6vw, 32px); line-height: 1; font-weight: 400; color: var(--acc); }
+.g-page__title .px { max-width: 100%; height: auto; filter: drop-shadow(0 0 4px var(--acc)) drop-shadow(0 0 16px color-mix(in srgb, var(--acc) 55%, transparent)); animation: neon-on 1.4s linear both; }
+.g-page__tag { font-size: var(--fs-md); color: var(--txt-2); }
+.g-back {
+  align-self: stretch; padding: 0 14px; font-family: var(--display); font-size: var(--fs-sm); font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--txt-2); background: rgba(255, 255, 255, 0.04); cursor: pointer;
+  border: 1px solid var(--rule); border-radius: 10px; transition: color .15s, border-color .15s, box-shadow .15s;
+}
+.g-back:hover { color: var(--acc); border-color: var(--acc); box-shadow: 0 0 14px -4px var(--acc); }
+.g-usecase {
+  display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px 5px 5px; border-radius: 999px;
+  font-family: var(--mono); font-size: var(--fs-sm); color: var(--txt);
+  background: rgba(0, 0, 0, 0.25); border: 1px solid color-mix(in srgb, var(--acc) 55%, transparent);
+}
+.g-usecase__k {
+  padding: 2px 8px; border-radius: 999px; font-size: var(--fs-micro); font-weight: 800; letter-spacing: .1em;
+  color: var(--void); background: var(--acc);
+}
+.g-soon { padding: 24px; font-size: 15px; display: flex; flex-direction: column; gap: 8px; }
+
+/* A panel: glass with a lit edge. A lane's wears its colour along the top and
+ * a soft glow of it. */
+.g-box {
+  position: relative; display: flex; flex-direction: column; gap: 12px; padding: 14px 16px; min-width: 0;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(32, 26, 74, 0.72), rgba(16, 12, 40, 0.78));
+  border: 1px solid rgba(140, 150, 255, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 16px 34px -22px rgba(0, 0, 0, 0.95);
+}
+.g-lane {
+  border-top: 0;
+  box-shadow: inset 0 3px 0 var(--lane), inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 16px 34px -22px rgba(0, 0, 0, 0.95), 0 -8px 30px -18px var(--lane);
+}
+
+.g-chip {
+  display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px;
+  font-family: var(--mono); font-size: var(--fs-xs); color: var(--dim);
+  border: 1px solid rgba(140, 150, 210, 0.3); border-radius: 999px; white-space: nowrap;
+}
+.g-chip--ok { color: var(--ok); border-color: rgba(62, 245, 160, 0.36); background: var(--ok-dim); }
+.g-chip--warn { color: var(--warn); border-color: rgba(255, 181, 69, 0.36); background: var(--am-dim); }
+.g-chip--err { color: var(--err); border-color: rgba(255, 77, 106, 0.36); background: var(--err-dim); }
+.g-chip--live { color: #ff7cc4; border-color: rgba(255, 62, 165, 0.4); background: var(--mg-dim); }
+.g-chip--cy { color: var(--cy); border-color: rgba(62, 244, 255, 0.45); background: var(--cy-dim); }
+
+.g-stat { display: flex; flex-direction: column; min-width: 0; }
+.g-stat__k { font-family: var(--display); font-size: var(--fs-micro); font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
+.g-stat__v { font-family: var(--mono); font-size: var(--fs-base); font-weight: 600; color: var(--txt); white-space: nowrap; }
+.g-stats { display: flex; flex-wrap: wrap; gap: 8px 20px; padding-top: 10px; border-top: 1px solid var(--rule); }
+
+.g-num {
+  display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; flex-shrink: 0; border-radius: 6px;
+  font-family: var(--mono); font-size: var(--fs-xs); font-weight: 800; color: var(--lane-ink); background: var(--lane, var(--dim));
+  box-shadow: 0 0 10px -2px var(--lane, transparent), inset 0 -2px 0 rgba(0, 0, 0, 0.25);
+}
+.g-num--out { color: var(--txt); background: none; box-shadow: inset 0 0 0 1.5px var(--lane, var(--dim)); }
+.g-lanehd { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.g-lanehd__name { font-family: var(--display); font-size: 17px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.g-lanehd__sub { font-family: var(--mono); font-size: var(--fs-xs); color: var(--dim); white-space: nowrap; }
+.g-lanenote { font-size: var(--fs-sm); overflow-wrap: anywhere; }
+
+/* A score as a scoreboard shows it: big, lit, counting (fx.js Counter). */
+.g-score { font-family: var(--mono); font-size: 34px; font-weight: 800; line-height: 1; color: var(--txt); text-shadow: 0 0 14px color-mix(in srgb, var(--lane, var(--acc)) 70%, transparent); }
+
+/* Probability bars. */
+.g-bars { list-style: none; display: flex; flex-direction: column; gap: 5px; }
+.g-bar { display: grid; grid-template-columns: minmax(80px, 38%) minmax(0, 1fr) 42px; gap: 10px; align-items: center; font-size: var(--fs-md); }
+.g-bars--compact .g-bar { font-size: var(--fs-sm); gap: 8px; }
+.g-bar__k { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--txt-2); }
+.g-bar--top .g-bar__k { color: var(--txt); font-weight: 700; }
+.g-bar__track { height: 11px; border-radius: 6px; overflow: hidden; background: color-mix(in srgb, var(--lane) 15%, rgba(255, 255, 255, 0.03)); }
+.g-bar__fill {
+  display: block; height: 100%; border-radius: 6px; opacity: .72;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--lane) 70%, #000), var(--lane));
+  transition: width .45s var(--ease-out);
+}
+.g-bar--top .g-bar__fill { opacity: 1; box-shadow: 0 0 12px -1px var(--lane); }
+.g-bar--ok .g-bar__fill { background: var(--ok); --lane: var(--ok); }
+.g-bar--err .g-bar__fill { background: var(--err); --lane: var(--err); }
+.g-bar--warn .g-bar__fill { background: var(--warn); --lane: var(--warn); }
+.g-bar__v { font-family: var(--mono); font-size: var(--fs-sm); text-align: right; }
+
+/* A value against thresholds. */
+.g-meter { display: grid; grid-template-columns: auto minmax(0, 1fr) 42px; gap: 10px; align-items: center; font-size: var(--fs-md); }
+.g-meter--bare { grid-template-columns: minmax(0, 1fr) 42px; }
+.g-meter__k { min-width: 120px; }
+.g-meter__track { position: relative; height: 12px; border-radius: 6px; background: rgba(140, 150, 210, 0.14); }
+.g-meter__fill { position: absolute; inset: 0 auto 0 0; border-radius: 6px; transition: width .45s var(--ease-out); }
+.g-meter__mark { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--txt); box-shadow: 0 0 6px rgba(255, 255, 255, 0.6); }
+.g-meter__v { font-family: var(--mono); font-size: var(--fs-sm); text-align: right; }
+.g-fill--cy { background: var(--cy); box-shadow: 0 0 10px -2px var(--cy); }
+.g-fill--ok { background: var(--ok); box-shadow: 0 0 10px -2px var(--ok); }
+.g-fill--warn { background: var(--warn); box-shadow: 0 0 10px -2px var(--warn); }
+.g-fill--err { background: var(--err); box-shadow: 0 0 10px -2px var(--err); }
+.g-fill--lane { background: var(--lane); box-shadow: 0 0 10px -2px var(--lane); }
+
+/* A score's levels, as columns. */
+.g-levels { display: inline-flex; align-items: flex-end; gap: 3px; border-bottom: 1px solid var(--rule); min-width: 80px; }
+.g-levels__col { flex: 1; min-width: 8px; border-radius: 2px 2px 0 0; background: color-mix(in srgb, var(--lane) 45%, transparent); transition: height .4s var(--ease-out); }
+.g-levels__col--top { background: var(--lane); box-shadow: 0 0 10px -2px var(--lane); }
+
+/* ── Setup ─────────────────────────────────────────────────────────────────── */
+
+.g-setup { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 22px; align-items: start; }
+@media (max-width: 900px) { .g-setup { grid-template-columns: minmax(0, 1fr); } }
+
+/* Player select: a slot per player, lit in its lane's colour once it's in. */
+.g-players { display: flex; flex-direction: column; gap: 8px; }
+.g-players__row {
+  display: flex; align-items: center; gap: 8px; padding: 5px; border-radius: 10px;
+  background: rgba(255, 255, 255, 0.025); border: 1px solid var(--rule);
+  transition: border-color .2s, box-shadow .2s, background .2s;
+}
+.g-players__row.is-in { border-color: color-mix(in srgb, var(--lane) 60%, transparent); background: color-mix(in srgb, var(--lane) 8%, transparent); box-shadow: 0 0 16px -8px var(--lane); }
+.g-players__row .wr-sel { flex: 1; min-width: 0; border-radius: 6px; }
+.g-players__row .wr-x { border-radius: 6px; }
+.g-slot {
+  display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 30px; flex-shrink: 0; border-radius: 7px;
+  font-family: var(--mono); font-size: var(--fs-sm); font-weight: 900; color: var(--lane-ink); background: var(--lane);
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.28), 0 0 12px -3px var(--lane);
+}
+.g-join {
+  display: flex; align-items: center; justify-content: center; gap: 8px; padding: 9px; cursor: pointer; border-radius: 10px;
+  font-family: var(--display); font-size: var(--fs-sm); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--dim);
+  background: none; border: 1.5px dashed rgba(140, 150, 210, 0.35); transition: color .15s, border-color .15s;
+}
+.g-join span { font-size: 16px; line-height: 0; }
+.g-join:hover { color: var(--acc); border-color: var(--acc); }
+
+.g-field { display: flex; flex-direction: column; gap: 6px; }
+.g-field > span, .g-field > label { font-family: var(--display); font-size: var(--fs-label); font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
+.g-field .wr-sel, .g-field .wr-in { border-radius: 6px; padding: 7px 9px; font-size: var(--fs-sm); }
+
+/* The start button: the arcade's own, lit, and pressed down. */
+.g-start { display: flex; flex-direction: column; gap: 8px; }
+.g-start__btn {
+  display: flex; align-items: center; justify-content: center; width: 100%; padding: 16px 14px; cursor: pointer;
+  font-size: 16px; line-height: 1; color: #1d1100; border: 0; border-radius: 14px;
+  background: radial-gradient(120% 150% at 50% 0%, #fff6b8, var(--yl) 45%, #e0a800);
+  box-shadow: 0 6px 0 #9c6f00, 0 0 0 2px rgba(255, 225, 77, 0.35), 0 14px 32px -8px rgba(255, 225, 77, 0.75);
+  transition: transform .12s var(--ease-out), box-shadow .12s, filter .2s;
+  animation: press-glow 2.2s ease-in-out infinite;
+}
+.g-start__btn .px { max-width: 100%; height: auto; }
+.g-start__btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 0 #9c6f00, 0 0 0 2px rgba(255, 225, 77, 0.5), 0 18px 40px -6px rgba(255, 225, 77, 0.95); }
+.g-start__btn:active:not(:disabled) { transform: translateY(5px); box-shadow: 0 1px 0 #9c6f00, 0 0 0 2px rgba(255, 225, 77, 0.5), 0 6px 18px -6px rgba(255, 225, 77, 0.7); }
+.g-start__btn:disabled { cursor: not-allowed; animation: none; filter: grayscale(1) brightness(.55); box-shadow: 0 4px 0 #3a3a4a; }
+.g-start__msg { font-size: var(--fs-sm); color: var(--dim); }
+.g-explain { font-size: var(--fs-md); line-height: 1.6; color: var(--txt-2); }
+.g-explain b { color: var(--txt); }
+.g-explain code, .g-code { font-family: var(--mono); font-size: var(--fs-sm); color: var(--txt); }
+.g-code { white-space: pre-wrap; line-height: 1.55; padding: 10px 12px; background: var(--void-2); border: 1px solid var(--rule); border-radius: 8px; }
+
+/* ── A run ─────────────────────────────────────────────────────────────────── */
+
+.g-runbar {
+  display: flex; align-items: center; gap: 12px 16px; flex-wrap: wrap; padding: 10px 14px; border-radius: 14px;
+  background: linear-gradient(180deg, rgba(10, 7, 28, 0.9), rgba(18, 14, 44, 0.85));
+  border: 1px solid rgba(140, 150, 255, 0.16);
+  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.6);
+}
+.g-runbar.is-live { border-color: rgba(255, 62, 165, 0.35); box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.6), 0 0 26px -12px rgba(255, 62, 165, 0.7); }
+.g-runbar__clock { font-size: 22px; line-height: 1; color: var(--yl); filter: drop-shadow(0 0 5px rgba(255, 225, 77, 0.7)); }
+.g-runbar__win {
+  display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 4px 12px; border-radius: 999px;
+  font-family: var(--display); font-size: var(--fs-sm); font-weight: 700; letter-spacing: .04em; color: #2a1600;
+  background: linear-gradient(180deg, #fff09a, var(--yl)); box-shadow: 0 0 18px -4px rgba(255, 225, 77, 0.8);
+}
+.g-runbar__who { display: inline-flex; align-items: center; gap: 5px; }
+.g-runbar__win .g-num { width: 18px; height: 18px; font-size: var(--fs-micro); }
+.g-runbar__star { font-size: 14px; }
+.g-runnote { font-size: var(--fs-md); }
+.g-loading { padding: 24px; }
+.g-lanes { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); }
+
+.g-recent ul { list-style: none; display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.g-recent__row {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; text-align: left; border-radius: 10px;
+  background: rgba(255, 255, 255, 0.025); border: 1px solid var(--rule); cursor: pointer; font-size: var(--fs-sm);
+  transition: border-color .15s, background .15s, transform .15s var(--ease-out);
+}
+.g-recent__row:hover { border-color: var(--acc); background: color-mix(in srgb, var(--acc) 7%, transparent); transform: translateX(3px); }
+.g-recent__who { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--txt-2); }
+
+.g-table { width: 100%; border-collapse: collapse; font-size: var(--fs-md); }
+.g-table th { text-align: left; font-family: var(--display); font-size: var(--fs-label); letter-spacing: .12em; text-transform: uppercase; color: var(--dim); font-weight: 700; padding: 6px 8px; border-bottom: 1px solid var(--rule); }
+.g-table td { padding: 7px 8px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.g-table td.num, .g-table th.num { text-align: right; font-family: var(--mono); }
+
+@media (max-width: 640px) {
+  .g-page { padding: 14px 12px 40px; gap: 14px; }
+  .g-page__hd { padding: 12px; gap: 10px; }
+  .g-back { align-self: auto; padding: 6px 10px; }
+  .g-marquee { order: 3; flex-basis: 100%; }
+  .g-usecase { order: 2; }
+}

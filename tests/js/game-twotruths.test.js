@@ -3,10 +3,14 @@ import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   agitation,
+  clockText,
   entryOf,
+  foundBy,
   jevLie,
+  needleAngle,
   pointsAttr,
   polygraph,
+  revealOrder,
   rng,
   signalOf,
   tallyOf,
@@ -106,5 +110,39 @@ describe('the session', () => {
       ['gpt', 0, 3, 5000],
     ])
     assert.deepEqual(tallyOf([]), { rounds: 0, you: { found: 0, played: 0, ms: null }, judges: [] })
+  })
+})
+
+describe('the stage', () => {
+  it('writes the duel clocks', () => {
+    assert.equal(clockText(183), '0.18S')
+    assert.equal(clockText(12_380), '12.3S')
+    assert.equal(clockText(64_000), '1:04')
+    assert.equal(clockText(NaN), '--')
+  })
+  it('swings the needle from TRUE to LIE with p(contradicted)', () => {
+    assert.equal(needleAngle(0), -90)
+    assert.equal(needleAngle(0.5), 0)
+    assert.equal(needleAngle(1), 90)
+    assert.equal(needleAngle(3), 90)
+    assert.equal(needleAngle(undefined), -90)
+  })
+  it('stamps the truths first, left to right, and the lie last', () => {
+    assert.deepEqual([0, 1, 2].map((k) => revealOrder(k, 0)), [2, 0, 1])
+    assert.deepEqual([0, 1, 2].map((k) => revealOrder(k, 1)), [0, 2, 1])
+    assert.deepEqual([0, 1, 2].map((k) => revealOrder(k, 2)), [0, 1, 2])
+    assert.equal(revealOrder(1, null), 0)
+  })
+  it('names as winners every judge that found the lie, once it is out', () => {
+    const lanes = [
+      { index: 0, found: true },
+      { index: 1, found: false },
+      { index: 2, found: true },
+      { index: 3, found: null },
+    ]
+    assert.deepEqual(foundBy({ lie: 1, lanes }), [0, 2])
+    assert.deepEqual(foundBy({ lie: null, lanes }), [])
+    assert.deepEqual(foundBy({ lie: 0, lanes: [{ index: 0, found: false }] }), [])
+    assert.deepEqual(foundBy(null), [])
   })
 })

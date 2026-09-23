@@ -15,9 +15,13 @@ import {
   glyph,
   isKnightJump,
   isLight,
+  kingSquare,
   laneOn,
+  lanePips,
+  leadersOf,
   matesOf,
   parseFen,
+  pieceAt,
   sanOf,
   sessionRows,
   squareXY,
@@ -237,5 +241,28 @@ describe('what the board draws', () => {
   it('writes difficulty as dots', () => {
     assert.equal(dots(1), '●○○')
     assert.equal(dots(3), '●●●')
+  })
+})
+
+describe('what the page lights up', () => {
+  it('finds each king, and the piece on a square', () => {
+    assert.equal(kingSquare(BACK_RANK, 'b'), 'g8')
+    assert.equal(kingSquare(BACK_RANK, 'w'), 'g1')
+    assert.equal(kingSquare('8/8/8/8/8/8/8/8 w - - 0 1', 'w'), null)
+    assert.deepEqual(pieceAt(BACK_RANK, 'e1'), { sq: 'e1', piece: 'R', color: 'w', kind: 'r' })
+    assert.equal(pieceAt(BACK_RANK, 'e4'), null)
+  })
+  it('names the leaders by puzzles solved, all of them on a tie, nobody at nought', () => {
+    assert.deepEqual(leadersOf(run), [0, 1])
+    const ahead = { lanes: [{ index: 0, solved: 3 }, { index: 1, solved: 5 }, { index: 2, solved: 5 }, { index: 3 }] }
+    assert.deepEqual(leadersOf(ahead), [1, 2])
+    assert.deepEqual(leadersOf({ lanes: [{ index: 0, solved: 0 }, { index: 1, solved: 0 }] }), [])
+    assert.deepEqual(leadersOf(null), [])
+  })
+  it("draws a lane's puzzles as pips", () => {
+    const [jev, text] = run.lanes
+    assert.deepEqual(lanePips(jev, 3).map((p) => p.verdict?.tone ?? p.state), ['ok', 'err', 'playing'])
+    assert.deepEqual(lanePips(text, 3).map((p) => p.verdict?.tone ?? p.state), ['warn', 'playing', 'waiting'])
+    assert.deepEqual(lanePips(jev, 0), [])
   })
 })

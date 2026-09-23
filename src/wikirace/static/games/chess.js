@@ -3,31 +3,37 @@
  * The server (games/chess.py) owns the puzzles, the rules and the verdicts;
  * this page draws them. A setup (players, how many puzzles, strikes, whether
  * text models see the legal moves), then a round followed live: the board, with
- * Jev's five likeliest moves as arrows whose width is the probability (or a
- * text model's tries, the illegal ones in red), a strip to step through the
- * round's puzzles, a card per lane, and the session's totals.
+ * Jev's five likeliest moves as glowing arrows whose width is the probability
+ * (or a text model's tries, the illegal ones dashed red with a ✕), the mated
+ * king's square flashing, a strip to step through the round's puzzles, a card
+ * per lane with its score and a pip per puzzle, and the session's totals.
  *
  * Board geometry and the readings of a run are pure, in chess.logic.js.
  */
-import { useEffect, useMemo, useState } from 'preact/hooks'
+import { useEffect, useId, useMemo, useRef, useState } from 'preact/hooks'
 import { Button } from '../ui.js'
 import {
   Bars,
   Box,
   Chip,
+  Counter,
   GameFrame,
+  LANE_COLORS,
   Label,
   LaneHead,
   LaneNum,
   LaneStats,
+  PixelText,
   PlayerPicker,
   RecentRuns,
   RunBar,
   RunLoading,
   StartButton,
   againOf,
+  burstFrom,
   fmtMs,
   html,
+  sfx,
   useModels,
   useNow,
   useRun,
@@ -47,7 +53,10 @@ import {
   followPuzzle,
   glyph,
   isLight,
+  kingSquare,
   laneOn,
+  lanePips,
+  leadersOf,
   matesOf,
   parseFen,
   sanOf,
@@ -119,29 +128,43 @@ function Setup({ game }) {
           <${StartButton} onStart=${go} problem=${problem} busy=${busy} error=${error} label="Set up the board" />
         <//>
         <div class="ch-side">
-          <${Box}>
+          <${Box} class="ch-howbox">
             <${Label}>HOW IT'S PLAYED<//>
             <div class="ch-howto">
               <figure class="ch-howto__board">
-                <${Board} fen=${SAMPLE_FEN} marks=${sample}
-                  label="Example board: white to move. Arrows show Jev's probability for five moves; the thickest, rook e1 to e8, is the mate." />
+                <div class="ch-bezel">
+                  <${Board} fen=${SAMPLE_FEN} marks=${sample} mateKing="g8" demo
+                    label="Example board: white to move. Arrows show Jev's probability for five moves; the thickest, rook e1 to e8, is the mate." />
+                </div>
                 <figcaption class="g-mono g-muted">example · arrow width = Jev's probability</figcaption>
               </figure>
               <div class="ch-howto__text">
-                <p class="g-explain">
-                  Mate-in-one puzzles, the same ones for every player and in the same order; each player goes at its
-                  own pace. Find the move that checkmates.
-                </p>
-                <p class="g-explain">
-                  <b>Jev</b> gets one Choice per puzzle over every legal move (no position has more than 218, and a
-                  Choice holds 255), with the position described in words by code. It picks from real moves, so it
-                  can never play an illegal one. Its five likeliest moves become the arrows.
-                </p>
-                <p class="g-explain">
-                  <b>A text model</b> gets the FEN and the pieces and writes its move, <code>MOVE: Re8</code>. A move
-                  that isn't legal is a <b>foul</b>: it is told why ("the queen on d3 cannot reach f7") and tries
-                  again, until the strikes run out and the puzzle is lost. A legal move that doesn't mate is a miss.
-                </p>
+                <ol class="ch-steps">
+                  <li class="ch-step">
+                    <span class="ch-step__n" aria-hidden="true">1</span>
+                    <p class="g-explain">
+                      Mate-in-one puzzles, the same ones for every player and in the same order; each player goes at
+                      its own pace. Find the move that checkmates.
+                    </p>
+                  </li>
+                  <li class="ch-step">
+                    <span class="ch-step__n" aria-hidden="true">2</span>
+                    <p class="g-explain">
+                      <b>Jev</b> gets one Choice per puzzle over every legal move (no position has more than 218, and a
+                      Choice holds 255), with the position described in words by code. It picks from real moves, so
+                      it can never play an illegal one. Its five likeliest moves become the arrows.
+                    </p>
+                  </li>
+                  <li class="ch-step">
+                    <span class="ch-step__n" aria-hidden="true">3</span>
+                    <p class="g-explain">
+                      <b>A text model</b> gets the FEN and the pieces and writes its move, <code>MOVE: Re8</code>. A
+                      move that isn't legal is a <b>foul</b>: it is told why ("the queen on d3 cannot reach f7") and
+                      tries again, until the strikes run out and the puzzle is lost. A legal move that doesn't mate is
+                      a miss.
+                    </p>
+                  </li>
+                </ol>
                 <div class="ch-rules">
                   <${Chip} tone="ok">✓ solved +1<//><${Chip} tone="err">– missed 0<//><${Chip} tone="err">✕ fouled out 0<//>
                 </div>
@@ -162,54 +185,135 @@ function recentNote(r) {
 
 /* ── The board ─────────────────────────────────────────────────────────────── */
 
-/** A chessboard with its pieces, the lane's squares lit, the mates ringed once
- *  known, and arrows over it all. */
-function Board({ fen, flip = false, marks, mateTo = [], lane = 0, label, animKey }) {
+/**
+ * A chessboard: bevelled squares, pieces standing on soft shadows, the lane's
+ * squares lit (and a ghost of the piece where it lands), the mates ringed once
+ * known, the mated king's square flashing, and glowing arrows over it all.
+ * `animKey` replays the arrows' entrance; `demo` loops it (the setup's sample).
+ */
+function Board({ fen, flip = false, marks, mateTo = [], mateKing = null, lane = 0, label, animKey, demo = false }) {
+  const uid = useId().replace(/[^A-Za-z0-9_-]/g, '')
   const { pieces } = useMemo(() => parseFen(fen), [fen])
+  const id = (n) => `ch${n}${uid}`
+  const url = (n) => `url(#${id(n)})`
+  const at = (sq) => squareXY(sq, flip)
   const coords = coordLabels(flip)
   const lit = marks?.lit
   const lc = `g-l${(lane % 4) + 1}`
-  const litSquares = lit ? [lit.from, lit.to].map((sq) => squareXY(sq, flip)).filter(Boolean) : []
+  const litSquares = lit ? [['from', lit.from], ['to', lit.to]].map(([k, sq]) => ({ k, c: at(sq) })).filter((s) => s.c) : []
+  const mover = lit ? pieces.find((pc) => pc.sq === lit.from) : null
+  const taken = lit ? pieces.find((pc) => pc.sq === lit.to) : null
+  const ghost = mover && at(lit.to)
+  const king = mateKing ? at(mateKing) : null
+  const arrows = marks?.arrows ?? []
+  const crosses = marks?.crosses ?? []
+  const fouls = arrows.filter((a) => a.tone === 'err')
+  const replay = `${animKey ?? ''}|${fen}`
   return html`
-    <svg class="ch-board" viewBox=${`0 0 ${VIEW} ${VIEW}`} role="img" aria-label=${label}>
+    <svg class=${`ch-board ${lc}${demo ? ' ch-board--demo' : ''}`} viewBox=${`0 0 ${VIEW} ${VIEW}`} role="img" aria-label=${label}>
+      <defs>
+        <linearGradient id=${id('L')} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" class="ch-stop-l0" /><stop offset="1" class="ch-stop-l1" />
+        </linearGradient>
+        <linearGradient id=${id('D')} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" class="ch-stop-d0" /><stop offset="1" class="ch-stop-d1" />
+        </linearGradient>
+        <linearGradient id=${id('W')} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" class="ch-stop-w0" /><stop offset="1" class="ch-stop-w1" />
+        </linearGradient>
+        <linearGradient id=${id('K')} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" class="ch-stop-k0" /><stop offset="1" class="ch-stop-k1" />
+        </linearGradient>
+        <linearGradient id=${id('S')} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" class="ch-stop-s0" /><stop offset="0.45" class="ch-stop-s1" /><stop offset="1" class="ch-stop-s1" />
+        </linearGradient>
+        <pattern id=${id('B')} x=${X0} y=${Y0} width=${SQ} height=${SQ} patternUnits="userSpaceOnUse">
+          <path d=${`M1 ${SQ - 1} V1 H${SQ - 1}`} class="ch-bevel-hi" />
+          <path d=${`M${SQ - 1} 1 V${SQ - 1} H1`} class="ch-bevel-lo" />
+        </pattern>
+      </defs>
+
+      <rect class="ch-frame__glow" x=${X0 - 4} y=${Y0 - 4} width=${8 * SQ + 8} height=${8 * SQ + 8} rx="6" />
       <g class="ch-squares">
         ${SQUARES.map((sq) => {
-          const c = squareXY(sq, flip)
-          return html`<rect key=${sq} x=${c.x} y=${c.y} width=${SQ} height=${SQ} class=${isLight(sq) ? 'ch-sq--l' : 'ch-sq--d'} />`
+          const c = at(sq)
+          return html`<rect key=${sq} x=${c.x} y=${c.y} width=${SQ} height=${SQ} fill=${url(isLight(sq) ? 'L' : 'D')} />`
         })}
       </g>
-      <g class=${`ch-lit ${lc}`}>
-        ${litSquares.map((c) => html`<rect key=${`${c.x},${c.y}`} x=${c.x} y=${c.y} width=${SQ} height=${SQ} />`)}
+      <rect class="ch-bevel" x=${X0} y=${Y0} width=${8 * SQ} height=${8 * SQ} fill=${url('B')} />
+
+      <g class="ch-lit" key=${`lit${replay}`}>
+        ${litSquares.map(
+          ({ k, c }) => html`<g key=${k} class=${`ch-lit__sq ch-lit__sq--${k}`}>
+            <rect x=${c.x} y=${c.y} width=${SQ} height=${SQ} class="ch-lit__fill" />
+            <rect x=${c.x + 2.5} y=${c.y + 2.5} width=${SQ - 5} height=${SQ - 5} rx="3" class="ch-lit__edge" />
+          </g>`,
+        )}
       </g>
       <g class="ch-mates">
         ${mateTo.map((sq) => {
-          const c = squareXY(sq, flip)
-          return c && html`<rect key=${sq} x=${c.x + 3} y=${c.y + 3} width=${SQ - 6} height=${SQ - 6} />`
+          const c = at(sq)
+          return c && html`<rect key=${sq} x=${c.x + 4} y=${c.y + 4} width=${SQ - 8} height=${SQ - 8} rx="4" />`
         })}
       </g>
-      <rect class="ch-frame" x=${X0} y=${Y0} width=${8 * SQ} height=${8 * SQ} />
+      ${king && html`<g key=${`mate${replay}`} class="ch-mate" aria-hidden="true">
+        <rect x=${king.x} y=${king.y} width=${SQ} height=${SQ} class="ch-mate__sq" />
+        <rect x=${king.x + 3} y=${king.y + 3} width=${SQ - 6} height=${SQ - 6} rx="4" class="ch-mate__ring" />
+      </g>`}
+
+      <rect class="ch-sheen" x=${X0} y=${Y0} width=${8 * SQ} height=${8 * SQ} fill=${url('S')} />
+      <rect class="ch-frame" x=${X0 - 1} y=${Y0 - 1} width=${8 * SQ + 2} height=${8 * SQ + 2} rx="3" />
       <g class="ch-coords" aria-hidden="true">
         ${coords.files.map((c) => html`<text key=${`f${c.t}`} x=${c.x} y=${c.y}>${c.t}</text>`)}
         ${coords.ranks.map((c) => html`<text key=${`r${c.t}`} x=${c.x} y=${c.y}>${c.t}</text>`)}
       </g>
-      <g class="ch-pieces" aria-hidden="true">
-        ${pieces.map((pc) => {
-          const c = squareXY(pc.sq, flip)
-          return html`<text key=${pc.sq} x=${c.cx} y=${c.cy} class=${`ch-pc ch-pc--${pc.color}`}>${glyph(pc.piece)}</text>`
+
+      <g class="ch-pieces" key=${fen} aria-hidden="true">
+        ${pieces.map((pc, n) => {
+          const c = at(pc.sq)
+          const cls = `ch-pc ch-pc--${pc.color}${taken && pc.sq === taken.sq ? ' ch-pc--taken' : ''}${mover && pc.sq === mover.sq ? ' ch-pc--mover' : ''}`
+          return html`<g key=${pc.sq} class=${cls} style=${{ '--i': n }}>
+            <ellipse cx=${c.cx} cy=${c.y + SQ - 9} rx="17" ry="4.5" class="ch-pc__shadow" />
+            <text x=${c.cx} y=${c.cy} fill=${url(pc.color === 'w' ? 'W' : 'K')}>${glyph(pc.piece)}</text>
+          </g>`
         })}
       </g>
-      <g key=${animKey} class=${`ch-arrows ${lc}`} aria-hidden="true">
-        ${(marks?.arrows ?? []).map(
-          (a) => html`<g key=${a.key} class=${`ch-arrow ch-arrow--${a.tone}`} opacity=${a.opacity}>
-            <path d=${a.d} stroke-width=${a.width} />
-            <polygon points=${a.head} />
+      ${ghost && html`<text key=${`ghost${replay}`} x=${ghost.cx} y=${ghost.cy} class=${`ch-ghost ch-pc--${mover.color}`}
+        fill=${url(mover.color === 'w' ? 'W' : 'K')} aria-hidden="true">${glyph(mover.piece)}</text>`}
+
+      <g key=${`arrows${replay}`} class="ch-arrows" aria-hidden="true">
+        ${arrows.map((a, n) => {
+          const err = a.tone === 'err'
+          const delay = { '--d': `${(arrows.length - 1 - n) * 90}ms` }
+          return html`<g key=${a.key} class=${`ch-arrow ch-arrow--${a.tone}${a.rank === 0 && !err ? ' ch-arrow--top' : ''}`} opacity=${a.opacity} style=${delay}>
+            <path d=${a.d} stroke-width=${a.width + 12} class="ch-arrow__glow" pathLength=${err ? undefined : 100} />
+            <path d=${a.d} stroke-width=${a.width + 4} class="ch-arrow__case" pathLength=${err ? undefined : 100} />
+            <path d=${a.d} stroke-width=${a.width} class="ch-arrow__core" pathLength=${err ? undefined : 100} />
+            ${!err && html`<path d=${a.d} stroke-width=${Math.max(1, a.width / 4)} class="ch-arrow__shine" pathLength="100" />`}
+            <polygon points=${a.head} class="ch-arrow__head" />
+          </g>`
+        })}
+      </g>
+      <g key=${`x${replay}`} class="ch-xs" aria-hidden="true">
+        ${fouls.map(
+          (a, n) => html`<g key=${a.key} transform=${`translate(${a.tip[0]} ${a.tip[1]})`}>
+            <g class="ch-xbadge" style=${{ '--d': `${n * 120 + 160}ms` }}>
+              <circle r="12" /><path d="M-5 -5 L5 5 M5 -5 L-5 5" />
+            </g>
           </g>`,
         )}
-        ${(marks?.crosses ?? []).map(
-          (x) => html`<path key=${x.key} class="ch-x"
-            d=${`M${x.cx - 13} ${x.cy - 13} L${x.cx + 13} ${x.cy + 13} M${x.cx + 13} ${x.cy - 13} L${x.cx - 13} ${x.cy + 13}`} />`,
+        ${crosses.map(
+          (x, n) => html`<g key=${x.key} transform=${`translate(${x.cx} ${x.cy})`}>
+            <rect x=${-SQ / 2 + 4} y=${-SQ / 2 + 4} width=${SQ - 8} height=${SQ - 8} rx="4" class="ch-xsq" />
+            <g class="ch-xbadge" style=${{ '--d': `${n * 120}ms` }}>
+              <circle r="14" /><path d="M-6 -6 L6 6 M6 -6 L-6 6" />
+            </g>
+          </g>`,
         )}
       </g>
+      ${king && html`<g key=${`badge${replay}`} transform=${`translate(${king.x + SQ - 11} ${king.y + 11})`} class="ch-matebadge" aria-hidden="true">
+        <g class="ch-matebadge__in"><circle r="11" /><text y="0.5">#</text></g>
+      </g>`}
     </svg>
   `
 }
@@ -223,8 +327,13 @@ function Live({ game, runId }) {
   const [pick, setPick] = useState(null)
   const [who, setWho] = useState(null)
   if (!run) return html`<${GameFrame} game=${game}><${RunLoading} error=${error} /><//>`
-  const total = run.puzzles?.length ?? 0
-  if (!total) return html`<${GameFrame} game=${game}><${RunLoading} error=${error ?? run.note} /><//>`
+  if (!run.puzzles?.length) return html`<${GameFrame} game=${game}><${RunLoading} error=${error ?? run.note} /><//>`
+  return html`<${Round} game=${game} run=${run} now=${now} error=${error} pick=${pick} setPick=${setPick} who=${who} setWho=${setWho} />`
+}
+
+function Round({ game, run, now, error, pick, setPick, who, setWho }) {
+  const total = run.puzzles.length
+  const live = isRunLive(run)
   const k = Math.min(pick ?? followPuzzle(run), total - 1)
   const pz = run.puzzles[k]
   const jev = run.lanes.find((ln) => ln.kind === 'judgment')
@@ -234,14 +343,39 @@ function Live({ game, runId }) {
   const flip = pz.side === 'black'
   const marks = boardMarks(focus, on, flip)
   const mateTo = [...new Set((run.key?.[k]?.mates ?? []).map((m) => m.to))]
+  const v = verdictOf(on.result)
+  const solved = on.result?.verdict === 'solved'
+  const mateKing = solved ? kingSquare(pz.fen, flip ? 'w' : 'b') : null
   const top = on.result?.top?.[0]
   let played = ''
-  if (focus.kind === 'judgment' && top) played = `top move: ${sanOf(top.san, top.uci, withOwn(mates, on.result))}`
-  else if (on.result?.move) played = `played: ${on.result.move}`
+  if (focus.kind === 'judgment' && top) played = `top move ${sanOf(top.san, top.uci, withOwn(mates, on.result))}`
+  else if (on.result?.move) played = `played ${sanOf(on.result.move, on.result.uci, withOwn(mates, on.result))}`
+
+  // Who won, by the game's rule (most puzzles solved; every one of them on a
+  // tie). A lone player has nobody to beat: its finale is its tally.
+  const multi = run.lanes.length > 1
+  const leaders = leadersOf(run)
+  const solo = multi ? null : run.lanes[0]
+  const soloSolved = solo?.solved ?? 0
+  const headline = solo ? (soloSolved === total ? 'PERFECT ROUND!' : `${soloSolved}/${total} SOLVED`) : undefined
+
+  // A mate landing on the board while you watch: a little confetti off the king.
+  const boardRef = useRef(null)
+  const seen = useRef(null)
+  const sig = `${run.id}:${focus.index}:${k}`
+  useEffect(() => {
+    const prev = seen.current
+    seen.current = { sig, state: on.state }
+    if (!live || !prev || prev.sig !== sig || prev.state === 'done' || on.state !== 'done' || !solved) return
+    const el = boardRef.current?.querySelector('.ch-matebadge') ?? boardRef.current
+    burstFrom(el, { colors: [LANE_COLORS[focus.index % 4], '#ffe14d', '#ffffff'], count: 34, power: 0.6 })
+    sfx.up()
+  }, [sig, on.state, solved])
 
   return html`
     <${GameFrame} game=${game}>
-      <${RunBar} run=${run} now=${now} onAgain=${againOf(run)}>
+      <${RunBar} run=${run} now=${now} onAgain=${againOf(run)} winners=${multi ? leaders : undefined}
+        headline=${headline} sub=${solo ? solo.label : undefined} win=${!solo || soloSolved > 0}>
         <span class="g-mono g-muted">
           ${total} puzzles · ${run.strikes} ${run.strikes === 1 ? 'strike' : 'strikes'} a puzzle${run.show_moves ? ' · text models see the legal moves' : ''}
         </span>
@@ -249,15 +383,18 @@ function Live({ game, runId }) {
       <//>
       <div class="ch-stage">
         <div class="ch-left">
-          <div class="ch-head">
-            <span class="ch-head__k">PUZZLE ${k + 1} OF ${total}</span>
-            <h2 class="ch-head__title">${flip ? 'Black' : 'White'} to move, mate in 1</h2>
+          <div class="ch-head" key=${k}>
+            <span class="ch-head__k"><${PixelText} text=${`PUZZLE ${k + 1}/${total}`} /><span class="sr-only">Puzzle ${k + 1} of ${total}</span></span>
+            <h2 class="ch-head__title">
+              <span class=${`ch-turn ch-turn--${flip ? 'b' : 'w'}`} aria-hidden="true">${glyph(flip ? 'k' : 'K')}</span>
+              <span>${flip ? 'Black' : 'White'} to move, mate in 1</span>
+            </h2>
             <span class="ch-head__theme g-mono">
-              theme: ${pz.theme} · difficulty <span title=${`${pz.difficulty} of 3`} aria-label=${`${pz.difficulty} of 3`}>${dots(pz.difficulty)}</span>
+              theme: ${pz.theme} · difficulty <span class="ch-dots" title=${`${pz.difficulty} of 3`} aria-label=${`${pz.difficulty} of 3`}>${dots(pz.difficulty)}</span>
             </span>
           </div>
           <${Strip} run=${run} k=${k} onPick=${setPick} />
-          <div class="ch-step">
+          <div class="ch-nav">
             <${Button} variant="ghost" size="sm" disabled=${k === 0} onClick=${() => setPick(k - 1)}>‹ Previous<//>
             <${Button} variant="ghost" size="sm" disabled=${k >= total - 1} onClick=${() => setPick(k + 1)}>Next ›<//>
             <${Button} variant=${pick === null ? 'secondary' : 'ghost'} size="sm" aria-pressed=${pick === null} onClick=${() => setPick(null)}>
@@ -268,27 +405,38 @@ function Live({ game, runId }) {
           <${Answer} run=${run} k=${k} />
         </div>
         <div class="ch-center">
-          ${run.lanes.length > 1 &&
+          ${multi &&
           html`<div class="ch-tabs" role="group" aria-label="Whose moves the board shows">
             ${run.lanes.map(
-              (ln) => html`<button type="button" key=${ln.index} class=${`ch-tab${ln.index === focus.index ? ' ch-tab--on' : ''}`}
-                aria-pressed=${ln.index === focus.index} onClick=${() => setWho(ln.index)}>
+              (ln) => html`<button type="button" key=${ln.index} class=${`ch-tab g-l${(ln.index % 4) + 1}${ln.index === focus.index ? ' ch-tab--on' : ''}`}
+                aria-pressed=${ln.index === focus.index} onClick=${() => { sfx.select(); setWho(ln.index) }}>
                 <${LaneNum} i=${ln.index} /> ${ln.label}</button>`,
             )}
           </div>`}
-          <${Box} class="ch-boardbox">
-            <${Board} fen=${pz.fen} flip=${flip} marks=${marks} mateTo=${mateTo} lane=${focus.index}
+          <div class=${`ch-bezel ch-bezel--live g-l${(focus.index % 4) + 1}${solved ? ' is-mate' : ''}`} ref=${boardRef}>
+            <${Board} fen=${pz.fen} flip=${flip} marks=${marks} mateTo=${mateTo} mateKing=${mateKing} lane=${focus.index}
               animKey=${`${focus.index}:${k}:${on.state}:${on.attempts.length}`}
               label=${boardLabel({ pz, lane: focus, on, mates })} />
-          <//>
-          <div class="ch-caption g-mono">
-            <span>${focus.kind === 'judgment' ? 'arrow width = Jev’s probability for that move' : 'the move played; red: tries that were not legal'}</span>
-            <span>${played || (on.state === 'playing' ? `${focus.label} is thinking…` : '')}</span>
+            ${on.state === 'playing' && html`<span class="ch-scan" aria-hidden="true"><i /></span>`}
+          </div>
+          <div class="ch-caption">
+            <span class="ch-caption__v">
+              ${v
+                ? html`<span class=${`ch-verdict ch-verdict--${v.tone}`} key=${`${focus.index}:${k}`}>${v.mark} ${v.label}</span>`
+                : on.state === 'playing'
+                  ? html`<span class="ch-verdict ch-verdict--live">${focus.label} is thinking…</span>`
+                  : null}
+              ${played && html`<span class="ch-caption__mv g-mono">${played}</span>`}
+            </span>
+            <span class="ch-caption__k g-mono">${focus.kind === 'judgment' ? 'arrow width = Jev’s probability for that move' : 'the move played; dashed red ✕: tries that were not legal'}</span>
           </div>
         </div>
         <div class="ch-right">
-          ${run.lanes.map((ln) => html`<${LaneBox} key=${ln.index} lane=${ln} k=${k} mates=${mates} strikes=${run.strikes} />`)}
-          <${Session} run=${run} />
+          ${run.lanes.map(
+            (ln) => html`<${LaneBox} key=${ln.index} lane=${ln} k=${k} total=${total} mates=${mates} strikes=${run.strikes}
+              lead=${multi && leaders.includes(ln.index)} live=${live} />`,
+          )}
+          <${Session} run=${run} leaders=${multi ? leaders : []} live=${live} />
         </div>
       </div>
     <//>
@@ -308,9 +456,13 @@ function Strip({ run, k, onPick }) {
     <div class="ch-strip" role="group" aria-label="The round's puzzles">
       ${strip.map((s) => {
         const said = s.marks.map((m) => `${m.label}: ${m.verdict ? m.verdict.label : m.state}`).join('; ')
+        const pick = () => {
+          sfx.select()
+          onPick(s.k)
+        }
         return html`
           <button type="button" key=${s.k} class=${`ch-pz${s.k === k ? ' ch-pz--on' : ''}`} aria-pressed=${s.k === k}
-            aria-label=${`Puzzle ${s.k + 1}. ${said}`} title=${said} onClick=${() => onPick(s.k)}>
+            aria-label=${`Puzzle ${s.k + 1}. ${said}`} title=${said} onClick=${pick}>
             <span class="ch-pz__n tnum">${s.k + 1}</span>
             <span class="ch-pz__marks" aria-hidden="true">
               ${s.marks.map(
@@ -346,19 +498,19 @@ function Asked({ pz, question }) {
 function Answer({ run, k }) {
   const key = run.key?.[k]
   return html`
-    <${Box} class="ch-answer">
+    <${Box} class=${`ch-answer${key ? ' is-out' : ''}`}>
       <${Label}>THE ANSWER<//>
       ${key
-        ? html`<p class="ch-answer__mv g-t-ok">${key.mates.map((m) => m.san).join(' or ')}</p>
+        ? html`<p class="ch-answer__mv" key=${k}><span class="ch-answer__hash" aria-hidden="true">#</span>${key.mates.map((m) => m.san).join(' or ')}</p>
             ${key.idea && html`<p class="g-explain">${key.idea}</p>`}`
-        : html`<p class="g-muted">Shown when the round ends.</p>`}
+        : html`<p class="ch-answer__sealed"><span aria-hidden="true">▸</span> sealed until the round ends</p>`}
     <//>
   `
 }
 
 /* ── A lane ────────────────────────────────────────────────────────────────── */
 
-function LaneBox({ lane, k, mates, strikes }) {
+function LaneBox({ lane, k, total, mates, strikes, lead, live }) {
   const on = laneOn(lane, k)
   const v = verdictOf(on.result)
   const badge = v
@@ -369,13 +521,36 @@ function LaneBox({ lane, k, mates, strikes }) {
         ? html`<${Chip}>not here yet<//>`
         : undefined
   return html`
-    <${Box} lane=${lane.index} class="ch-lane">
+    <${Box} lane=${lane.index} class=${`ch-lane${lead ? ' ch-lane--lead' : ''}`}>
       <${LaneHead} lane=${lane} badge=${badge} />
+      <div class="ch-tally">
+        <div class="ch-tally__score">
+          <${Counter} value=${lane.solved ?? 0} class="g-score" sound />
+          <span class="ch-tally__of"><span class="tnum">/${total}</span><small>solved</small></span>
+        </div>
+        <${Pips} lane=${lane} total=${total} k=${k} />
+        ${lead && html`<span class="ch-lead" title=${live ? 'most puzzles solved so far' : 'most puzzles solved'}><span aria-hidden="true">★</span> ${live ? 'leading' : 'winner'}</span>`}
+      </div>
       ${lane.kind === 'judgment'
         ? html`<${JevPick} lane=${lane} on=${on} mates=${withOwn(mates, on.result)} />`
         : html`<${Tries} on=${on} strikes=${strikes} mates=${withOwn(mates, on.result)} />`}
       <${LaneStats} lane=${lane} fouls=${lane.kind !== 'judgment'} />
     <//>
+  `
+}
+
+/** A pip per puzzle for one lane: ✓ – ✕ as they land, the one it is on
+ *  pulsing, the one in view ringed. */
+function Pips({ lane, total, k }) {
+  const pips = lanePips(lane, total)
+  const said = `${lane.solved ?? 0} solved, ${lane.missed ?? 0} missed, ${lane.failed ?? 0} fouled out, of ${total}`
+  return html`
+    <span class="ch-pips" role="img" aria-label=${said} title=${said}>
+      ${pips.map(
+        (p) => html`<span key=${p.k} class=${`ch-pip${p.verdict ? ` ch-pip--${p.verdict.tone}` : ` ch-pip--${p.state}`}${p.k === k ? ' ch-pip--view' : ''}`}>
+          ${p.verdict ? p.verdict.mark : ''}</span>`,
+      )}
+    </span>
   `
 }
 
@@ -416,12 +591,12 @@ function Tries({ on, strikes, mates }) {
           strike += 1
           return html`<li key=${i} class="ch-try ch-try--foul">
             <span class="ch-try__mv">✕ ${t.said || '(nothing)'}</span>
-            <span class="ch-try__why">foul: ${t.foul}. Strike ${strike} of ${strikes}.</span>
+            <span class="ch-try__why">foul: ${t.foul}. <b class="ch-strike">Strike ${strike} of ${strikes}.</b></span>
           </li>`
         }
         const ok = r?.verdict === 'solved'
         return html`<li key=${i} class=${`ch-try ${ok ? 'ch-try--ok' : 'ch-try--miss'}`}>
-          <span class="ch-try__mv">${ok ? '✓ ' : ''}${sanOf(t.san, t.uci, mates)}</span>
+          <span class="ch-try__mv">${ok ? '✓ ' : '– '}${sanOf(t.san, t.uci, mates)}</span>
           <span class="ch-try__why">${ok ? (t.reason ? `“${t.reason}”` : 'mate') : `legal, but ${r?.note ?? 'not mate'}.`}</span>
         </li>`
       })}
@@ -433,7 +608,7 @@ function Tries({ on, strikes, mates }) {
 
 /* ── The session ───────────────────────────────────────────────────────────── */
 
-function Session({ run }) {
+function Session({ run, leaders, live }) {
   const rows = sessionRows(run)
   return html`
     <${Box} class="ch-session">
@@ -450,16 +625,18 @@ function Session({ run }) {
           </tr>
         </thead>
         <tbody>
-          ${rows.map(
-            (r) => html`<tr key=${r.index}>
-              <td><span class="ch-table__who"><${LaneNum} i=${r.index} /><span>${r.label}</span></span></td>
-              <td class="num">${r.solved}/${r.played}</td>
+          ${rows.map((r) => {
+            const lead = leaders.includes(r.index)
+            return html`<tr key=${r.index} class=${lead ? 'ch-table__lead' : ''}>
+              <td><span class="ch-table__who"><${LaneNum} i=${r.index} /><span>${r.label}</span>${lead &&
+                html`<span class="ch-table__star" title=${live ? 'leading' : 'winner'}><span aria-hidden="true">★</span><span class="sr-only">${live ? 'leading' : 'winner'}</span></span>`}</span></td>
+              <td class="num ch-table__solved">${r.solved}/${r.played}</td>
               <td class="num">${r.missed}</td>
               <td class=${`num${r.failed ? ' g-t-err' : ''}`}>${r.failed}</td>
               <td class=${`num${r.fouls ? ' g-t-err' : ''}`}>${r.fouls}</td>
               <td class="num">${fmtMs(r.perMove)}</td>
-            </tr>`,
-          )}
+            </tr>`
+          })}
         </tbody>
       </table>
     <//>

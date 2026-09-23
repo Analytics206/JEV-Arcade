@@ -19,8 +19,13 @@ import { h } from 'preact'
 import { useCallback, useEffect, useState } from 'preact/hooks'
 import htm from 'htm'
 import { API, api, useEndpoint } from '../api.js'
+import { PixelText } from '../brand.js'
+import { Finale, LANE_COLORS, NEON, useJustEnded } from '../fx.js'
+import { recordPlay } from '../profile.js'
+import { sfx } from '../sfx.js'
 import { groupModels, modelHint, optionLabel } from '../state.js'
 import { Badge, Button, StatDot } from '../ui.js'
+import { accentOf } from './registry.js'
 import { toGame, toHub } from './route.js'
 import {
   LANE_STATUS,
@@ -37,6 +42,11 @@ import {
 
 export const html = htm.bind(h)
 export { fmtMs, fmtPct, fmtProb, laneCostText, perCall } from './runstate.js'
+/* The arcade's shared effects, for a game's own board: a number that counts up
+ * (Counter), confetti (burst, burstFrom), the pixel font, and sounds. */
+export { Counter, Finale, burst, burstFrom, useJustEnded, LANE_COLORS, NEON } from '../fx.js'
+export { PixelText } from '../brand.js'
+export { sfx } from '../sfx.js'
 
 export const MAX_LANES = 4
 
@@ -126,6 +136,8 @@ export function useRun(runId) {
 /** Start a run of *gameId* and open it. Throws the server's own reason. */
 export async function startGame(gameId, lanes, params = {}) {
   const run = await api.post(`/games/${encodeURIComponent(gameId)}/runs`, { lanes: lanesBody(lanes), params })
+  recordPlay(gameId)
+  sfx.start()
   toGame(gameId, run.id)
   return run
 }
@@ -155,17 +167,26 @@ export function useStarter(gameId) {
 
 /* ── Frame ─────────────────────────────────────────────────────────────────── */
 
-/** The top of every game's page: its name, what it is, the use case it shows,
- *  and a way back to the Arcade. `actions` sit on the right. */
+/** The top of every game's page: its marquee (the name in lights, in the
+ *  cabinet's own neon), what it is, the use case it shows, and a way back to
+ *  the floor. `actions` sit on the right. */
 export function GameFrame({ game, title, tagline, useCase, actions, children, class: cls }) {
+  const name = title ?? game?.title ?? ''
+  const use = useCase ?? game?.use_case
+  const back = () => {
+    sfx.select()
+    toHub()
+  }
   return html`
-    <div class=${`g-page${cls ? ` ${cls}` : ''}`}>
+    <div class=${`g-page${cls ? ` ${cls}` : ''}`} style=${{ '--acc': accentOf(game?.id) }}>
       <header class="g-page__hd">
-        <button type="button" class="g-back" onClick=${toHub} aria-label="Back to the Arcade">← Arcade</button>
-        <h1 class="g-page__title">${title ?? game?.title}</h1>
-        <p class="g-page__tag">${tagline ?? game?.tagline}</p>
+        <button type="button" class="g-back" onClick=${back} aria-label="Back to the Arcade floor">◂ Floor</button>
+        <div class="g-marquee">
+          <h1 class="g-page__title"><span class="sr-only">${name}</span><${PixelText} text=${name} /></h1>
+          <p class="g-page__tag">${tagline ?? game?.tagline}</p>
+        </div>
         <span class="spacer" />
-        ${(useCase ?? game?.use_case) && html`<span class="g-usecase">USE CASE · ${useCase ?? game?.use_case}</span>`}
+        ${use && html`<span class="g-usecase"><span class="g-usecase__k">USE CASE</span>${use}</span>`}
         ${actions}
       </header>
       ${children}
@@ -315,17 +336,26 @@ export function Levels({ probabilities = [], labels, lane = 0, height = 30 }) {
 export function PlayerPicker({ info, value, onChange, min = 1, max = MAX_LANES, kinds = ['judgment', 'text'], label = 'PLAYERS' }) {
   const models = (info?.models ?? []).filter((m) => kinds.includes(m.kind))
   const groups = groupModels(models, (info?.providers ?? []).filter((p) => kinds.includes(p.kind)))
-  const set = (i, key) => onChange(value.map((l, j) => (j === i ? { key } : l)))
-  const add = () => onChange([...value, { key: '' }])
-  const remove = (i) => onChange(value.filter((_, j) => j !== i))
+  const set = (i, key) => {
+    sfx.select()
+    onChange(value.map((l, j) => (j === i ? { key } : l)))
+  }
+  const add = () => {
+    sfx.coin()
+    onChange([...value, { key: '' }])
+  }
+  const remove = (i) => {
+    sfx.hover()
+    onChange(value.filter((_, j) => j !== i))
+  }
   return html`
     <div class="g-players">
-      <${Label} note=${`${value.filter((l) => l.key).length}/${max}`}>${label}<//>
+      <${Label} note=${`${value.filter((l) => l.key).length}/${max}`}>${label === 'PLAYERS' ? 'PLAYER SELECT' : label}<//>
       ${!info && html`<p class="g-muted">Reading who can play…</p>`}
       ${value.map(
         (l, i) => html`
-          <div class="g-players__row" key=${i}>
-            <${LaneNum} i=${i} />
+          <div class=${`g-players__row g-l${(i % 4) + 1}${l.key ? ' is-in' : ''}`} key=${i}>
+            <span class="g-slot" aria-hidden="true">P${i + 1}</span>
             <select class="wr-sel" value=${l.key} onChange=${(e) => set(i, e.currentTarget.value)} aria-label=${`Player ${i + 1}`}
               title=${models.find((m) => m.key === l.key) ? modelHint(models.find((m) => m.key === l.key)) : undefined}>
               <option value="">— pick a model —</option>
@@ -341,18 +371,20 @@ export function PlayerPicker({ info, value, onChange, min = 1, max = MAX_LANES, 
           </div>
         `,
       )}
-      ${value.length < max && html`<${Button} variant="ghost" size="sm" onClick=${add}>+ Add player<//>`}
+      ${value.length < max && html`<button type="button" class="g-join" onClick=${add}><span aria-hidden="true">+</span> Player ${value.length + 1}: press to join</button>`}
     </div>
   `
 }
 
-/** The start row: the button, and what stops it (a problem) or went wrong. */
+/** The start row: the big arcade button, and what stops it (a problem) or went
+ *  wrong. The label is lit in the pixel font; the button keeps it as text. */
 export function StartButton({ onStart, problem, busy, error, label = 'Start' }) {
+  const text = busy ? 'Starting…' : label
   return html`
     <div class="g-start">
-      <${Button} variant="primary" class="g-start__btn" onClick=${onStart} disabled=${!!problem || busy}>
-        ${busy ? 'Starting…' : label}
-      <//>
+      <button type="button" class="g-start__btn" onClick=${onStart} disabled=${!!problem || busy} aria-label=${text}>
+        <${PixelText} text=${text} />
+      </button>
       ${(error || problem) && html`<p class=${`g-start__msg${error ? ' g-t-err' : ''}`}>${error || problem}</p>`}
     </div>
   `
@@ -360,17 +392,33 @@ export function StartButton({ onStart, problem, busy, error, label = 'Start' }) 
 
 /* ── A run ─────────────────────────────────────────────────────────────────── */
 
-/** A run's status line: the badge, the clock, and stop / play again / new. */
-export function RunBar({ run, now, onAgain, onNew, children }) {
+/**
+ * A run's scoreboard: the status, the clock, and stop / play again / new. When
+ * a run finishes in front of you, the finale plays over the page: `winners`
+ * (lane indexes, by the game's own rule for who won) are named in it and after
+ * it, in the bar; with none it says GAME OVER. `headline` and `sub` replace
+ * its words; `win={false}` plays it without the fanfare and confetti (an end
+ * that is not a triumph). `winLabel` names a winner who is not a lane (the
+ * visitor, say) in the bar.
+ */
+export function RunBar({ run, now, onAgain, onNew, children, winners, headline, sub, win = true, winLabel }) {
   const live = isRunLive(run)
   const ms = live ? Math.max(0, now - Date.parse(run.created_at)) : run.elapsed_ms
   const [stopping, setStopping] = useState(false)
+  const [ended, closeFinale] = useJustEnded(live)
+  const won = (winners ?? []).map((i) => run.lanes[i]).filter(Boolean)
+  const fin = finaleOf(run, won, headline, sub)
   return html`
-    <div class="g-runbar">
+    <div class=${`g-runbar${live ? ' is-live' : ''}`}>
       <${Badge} tone=${statusToneOf(run.status)}>${live && html`<${StatDot} tone="live" />`} ${RUN_STATUS[run.status] ?? run.status}<//>
-      <span class="g-runbar__clock tnum">${fmtClock(ms)}</span>
+      <span class="g-runbar__clock" title="Game clock"><${PixelText} text=${fmtClock(ms)} label=${fmtClock(ms)} /></span>
       ${children}
       <span class="spacer" />
+      ${!live && run.status === 'finished' && winLabel && html`
+        <span class="g-runbar__win"><span class="g-runbar__star" aria-hidden="true">★</span> Winner: ${winLabel}</span>`}
+      ${!live && run.status === 'finished' && !winLabel && won.length > 0 && html`
+        <span class="g-runbar__win"><span class="g-runbar__star" aria-hidden="true">★</span> ${won.length > 1 ? 'Tie:' : 'Winner:'}
+          ${won.map((l) => html`<span class="g-runbar__who"><${LaneNum} i=${l.index} /> ${l.label}</span>`)}</span>`}
       ${live
         ? html`<${Button} variant="danger" size="sm" disabled=${stopping}
             onClick=${async () => { setStopping(true); try { await stopRun(run.id) } catch { setStopping(false) } }}>
@@ -381,7 +429,17 @@ export function RunBar({ run, now, onAgain, onNew, children }) {
           `}
     </div>
     ${run.note && html`<p class=${`g-runnote g-t-${statusToneOf(run.status)}`}>${run.note}</p>`}
+    <${Finale} show=${ended && run.status === 'finished'} headline=${fin.headline} sub=${fin.sub} colors=${fin.colors} win=${win} onClose=${closeFinale} />
   `
+}
+
+/** The finale's words: who won, by the game's rule, or GAME OVER. */
+function finaleOf(run, won, headline, sub) {
+  const colors = won.length ? won.map((l) => LANE_COLORS[l.index % 4]) : NEON
+  if (headline) return { headline, sub, colors }
+  if (won.length === 1 && run.lanes.length > 1) return { headline: `PLAYER ${won[0].index + 1} WINS!`, sub: sub ?? won[0].label, colors }
+  if (won.length > 1) return { headline: 'TIE GAME!', sub: sub ?? won.map((l) => l.label).join(' · '), colors }
+  return { headline: 'GAME OVER', sub, colors }
 }
 
 export function fmtClock(ms) {
@@ -398,7 +456,7 @@ export function againOf(run) {
 
 /** What a game shows while its run loads, or when it failed to. */
 export function RunLoading({ error }) {
-  return html`<div class="g-loading">${error ? html`<p class="g-t-err">${error}</p>` : html`<p class="g-muted">Loading the game…</p>`}</div>`
+  return html`<div class="g-loading">${error ? html`<p class="g-t-err">${error}</p>` : html`<div class="g-boot"><${PixelText} text="LOADING" /><span class="g-muted">the game…</span></div>`}</div>`
 }
 
 /** A game's list of recent runs, to reopen one. */
@@ -408,11 +466,11 @@ export function RecentRuns({ gameId, limit = 8, render }) {
   if (!rows.length) return null
   return html`
     <div class="g-recent">
-      <${Label}>RECENT GAMES<//>
+      <${Label} note="replay any of this cabinet's last plays">RECENT GAMES<//>
       <ul>
         ${rows.map(
           (run) => html`<li key=${run.id}>
-            <button type="button" class="g-recent__row" onClick=${() => toGame(gameId, run.id)}>
+            <button type="button" class="g-recent__row" onClick=${() => { sfx.select(); toGame(gameId, run.id) }}>
               <${Badge} tone=${statusToneOf(run.status)}>${RUN_STATUS[run.status] ?? run.status}<//>
               <span class="g-recent__who">${run.lanes.map((l) => l.label).join(' · ')}</span>
               ${render ? render(run) : null}

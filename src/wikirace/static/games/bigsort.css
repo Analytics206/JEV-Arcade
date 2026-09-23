@@ -1,85 +1,272 @@
-/* The Big Sort: every rule under .bs-… */
+/* The Big Sort: every rule under .bs-… The cabinet's neon is var(--acc), a
+ * lane's var(--lane), a topic's var(--tc) (set by .bs-c<i>). */
+
+/* The page's entrance must not hold a transform once it has played: a held
+ * transform makes the page the frame of every fixed overlay in it, and the
+ * finale would centre on the whole page instead of the screen. */
+.g-page.bs-page { animation-fill-mode: backwards; }
 
 /* The topics' colours, in the legend's order (validated as adjacent pairs on
  * the page ground: blue, amber, cyan, pink, green, violet, pale, grey). The
- * canvas reads them from these swatches, so the wall and the legend agree. */
-.bs-c0 { background: var(--lane-1); }
-.bs-c1 { background: var(--lane-2); }
-.bs-c2 { background: var(--cy); }
-.bs-c3 { background: color-mix(in srgb, var(--mg) 60%, var(--txt)); }
-.bs-c4 { background: var(--lane-4); }
-.bs-c5 { background: var(--lane-3); }
-.bs-c6 { background: var(--txt); }
-.bs-c7 { background: var(--dim); }
-.bs-c-unsorted { background: color-mix(in srgb, var(--dimmer) 28%, var(--void)); }
-.bs-c-foul { background: var(--err); }
-.bs-c-cursor { background: var(--txt); }
-.bs-c-ink { background: var(--void); }
+ * canvas reads them from the swatches, so the wall, the bins and the legend agree. */
+.bs-c0 { --tc: var(--lane-1); }
+.bs-c1 { --tc: var(--lane-2); }
+.bs-c2 { --tc: var(--cy); }
+.bs-c3 { --tc: color-mix(in srgb, var(--mg) 60%, var(--txt)); }
+.bs-c4 { --tc: var(--lane-4); }
+.bs-c5 { --tc: var(--lane-3); }
+.bs-c6 { --tc: var(--txt); }
+.bs-c7 { --tc: var(--dim); }
+.bs-c-unsorted { --tc: color-mix(in srgb, var(--dimmer) 30%, var(--void)); }
+.bs-c-foul { --tc: var(--err); }
+.bs-c-cursor { --tc: var(--txt); }
+.bs-c-ink { --tc: var(--void); }
 .bs-palette { position: absolute; width: 0; height: 0; overflow: hidden; }
-.bs-palette i { display: block; width: 1px; height: 1px; }
-.bs-sw { display: inline-block; width: 10px; height: 10px; flex-shrink: 0; border-radius: 2px; vertical-align: middle; }
+.bs-palette i { display: block; width: 1px; height: 1px; background: var(--tc); }
+.bs-sw { display: inline-block; width: 10px; height: 10px; flex-shrink: 0; border-radius: 2px; vertical-align: middle; background: var(--tc); }
+
+/* ── Setup ─────────────────────────────────────────────────────────────────── */
 
 .bs-setup { gap: 16px; }
 .bs-params { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .bs-setup__note { font-size: var(--fs-sm); }
 .bs-side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.bs-how { gap: 14px; }
 
-.bs-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-.bs-modes { display: flex; gap: 6px; }
+/* The machine in miniature. */
+.bs-dia { display: block; width: 100%; max-width: 640px; height: auto; margin: 0 auto; }
+.bs-dia__bg { fill: #0a0820; stroke: color-mix(in srgb, var(--acc) 30%, transparent); }
+.bs-dia__hopper { fill: #16123c; stroke: var(--acc); stroke-width: 2; stroke-linejoin: round; }
+.bs-dia__art { fill: #3a3470; }
+.bs-dia__cap { font-family: var(--mono); font-size: 9.5px; font-weight: 700; letter-spacing: .08em; fill: var(--dim); text-anchor: middle; }
+.bs-dia__map { fill: color-mix(in srgb, var(--acc) 14%, #0d0a24); stroke: var(--acc); stroke-width: 1.5; }
+.bs-dia__title { font-family: var(--display); font-size: 15px; font-weight: 800; letter-spacing: 3px; fill: var(--acc); text-anchor: middle; }
+.bs-dia__title--l { font-size: 12px; text-anchor: start; }
+.bs-dia__sub { font-family: var(--mono); font-size: 9.5px; fill: var(--txt-2); text-anchor: middle; }
+.bs-dia__flow { fill: none; stroke: var(--acc); stroke-width: 2; stroke-dasharray: 3 6; opacity: .75; animation: bs-flow .8s linear infinite; }
+@keyframes bs-flow { to { stroke-dashoffset: -9; } }
+.bs-dia__bin { fill: rgba(255, 255, 255, 0.03); stroke: var(--tc); stroke-width: 1.5; }
+.bs-dia__fill { fill: var(--tc); opacity: .75; }
+.bs-dia__key { font-family: var(--mono); font-size: 9px; font-weight: 700; fill: var(--txt-2); text-anchor: middle; }
+.bs-dia__tile { fill: var(--tc); }
+
+/* ── The board ─────────────────────────────────────────────────────────────── */
+
+.bs-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.bs-modes { display: inline-flex; gap: 3px; padding: 3px; border-radius: 999px; background: rgba(0, 0, 0, 0.3); border: 1px solid var(--rule); }
 .bs-mode {
-  padding: 4px 10px; font-size: var(--fs-sm); color: var(--dim); background: none;
-  border: 1px solid var(--rule); border-radius: 3px; cursor: pointer;
+  padding: 4px 12px; font-size: var(--fs-sm); color: var(--dim); background: none; border: 0; border-radius: 999px; cursor: pointer;
+  transition: color .15s, background .15s, box-shadow .15s;
 }
-.bs-mode:hover { color: var(--txt); border-color: var(--edge); }
-.bs-mode--on { color: var(--txt); border-color: var(--edge-hot); background: var(--cy-dim); }
+.bs-mode:hover { color: var(--txt); }
+.bs-mode--on { font-weight: 700; color: #07051a; background: var(--acc); box-shadow: 0 0 14px -3px var(--acc); }
+.bs-mode--on:hover { color: #07051a; }
 
-/* The walls. */
+/* The machines, one per lane. */
 .bs-walls { display: grid; gap: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
 .bs-walls--1 { grid-template-columns: minmax(0, 560px); }
 .bs-walls--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .bs-walls--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 @media (max-width: 1250px) { .bs-walls--3, .bs-walls--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 760px) { .bs-walls, .bs-walls--1, .bs-walls--3, .bs-walls--4 { grid-template-columns: minmax(0, 1fr); } }
-.bs-wallcard { gap: 8px; }
+.bs-wallcard { gap: 10px; transition: box-shadow .4s; }
+.bs-wallcard--win {
+  box-shadow: inset 0 3px 0 var(--lane), 0 0 0 1px rgba(255, 225, 77, 0.55), 0 0 40px -12px rgba(255, 225, 77, 0.65), 0 16px 34px -22px rgba(0, 0, 0, 0.95);
+}
+.bs-win {
+  align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; padding: 3px 12px; border-radius: 999px;
+  font-family: var(--display); font-size: var(--fs-xs); font-weight: 800; letter-spacing: .12em; color: #2a1600;
+  background: linear-gradient(180deg, #fff09a, var(--yl)); box-shadow: 0 0 18px -4px rgba(255, 225, 77, 0.8);
+  animation: bs-win .6s var(--ease-spring) both;
+}
+@keyframes bs-win { from { opacity: 0; transform: scale(.6); } }
+
+/* The lane's scoreboard. */
+.bs-score { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 8px; }
+.bs-score__cell {
+  display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 8px 12px 10px; border-radius: 10px;
+  background:
+    radial-gradient(130% 100% at 0% 0%, color-mix(in srgb, var(--lane) 17%, transparent), transparent 62%),
+    linear-gradient(180deg, #0d0a26, #07051a);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lane) 30%, transparent), inset 0 2px 12px rgba(0, 0, 0, 0.65);
+}
+.bs-score__cell--rate {
+  background:
+    radial-gradient(130% 100% at 100% 0%, color-mix(in srgb, var(--acc) 15%, transparent), transparent 62%),
+    linear-gradient(180deg, #0d0a26, #07051a);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acc) 28%, transparent), inset 0 2px 12px rgba(0, 0, 0, 0.65);
+}
+.bs-score__k { font-family: var(--display); font-size: var(--fs-micro); font-weight: 700; letter-spacing: .14em; color: var(--txt-2); white-space: nowrap; }
+.bs-score__row { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.bs-score__v { font-size: 30px; }
+.bs-score__v--rate { color: var(--acc); text-shadow: 0 0 14px color-mix(in srgb, var(--acc) 60%, transparent); }
+.bs-score__of { font-family: var(--mono); font-size: 14px; font-weight: 700; color: var(--dim); white-space: nowrap; }
+
+/* Progress: the sorted share lit in the lane's colour, the fouls after it in red. */
+.bs-rail {
+  position: relative; height: 8px; border-radius: 4px; overflow: hidden;
+  background: rgba(255, 255, 255, 0.06); box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+.bs-rail__fill {
+  position: absolute; inset: 0 auto 0 0; border-radius: 4px; overflow: hidden;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--lane) 45%, #000), var(--lane) 85%, #fff);
+  box-shadow: 0 0 10px var(--lane); transition: width .3s linear;
+}
+.bs-rail__fill.is-live::after {
+  content: ''; position: absolute; inset: 0; background-size: 16px 16px; animation: bs-barber .5s linear infinite;
+  background-image: repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.2) 0 5px, transparent 5px 11.3px);
+}
+@keyframes bs-barber { to { background-position: 16px 0; } }
+.bs-rail__foul { position: absolute; top: 0; bottom: 0; background: var(--err); transition: left .3s linear, width .3s linear; }
 .bs-progress { font-size: var(--fs-sm); }
+
+/* The stages: hopper, map, reduce, each lit while it works. */
+.bs-stages { display: flex; align-items: center; gap: 5px; font-family: var(--mono); font-size: var(--fs-xs); }
+.bs-stage {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 4px 6px;
+  border-radius: 8px; color: var(--dim); white-space: nowrap; overflow: hidden;
+  background: rgba(255, 255, 255, 0.025); border: 1px solid var(--rule);
+  transition: color .3s, border-color .3s, background .3s, box-shadow .3s;
+}
+.bs-stage > span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.bs-stage b { font-family: var(--display); font-size: var(--fs-micro); font-weight: 800; letter-spacing: .16em; }
+.bs-stage.is-on {
+  color: var(--txt); border-color: color-mix(in srgb, var(--acc) 60%, transparent); background: color-mix(in srgb, var(--acc) 10%, transparent);
+  box-shadow: 0 0 14px -6px var(--acc), inset 0 0 10px -4px var(--acc);
+}
+.bs-stage.is-on b { color: var(--acc); text-shadow: 0 0 8px var(--acc); }
+.bs-stage--map.is-on { animation: bs-hum .9s ease-in-out infinite; }
+@keyframes bs-hum { 50% { box-shadow: 0 0 22px -4px var(--acc), inset 0 0 14px -3px var(--acc); } }
+.bs-stage__arrow { color: var(--dimmer); flex-shrink: 0; }
+.bs-stage__arrow.is-on { color: var(--acc); animation: bs-arrow .8s ease-in-out infinite; }
+@keyframes bs-arrow { 50% { transform: translateX(3px); opacity: .45; } }
+
+/* The wall, the tiles in flight, the bins. */
+.bs-mach { display: flex; flex-direction: column; gap: 10px; }
+.bs-wallwrap {
+  position: relative; border-radius: 6px; background: #05040f;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--lane) 32%, transparent), 0 0 30px -14px var(--lane);
+}
+.bs-wallwrap::after {
+  content: ''; position: absolute; inset: 0; border-radius: 6px; pointer-events: none;
+  background: repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0 1px, transparent 1px 3px);
+  box-shadow: inset 0 0 22px rgba(0, 0, 0, 0.75);
+}
 .bs-wall {
-  display: block; width: 100%; height: auto; border-radius: 3px; background: var(--void);
+  display: block; width: 100%; height: auto; border-radius: 6px; background: var(--void);
   image-rendering: pixelated; cursor: crosshair;
 }
 .bs-wall:focus-visible { outline: 2px solid var(--edge-hot); outline-offset: 2px; }
+.bs-drops { position: absolute; inset: 0; z-index: 1; pointer-events: none; container-type: size; --fall: 56px; }
+.bs-drop {
+  position: absolute; left: calc(var(--x) * 1%); top: calc(var(--y) * 1%); width: 0; height: 0;
+  animation: bs-drop-x .95s cubic-bezier(.35, 0, .6, 1) both;
+}
+.bs-drop i {
+  position: absolute; left: -5.5px; top: -5.5px; width: 11px; height: 11px; border-radius: 2px;
+  background: var(--tc); box-shadow: 0 0 10px var(--tc), 0 0 2px #fff, inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  animation: bs-drop-y .95s cubic-bezier(.55, 0, .9, .45) both;
+}
+@keyframes bs-drop-x { to { transform: translateX(calc((var(--bx) - var(--x)) * 1cqw)); } }
+@keyframes bs-drop-y {
+  0% { transform: translateY(0) scale(0); opacity: 0; }
+  14% { transform: translateY(-9px) scale(1.6); opacity: 1; }
+  86% { opacity: 1; }
+  100% { transform: translateY(calc((100 - var(--y)) * 1cqh + var(--fall))) scale(.7); opacity: 0; }
+}
+
+.bs-bins { display: grid; grid-template-columns: repeat(var(--bins, 9), minmax(0, 1fr)); gap: 4px; }
+.bs-bin { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.bs-bin__n {
+  font-family: var(--mono); font-size: 10px; font-weight: 700; line-height: 1.1; text-align: center; color: var(--tc);
+  white-space: nowrap; overflow: hidden; animation: bs-n .35s var(--ease-spring) both;
+}
+.bs-bin__n.is-zero { color: var(--dimmer); animation: none; }
+@keyframes bs-n { from { transform: scale(1.5); } }
+.bs-bin__well {
+  position: relative; height: 64px; border-radius: 4px; overflow: hidden;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.015), rgba(255, 255, 255, 0.05));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tc) 32%, transparent), inset 0 -8px 14px -8px rgba(0, 0, 0, 0.7);
+}
+.bs-bin__fill {
+  position: absolute; left: 2px; right: 2px; bottom: 2px; max-height: calc(100% - 4px); border-radius: 2px; overflow: hidden;
+  background: linear-gradient(180deg, var(--tc), color-mix(in srgb, var(--tc) 40%, #000));
+  box-shadow: 0 0 12px -2px var(--tc); transition: height .35s var(--ease-out);
+}
+.bs-bin__fill::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 2px; background: #fff; opacity: .75; }
+.bs-bin__k { font-family: var(--mono); font-size: 9px; font-weight: 700; letter-spacing: .04em; text-align: center; color: var(--txt-2); }
+.bs-bin--foul .bs-bin__k { color: var(--err); }
+
 .bs-counters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; font-size: var(--fs-xs); color: var(--dim); }
 .bs-counters__cost { color: var(--txt); text-align: right; }
 
-/* Below the walls: the topics, the inspector, the agreement. */
+/* ── Below the machines: the reduce, the inspector, the agreement ─────────── */
+
 .bs-lower { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.15fr); gap: 16px; align-items: start; }
 @media (max-width: 1250px) { .bs-lower { grid-template-columns: repeat(2, minmax(0, 1fr)); } .bs-agree { grid-column: 1 / -1; } }
 @media (max-width: 760px) { .bs-lower { grid-template-columns: minmax(0, 1fr); } }
 
+/* Each lane's sorted landscape: the round's share per topic, side by side. */
+.bs-land { display: flex; flex-direction: column; gap: 8px; }
+.bs-land__row { display: flex; align-items: center; gap: 8px; }
+.bs-land__bar {
+  flex: 1; min-width: 0; display: flex; height: 24px; border-radius: 6px; overflow: hidden;
+  background: rgba(255, 255, 255, 0.04); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lane) 35%, transparent), 0 0 18px -10px var(--lane);
+}
+.bs-land__seg {
+  flex: 0 1 0; min-width: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap;
+  font-family: var(--mono); font-size: 9px; font-weight: 800; color: #07051a;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tc) 70%, #fff), var(--tc) 45%, color-mix(in srgb, var(--tc) 70%, #000));
+  box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.4); transition: flex-grow .45s var(--ease-out);
+}
+.bs-land__seg--foul { color: #fff; }
+.bs-land__seg--rest { color: var(--dim); background: repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.06) 0 4px, transparent 4px 8px); box-shadow: none; }
+
 .bs-legend__t td, .bs-legend__t th { padding: 4px 6px; font-size: var(--fs-sm); }
+.bs-legend__t tbody tr { transition: background .15s; }
+.bs-legend__t tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
 .bs-legend__k { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.bs-legend__k .bs-sw { box-shadow: 0 0 8px -1px var(--tc); }
 .bs-legend__n { position: relative; min-width: 56px; }
-.bs-legend__bar { position: absolute; left: 6px; bottom: 1px; height: 2px; max-width: calc(100% - 12px); background: var(--lane); opacity: .8; }
+.bs-legend__bar {
+  position: absolute; left: 6px; bottom: 1px; height: 3px; max-width: calc(100% - 12px); border-radius: 2px;
+  background: var(--lane); box-shadow: 0 0 6px var(--lane); transition: width .35s var(--ease-out);
+}
 .bs-legend__extra td { color: var(--dim); }
 
 .bs-inspect { gap: 8px; }
+.bs-inspect__body { display: flex; flex-direction: column; gap: 8px; animation: bs-in .3s var(--ease-out) both; }
+@keyframes bs-in { from { opacity: 0; transform: translateY(5px); } }
 .bs-inspect__title { font-size: 15px; font-weight: 700; color: var(--txt); overflow-wrap: anywhere; }
+.bs-inspect__title:hover { color: var(--acc); }
 .bs-inspect__text { font-size: var(--fs-md); line-height: 1.55; color: color-mix(in srgb, var(--txt) 72%, var(--dim)); }
 .bs-inspect__lanes { list-style: none; display: flex; flex-direction: column; gap: 6px; padding-top: 8px; border-top: 1px solid var(--rule); }
-.bs-inspect__lanes li { display: flex; align-items: center; gap: 8px; font-size: var(--fs-md); min-width: 0; }
+.bs-inspect__lanes li { display: flex; align-items: center; gap: 8px; font-size: var(--fs-md); min-width: 0; flex-wrap: wrap; }
 .bs-inspect__who { color: var(--dim); min-width: 0; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bs-inspect__agree { font-size: var(--fs-sm); font-weight: 600; }
+.bs-topic {
+  display: inline-flex; align-items: center; gap: 6px; padding: 1px 10px 1px 7px; border-radius: 999px;
+  background: color-mix(in srgb, var(--tc) 14%, transparent); border: 1px solid color-mix(in srgb, var(--tc) 50%, transparent);
+}
+.bs-topic .bs-sw { border-radius: 50%; box-shadow: 0 0 8px var(--tc); }
 
 .bs-pair { display: flex; flex-direction: column; gap: 6px; }
 .bs-pair + .bs-pair { padding-top: 10px; border-top: 1px solid var(--rule); }
 .bs-pair__hd { display: flex; align-items: center; gap: 6px; font-size: var(--fs-md); flex-wrap: wrap; }
-.bs-pair__rate { display: flex; align-items: baseline; gap: 8px; }
-.bs-pair__rate span { font-size: 26px; font-weight: 700; line-height: 1; }
+.bs-pair__rate { display: flex; align-items: baseline; gap: 10px; }
+.bs-pair__v { font-size: 30px; color: var(--acc); text-shadow: 0 0 14px color-mix(in srgb, var(--acc) 60%, transparent); }
 .bs-pair__rate small { font-size: var(--fs-xs); color: var(--dim); }
+.bs-pair__meter { display: block; height: 6px; border-radius: 3px; overflow: hidden; background: rgba(255, 255, 255, 0.06); }
+.bs-pair__meter span {
+  display: block; height: 100%; border-radius: 3px; transition: width .5s var(--ease-out);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--acc) 45%, #000), var(--acc)); box-shadow: 0 0 10px var(--acc);
+}
 .bs-conf { border-collapse: separate; border-spacing: 2px; font-family: var(--mono); font-size: 10.5px; }
 .bs-conf th { font-weight: 400; color: var(--dim); text-align: center; }
 .bs-conf__row { display: flex; align-items: center; gap: 5px; justify-content: flex-start; padding-right: 4px; }
 .bs-conf__corner { font-size: 9.5px; }
 .bs-conf__c {
-  width: 26px; height: 20px; text-align: center; color: var(--txt); border-radius: 2px;
-  background: color-mix(in srgb, var(--cy) calc(var(--h, 0) * 55%), transparent);
+  width: 26px; height: 20px; text-align: center; color: var(--txt); border-radius: 3px;
+  background: color-mix(in srgb, var(--acc) calc(var(--h, 0) * 60%), rgba(255, 255, 255, 0.02)); transition: background .4s;
 }
-.bs-conf__c--same { box-shadow: inset 0 0 0 1px var(--edge-hot); font-weight: 700; }
+.bs-conf__c--same { box-shadow: inset 0 0 0 1px var(--edge-hot), 0 0 10px -3px var(--cy); font-weight: 700; }

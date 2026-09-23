@@ -32,6 +32,7 @@ import {
   loadSaved,
   modelHint,
   optionLabel,
+  ordinal,
   packHorses,
   paramsSearch,
   parseParams,
@@ -39,6 +40,7 @@ import {
   providerState,
   raceBody,
   raceElapsed,
+  raceFinale,
   reconcileLanes,
   rematchLanes,
   sanitizeRules,
@@ -561,11 +563,11 @@ describe('where the page is', () => {
     assert.deepEqual(parseParams('?tab=nonsense&race='), { tab: 'race', race: null })
   })
 
-  it('writes them back, and nothing at all for the bare setup', () => {
+  it('writes them back, and ?tab=race for the bare setup (the bare address is the Arcade)', () => {
     assert.equal(paramsSearch({ race: 'abc' }), '?race=abc')
     assert.equal(paramsSearch({ tab: 'history' }), '?tab=history')
-    assert.equal(paramsSearch({}), '')
-    assert.equal(paramsSearch({ tab: 'race', race: null }), '')
+    assert.equal(paramsSearch({}), '?tab=race')
+    assert.equal(paramsSearch({ tab: 'race', race: null }), '?tab=race')
     for (const p of [{ tab: 'race', race: 'x1' }, { tab: 'history', race: null }, { tab: 'race', race: null }]) {
       assert.deepEqual(parseParams(paramsSearch(p)), p)
     }
@@ -729,6 +731,40 @@ describe('errors and times', () => {
     assert.equal(ago('2026-09-20T06:00:00Z', now), '2d')
     assert.equal(ago(null, now), '—')
     assert.equal(ago('garbage', now), '—')
+  })
+})
+
+describe('the podium and the finale', () => {
+  it('prints a rank as the badges do', () => {
+    assert.deepEqual([1, 2, 3, 4, 10].map(ordinal), ['1st', '2nd', '3rd', '4th', '10th'])
+    assert.deepEqual([11, 12, 13, 21, 22, 23, 101, 111].map(ordinal), ['11th', '12th', '13th', '21st', '22nd', '23rd', '101st', '111th'])
+  })
+
+  it("names the winner by the race's own ranking, with its hops", () => {
+    const r = race({
+      status: 'finished', winner: 1, ranking: [1, 0],
+      lanes: [lane(0, { status: 'finished', hops: 5, rank: 2 }), lane(1, { status: 'finished', hops: 3, rank: 1, label: 'jev' })],
+    })
+    assert.deepEqual(raceFinale(r), { win: true, lane: 1, headline: 'PLAYER 2 WINS!', sub: 'jev — 3 hops to Goal' })
+  })
+
+  it('says one hop, and a solo racer that finishes simply finishes', () => {
+    const r = race({ status: 'finished', winner: 0, ranking: [0], lanes: [lane(0, { status: 'finished', hops: 1, rank: 1 })] })
+    assert.deepEqual(raceFinale(r), { win: true, lane: 0, headline: 'FINISHED!', sub: 'model-0 — 1 hop to Goal' })
+  })
+
+  it('is GAME OVER when nobody reached the target', () => {
+    const r = race({ status: 'finished', lanes: [lane(0, { status: 'dnf' }), lane(1, { status: 'dq' })] })
+    assert.deepEqual(raceFinale(r), { win: false, lane: null, headline: 'GAME OVER', sub: 'Nobody reached Goal.' })
+  })
+
+  it("reads the fixture's winner", () => {
+    const r = fixture('race-jev.json')
+    const f = raceFinale(r)
+    assert.equal(f.win, true)
+    assert.equal(f.lane, r.winner)
+    assert.match(f.headline, /^PLAYER \d WINS!$/)
+    assert.ok(f.sub.startsWith(r.lanes[r.winner].label))
   })
 })
 

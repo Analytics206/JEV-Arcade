@@ -8,6 +8,7 @@ import {
   STEP,
   TILE,
   articleRuns,
+  bullseye,
   claimText,
   claimsFor,
   continentLayout,
@@ -19,7 +20,9 @@ import {
   scoreboard,
   stackSegments,
   tileAlpha,
+  tiersOf,
   verdict,
+  winnersOf,
 } from '../../src/wikirace/static/games/wikiguessr.logic.js'
 
 const DATA = JSON.parse(readFileSync(new URL('../../src/wikirace/games/data/wikiguessr.json', import.meta.url), 'utf-8'))
@@ -127,5 +130,53 @@ describe('reading a round', () => {
     const segs = stackSegments([{ option: 'Europe', p: 0.94 }, { option: 'Africa', p: 0.03 }])
     assert.deepEqual(segs.map((s) => [s.option, s.x, s.w]), [['Europe', 0, 94], ['Africa', 94, 3]])
     assert.deepEqual(articleRuns('███ is in ██.\nNext.'), [[{ hidden: 3 }, { text: ' is in ' }, { hidden: 2 }, { text: '.' }], [{ text: 'Next.' }]])
+  })
+})
+
+describe('the claim ladder', () => {
+  const states = (tiers) => tiers.map((t) => t.state)
+  it('waits for a lane that has not claimed', () => {
+    assert.deepEqual(states(tiersOf(null, null)), ['wait', 'wait', 'wait'])
+  })
+  it('locks in what was claimed, then pays it out or busts it', () => {
+    const claim = { kind: 'text', claim: ['Europe', 'France', 'Occitania'], fouls: [] }
+    assert.deepEqual(states(tiersOf(claim, null)), ['claim', 'claim', 'claim'])
+    const won = tiersOf(claim, { points: 10, marks: ['right', 'right', 'right'] })
+    assert.deepEqual(won.map((t) => [t.state, t.pts]), [['right', 1], ['right', 3], ['right', 6]])
+    const bust = tiersOf(claim, { points: -5, marks: ['right', 'wrong'] })
+    assert.deepEqual(bust.map((t) => [t.state, t.pts]), [['right', 1], ['bust', -6], ['void', null]])
+  })
+  it('says why a claim stopped: Jev under the line, a foul, a level left out, nothing deeper', () => {
+    const jev = { kind: 'jev', claim: ['Europe'], stopped_at: 2, levels: [{ confidence: 0.91 }, { confidence: 0.31 }] }
+    const t = tiersOf(jev, null)
+    assert.deepEqual(states(t), ['claim', 'stop', 'none'])
+    assert.deepEqual(t.map((x) => x.conf), [0.91, 0.31, null])
+    assert.deepEqual(states(tiersOf({ kind: 'jev', claim: ['Europe', 'France'], stopped_at: null, levels: [] }, null)), ['claim', 'claim', 'end'])
+    const foul = tiersOf({ kind: 'text', claim: ['Europe'], fouls: ['country'], said: { country: 'Atlantis' } }, null)
+    assert.deepEqual(foul.map((x) => [x.state, x.name]), [['claim', 'Europe'], ['foul', 'Atlantis'], ['none', null]])
+    assert.deepEqual(states(tiersOf({ kind: 'text', claim: [], fouls: [] }, { points: 0, marks: [] })), ['unsure', 'none', 'none'])
+  })
+  it('uses the run’s own points', () => {
+    const t = tiersOf({ kind: 'text', claim: ['Asia'], fouls: [] }, { marks: ['wrong'] }, { wrong: -9 })
+    assert.equal(t[0].pts, -9)
+  })
+  it('knows a bullseye', () => {
+    assert.ok(bullseye({ marks: ['right', 'right', 'right'] }))
+    assert.ok(!bullseye({ marks: ['right', 'right'] }))
+    assert.ok(!bullseye(null))
+  })
+})
+
+describe('who won', () => {
+  const lane = (index, score, status = 'done') => ({ index, score, status })
+  it('is the most points, ties and all', () => {
+    assert.deepEqual(winnersOf({ lanes: [lane(0, 4), lane(1, 12), lane(2, 7)] }), [1])
+    assert.deepEqual(winnersOf({ lanes: [lane(0, 12), lane(1, 12), lane(2, -6)] }), [0, 1])
+    assert.deepEqual(winnersOf({ lanes: [lane(0, -6), lane(1, -2)] }), [1])
+  })
+  it('leaves out a lane that dropped out while another played on', () => {
+    assert.deepEqual(winnersOf({ lanes: [lane(0, 20, 'error'), lane(1, 3)] }), [1])
+    assert.deepEqual(winnersOf({ lanes: [lane(0, 2, 'stopped'), lane(1, 5, 'stopped')] }), [1])
+    assert.deepEqual(winnersOf({ lanes: [] }), [])
   })
 })

@@ -206,3 +206,57 @@ export function tallyOf(run, mine) {
 
 /** A signed score as the tally writes it: +4, 0, −2. */
 export const signed = (n) => (n > 0 ? `+${n}` : n < 0 ? `−${-n}` : '0')
+
+/**
+ * The match as its scoreboard shows it: a row for the visitor and one per
+ * lane, a cell per question, the totals (tallyOf's, so they agree with it),
+ * whether the match is over, and who leads.
+ *
+ * A cell's `state` is a verdict (right, near, wrong, missed, foul, unscored,
+ * with its `points`) once the visitor has played the question and every
+ * player has answered it; else `skipped` (the visitor asked to be shown),
+ * `pending` (played, the key not out yet), `sealed` (a lane's answer, sealed
+ * until the visitor gives theirs) or `hunting` (no answer yet).
+ *
+ * The match is `done` when every question is revealed and played. The
+ * leaders have the most points: the lanes still in the game (a lane that
+ * dropped out is out of it when another played on), and the visitor once
+ * they have answered one question themselves.
+ */
+export function matchOf(run, mine) {
+  const lines = run?.lines ?? []
+  const qs = run?.questions ?? []
+  const tally = tallyOf(run, mine)
+  const youCells = qs.map((q) => {
+    const m = mine?.[q.k]
+    if (!m) return { state: 'hunting' }
+    if (m.skipped) return { state: 'skipped' }
+    if (!q.revealed) return { state: 'pending' }
+    const v = judgePick(m.pick, q.answer, lines)
+    return { state: v, points: POINTS[v] }
+  })
+  const lanes = (run?.lanes ?? []).map((ln, j) => ({
+    index: ln.index, label: ln.label, kind: ln.kind, status: ln.status, points: tally.lanes[j].points,
+    cells: qs.map((q) => {
+      if (!answerOf(ln, q.k)) return { state: 'hunting' }
+      if (!mine?.[q.k]) return { state: 'sealed' }
+      const mk = q.revealed ? markOf(ln, q.k) : null
+      return mk ? { state: mk.verdict, points: mk.points } : { state: 'pending' }
+    }),
+  }))
+  const you = { points: tally.you.points, played: tally.you.played, cells: youCells }
+  const inPlay = lanes.filter((l) => l.status === 'done')
+  const field = inPlay.length ? inPlay : lanes
+  const scores = [...field.map((l) => l.points), ...(you.played ? [you.points] : [])]
+  const best = scores.length ? Math.max(...scores) : null
+  return {
+    you, lanes, tally,
+    done: qs.length > 0 && tally.questions === qs.length,
+    scored: qs.some((q) => q.scored),
+    leaders: {
+      best,
+      lanes: best == null ? [] : field.filter((l) => l.points === best).map((l) => l.index),
+      you: !!you.played && you.points === best,
+    },
+  }
+}

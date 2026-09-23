@@ -1,8 +1,9 @@
 # The Arcade
 
-WikiRace's page has a third tab, **Arcade**: games beside the horse race, each
-showing one thing TypeSafe's Jev does well. WikiRace itself is unchanged and
-keeps the bare address; the Arcade lives at `?tab=arcade`, one game at
+JEV-Arcade opens on the **Arcade's floor**: fifteen cabinets, WikiRace first,
+then fourteen games beside it, each showing one thing TypeSafe's Jev does well.
+The floor keeps the bare address (`?tab=arcade` still names it); WikiRace lives
+at `?tab=race` (and `?race=<id>`, `?tab=history`, as before); one game at
 `?game=<id>`, one run of it at `?game=<id>&run=<run id>`.
 
 Every game is two files and a test, run by shared machinery:
@@ -10,7 +11,7 @@ Every game is two files and a test, run by shared machinery:
 | | Server (`src/wikirace/games/`) | Page (`src/wikirace/static/games/`) |
 |---|---|---|
 | a game | `<id>.py` (+ `data/<id>.json`, + helpers `<id>_*.py`) | `<id>.js`, `<id>.css` (+ pure helpers `<id>.logic.js`) |
-| shared | `base.py` (what a game is), `core.py` (questions, answers, parsing, cost), `players.py` (Jev and text models), `runs.py` (a streamed run), `store.py`, `api.py`, `registry.py` | `kit.js` (hooks and components), `runstate.js` (the pure reducer), `route.js`, `shell.js` (header, hub), `registry.js` (hub cards), `games.css` |
+| shared | `base.py` (what a game is), `core.py` (questions, answers, parsing, cost), `players.py` (Jev and text models), `runs.py` (a streamed run), `store.py`, `api.py`, `registry.py` | `kit.js` (hooks and components), `runstate.js` (the pure reducer), `route.js`, `shell.js` (the floor, a game's view), `registry.js` (each cabinet: neon, pitch, plate), `attract.js` (each cabinet's attract-mode screen), `games.css`, `hub.css`; beside them in `static/`: `brand.js` (the pixel font, the header), `fx.js` (Counter, confetti, the finale), `sfx.js` (sounds), `profile.js` (what this browser has played) |
 
 Tests: `tests/games/test_game_<id>.py` over the `arcade` fixture
 (`tests/games/conftest.py`: a whole server over a fake Jev, fake text models
@@ -20,7 +21,7 @@ players (each game's `tests/games/demo/<id>.py` says what they answer), for
 working on a page without API keys:
 
 ```bash
-uv run python tests/games/demo_server.py          # http://127.0.0.1:8002/?tab=arcade
+uv run python tests/games/demo_server.py          # http://127.0.0.1:8002
 ```
 
 **Switchboard is the reference game**: `games/switchboard.py`,
@@ -122,12 +123,26 @@ address, or null for the setup. With no run it shows a setup and starts one
 (`useStarter(game.id).start(lanes, params)`, which opens it); with a run it
 follows it (`useRun(runId)`) and draws it.
 
-From `kit.js`: `GameFrame` (every page's top), `Box` (a panel; `lane=` puts a
-lane's colour on it), `Label`, `Chip`, `Stat`, `LaneNum`, `LaneHead`,
-`LaneStats`, `LaneCard`, `Bars` (probability bars), `Meter` (a value against
-threshold marks), `Levels` (a score's distribution), `PlayerPicker`,
-`StartButton`, `RunBar` (status, clock, stop, play again), `RecentRuns`,
-`RunLoading`, `useModels`, `useNow`, `againOf`, and formatters. From
+From `kit.js`: `GameFrame` (every page's top: the name in lights in the
+cabinet's neon, `--acc`), `Box` (a panel; `lane=` puts a lane's colour on it),
+`Label`, `Chip`, `Stat`, `LaneNum`, `LaneHead`, `LaneStats`, `LaneCard`, `Bars`
+(probability bars), `Meter` (a value against threshold marks), `Levels` (a
+score's distribution), `PlayerPicker`, `StartButton` (the big lit arcade
+button), `RunBar` (the scoreboard: status, clock, stop, play again, and the
+finale), `RecentRuns`, `RunLoading`, `useModels`, `useNow`, `againOf`, and
+formatters. It re-exports the arcade's effects for a game's own board:
+`Counter` (a number that rolls to each new value and floats the change off it;
+`class="g-score"` makes it a lit scoreboard number), `burst` / `burstFrom`
+(pixel confetti, sparingly), `PixelText` (the 5×7 pixel font, as SVG) and
+`sfx` (sounds; on unless the visitor muted them).
+
+**Who won** is the game's own rule, so a game says it: `RunBar` takes
+`winners` (lane indexes; several for a tie). When a run finishes in front of
+the visitor (not a replay opened later), the finale plays over the page:
+"PLAYER 2 WINS!", "TIE GAME!", or "GAME OVER" when a game names no winner, with
+confetti in the winners' colours; `headline` and `sub` replace its words (a
+game with no contest to win says what happened instead). Starting a run counts
+a play of that cabinet in this browser (`profile.js`), which the floor shows. From
 `runstate.js`: `defaultPlayers`, `playersProblem`, `isRunLive`, `fmtPct`,
 `fmtProb`, `fmtMs`, `laneCostText`. The page is Preact with htm (no build
 step); the markup is `html\`…\``.
@@ -138,9 +153,18 @@ checks the templates but a reader. `tests/js/syntax.test.js` parses every
 module (as `.mjs`: `node --check` on a `.js` module passes syntax errors
 under Node 24).
 
-Style: WikiRace's own (styles.css tokens: `--cy`, `--ok`, `--warn`, `--err`,
-`--lane-1…4`, `--mono`, `--panel`, `--edge`, `--rule`); a game's rules live in
-`<id>.css`, every class prefixed with the game's own short prefix. Lane
+Style: a neon arcade at night (styles.css tokens: `--acc`, the cabinet's own
+neon; `--cy`, `--pk`, `--yl`, `--vi`; `--ok`, `--warn`, `--err`; `--lane-1…4`;
+`--txt`, `--txt-2`, `--dim`; `--mono`, `--display`; `--r-sm…lg`;
+`--ease-out`, `--ease-spring`); a game's rules live in `<id>.css`, every class
+prefixed with the game's own short prefix. A new game adds a cabinet to
+`registry.js` (its neon, pitch and plate) and an attract-mode scene to
+`attract.js`. The cascade runs `hub.css`, `kit.css`, then each game's
+stylesheet (imported by `games.css`), so a game's own rule on a kit element
+(`.xx-board` on a Box) wins at equal specificity; the state colours
+(`g-t-ok`, `g-t-warn`, `g-t-err`…) come after every game, so a tone the page
+puts on an element always shows. Scores that change live go through `Counter`,
+and a finale that is not a triumph passes `win={false}` to `RunBar`. Lane
 identity is the `--lane-N` colour and the lane number, never colour alone;
 state wears the semantic colours with a glyph. No emoji in a game's page.
 Real `<button>`, `<label>`, `<select>`; SVG drawings get a `role="img"` and

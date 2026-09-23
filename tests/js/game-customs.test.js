@@ -8,19 +8,30 @@ import {
   OUT_X,
   SCAN_X,
   VISIBLE_QUEUE,
+  alarmFromCounts,
+  alarmOf,
   beltOf,
+  calloutOf,
   chuteMouth,
   chuteRule,
   chuteY,
+  countsOf,
+  dialAt,
+  dialDeg,
+  dropsOf,
   hazardTone,
   labelTotals,
   loudest,
   marksFor,
   placements,
   routeOf,
+  skinOf,
   slotX,
+  streakOf,
   tagLines,
   throughput,
+  winnersOf,
+  xrayOf,
 } from '../../src/wikirace/static/games/customs.logic.js'
 
 const bags = [0, 1, 2, 3, 4, 5, 6].map((i) => ({ i, text: `bag number ${i}` }))
@@ -104,5 +115,69 @@ describe('the tags and the readings', () => {
     assert.deepEqual(labelTotals(null), { pass: 0, inspect: 0, block: 0 })
     const r = { lanes: [{ answers: [{ bag: 1, route: 'pass' }] }, { answers: [] }] }
     assert.deepEqual(marksFor(r, 1), [{ bag: 1, route: 'pass' }, null])
+  })
+})
+
+describe('who won, and what each bag earned', () => {
+  it('names the top score among the lanes that screened their whole belt, ties sharing it', () => {
+    const lanes = [
+      { index: 0, status: 'done', score: 12 },
+      { index: 1, status: 'done', score: 16 },
+      { index: 2, status: 'error', score: 30 },
+      { index: 3, status: 'done', score: 16 },
+    ]
+    assert.deepEqual(winnersOf(lanes), [1, 3])
+    assert.deepEqual(winnersOf([{ index: 0, status: 'stopped', score: 4 }]), [])
+    assert.deepEqual(winnersOf([{ index: 0, status: 'done', score: -3 }, { index: 1, status: 'done', score: -5 }]), [0])
+    assert.deepEqual(winnersOf(null), [])
+  })
+  it('calls a miss and a false alarm only by the game’s own definitions', () => {
+    assert.equal(alarmOf('pass', 'block'), 'miss')
+    assert.equal(alarmOf('block', 'pass'), 'false_alarm')
+    assert.equal(alarmOf('pass', 'inspect'), null)
+    assert.equal(alarmOf('block', 'inspect'), null)
+    assert.equal(alarmOf('support', 'pass'), null)
+    assert.equal(alarmOf('foul', 'block'), null)
+  })
+  it('reads a live miss or false alarm off the counters moving by exactly one bag', () => {
+    const before = { answers: [{ bag: 0, route: 'pass' }], screened: 1, missed: 0, false_alarms: 0 }
+    const pushed = { ...before, answers: [...before.answers, { bag: 1, route: 'pass', verdict: 'wrong' }] }
+    // The answer is pushed before it is tallied: nothing to say yet.
+    assert.equal(alarmFromCounts(countsOf(before), pushed), null)
+    const tallied = { ...pushed, screened: 2, missed: 1 }
+    assert.deepEqual(alarmFromCounts(countsOf(pushed), tallied), { bag: 1, kind: 'miss' })
+    const blocked = { answers: [{ bag: 4, route: 'block' }], screened: 5, missed: 0, false_alarms: 2 }
+    assert.deepEqual(alarmFromCounts({ screened: 4, missed: 0, false_alarms: 1 }, blocked), { bag: 4, kind: 'false_alarm' })
+    // Two bags at once: it cannot tell which, so it says nothing.
+    assert.equal(alarmFromCounts({ screened: 3, missed: 0, false_alarms: 1 }, blocked), null)
+    assert.equal(alarmFromCounts(null, blocked), null)
+  })
+  it('writes the callout from the verdict and the run’s own points', () => {
+    const points = { right: 2, human: 0, wrong: -2, foul: -1 }
+    assert.deepEqual(calloutOf({ verdict: 'right' }, null, points), { tone: 'ok', mark: '✓', word: 'RIGHT', pts: '+2' })
+    assert.equal(calloutOf({ verdict: 'human' }, null, points).pts, '0')
+    assert.equal(calloutOf({ verdict: 'wrong' }, 'miss', points).word, 'MISSED')
+    assert.equal(calloutOf({ verdict: 'wrong' }, 'false_alarm', points).word, 'FALSE ALARM')
+    assert.equal(calloutOf({ verdict: 'wrong' }, null, points).word, 'WRONG CHUTE')
+    assert.equal(calloutOf({ verdict: 'wrong' }, null, points).pts, '−2')
+    assert.equal(calloutOf({ verdict: 'foul' }, null, points).mark, '!')
+    assert.equal(calloutOf({}, null, points), null)
+  })
+  it('drops the bags routed before the latest, and draws the rest the same every time', () => {
+    const lane = { answers: [0, 1, 2, 3].map((bag) => ({ bag })) }
+    assert.deepEqual(dropsOf(lane).map((a) => a.bag), [1, 2])
+    assert.deepEqual(dropsOf({ answers: [{ bag: 0 }] }), [])
+    assert.deepEqual(dropsOf({}), [])
+    assert.equal(skinOf(3), skinOf(9))
+    assert.equal(streakOf({ answers: ['wrong', 'right', 'right', 'human', 'right', 'right', 'right'].map((verdict) => ({ verdict })) }), 3)
+    assert.equal(streakOf({ answers: [{ verdict: 'right' }, { verdict: 'foul' }] }), 0)
+    assert.equal(streakOf({}), 0)
+    assert.deepEqual(xrayOf(7), xrayOf(7))
+    assert.equal(xrayOf(7).length, 3)
+    assert.equal(dialDeg(0), -90)
+    assert.equal(dialDeg(1), 90)
+    assert.equal(dialDeg(0.5), 0)
+    const [x, y] = dialAt(60, 62, 48, 0.5)
+    assert.ok(Math.abs(x - 60) < 1e-9 && Math.abs(y - 14) < 1e-9)
   })
 })

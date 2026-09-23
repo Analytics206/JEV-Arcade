@@ -1,119 +1,332 @@
-/* Legal Moves Only: every rule under .ch-…, over WikiRace's tokens. The board's
- * squares and pieces are the only drawing here, mixed from those tokens too. */
+/* Legal Moves Only: every rule under .ch-…, over the page's tokens. The board is
+ * the one drawing here, so its squares and pieces carry literal colours (a night
+ * board in the cabinet's violet); everything else is tokens. --acc is the
+ * cabinet's neon, --lane a player's colour. */
 
 /* ── Setup ── */
 .ch-setup { gap: 16px; }
 .ch-params { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .ch-check { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; font-size: var(--fs-md); color: var(--txt); cursor: pointer; }
-.ch-check input { width: 16px; height: 16px; accent-color: var(--cy); }
+.ch-check input { width: 16px; height: 16px; accent-color: var(--acc); }
 .ch-side { display: flex; flex-direction: column; gap: 16px; }
-.ch-howto { display: flex; gap: 18px; align-items: flex-start; }
-.ch-howto__board { flex: 0 0 250px; margin: 0; display: flex; flex-direction: column; gap: 4px; }
-.ch-howto__board figcaption { font-size: var(--fs-xs); padding-left: 12px; }
-.ch-howto__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
-.ch-rules { display: flex; flex-wrap: wrap; gap: 6px; }
-@media (max-width: 700px) { .ch-howto { flex-direction: column; } .ch-howto__board { flex-basis: auto; width: min(100%, 300px); } }
+.ch-howto { display: flex; gap: 22px; align-items: flex-start; }
+.ch-howto__board { flex: 0 0 290px; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.ch-howto__board figcaption { font-size: var(--fs-xs); text-align: center; }
+.ch-howto__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.ch-steps { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+.ch-step { display: flex; gap: 12px; align-items: flex-start; }
+.ch-step__n {
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 24px; height: 24px; margin-top: 1px;
+  border-radius: 50%; font-family: var(--mono); font-size: var(--fs-xs); font-weight: 800; color: var(--void);
+  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--acc) 40%, white), var(--acc));
+  box-shadow: 0 0 12px -2px var(--acc), inset 0 -2px 0 rgba(0, 0, 0, 0.25);
+}
+.ch-rules { display: flex; flex-wrap: wrap; gap: 6px; padding-left: 36px; }
+@media (max-width: 760px) { .ch-howto { flex-direction: column; } .ch-howto__board { flex-basis: auto; width: min(100%, 320px); } }
 
 /* ── The stage: puzzle and question | board | lanes ── */
 .ch-stage {
-  display: grid; grid-template-columns: 290px minmax(0, 520px) minmax(0, 1fr);
+  display: grid; grid-template-columns: 280px minmax(0, 540px) minmax(0, 1fr);
   gap: 20px; align-items: start;
 }
 @media (max-width: 1320px) {
-  .ch-stage { grid-template-columns: minmax(0, 520px) minmax(0, 1fr); }
+  .ch-stage { grid-template-columns: minmax(0, 540px) minmax(0, 1fr); }
   .ch-left { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
 }
 @media (max-width: 880px) { .ch-stage { grid-template-columns: minmax(0, 1fr); } }
 .ch-left, .ch-center, .ch-right { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .ch-left { gap: 14px; }
 
-.ch-head { display: flex; flex-direction: column; gap: 6px; }
-.ch-head__k { font-family: var(--display); font-size: var(--fs-xs); font-weight: 600; letter-spacing: .14em; color: var(--cy); }
-.ch-head__title { font-size: 24px; font-weight: 700; line-height: 1.15; color: var(--txt); }
+/* The puzzle's heading: its number lit in the pixel font. */
+.ch-head { display: flex; flex-direction: column; gap: 8px; animation: ch-slide .45s var(--ease-out) both; }
+.ch-head__k { font-size: 15px; line-height: 1; color: var(--acc); filter: drop-shadow(0 0 5px color-mix(in srgb, var(--acc) 70%, transparent)); }
+.ch-head__title { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-size: 20px; font-weight: 700; line-height: 1.15; color: var(--txt); }
 .ch-head__theme { font-size: var(--fs-sm); color: var(--dim); }
-
-/* The strip of puzzles: one button each, a mark per lane. */
-.ch-strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 6px; }
-.ch-pz {
-  display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 4px;
-  background: var(--void-2); border: 1px solid var(--rule); border-radius: 3px; cursor: pointer; color: var(--dim);
+.ch-dots { color: var(--acc); letter-spacing: 2px; text-shadow: 0 0 8px color-mix(in srgb, var(--acc) 60%, transparent); }
+.ch-turn {
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 32px; height: 32px; border-radius: 9px;
+  font-family: 'Segoe UI Symbol', 'Noto Sans Symbols 2', 'Noto Sans Symbols', 'Apple Symbols', 'DejaVu Sans', serif;
+  font-size: 23px; font-weight: 400; line-height: 1;
 }
-.ch-pz:hover { border-color: var(--edge-hot); color: var(--txt); }
-.ch-pz--on { border-color: var(--cy); background: var(--cy-dim); color: var(--txt); }
-.ch-pz__n { font-family: var(--mono); font-size: var(--fs-md); font-weight: 700; }
+.ch-turn--w { color: #140f33; background: linear-gradient(180deg, #ffffff, #cfc7f5); box-shadow: 0 0 14px -4px rgba(255, 255, 255, 0.8), inset 0 -2px 0 rgba(0, 0, 0, 0.18); }
+.ch-turn--b { color: #e8e2ff; background: linear-gradient(180deg, #4a3f90, #0e0a26); box-shadow: 0 0 0 1px rgba(215, 207, 255, 0.45), 0 0 14px -4px var(--acc), inset 0 -2px 0 rgba(0, 0, 0, 0.3); }
+
+/* The strip of puzzles: a level-select tile each, a mark per lane. */
+.ch-strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 6px; }
+.ch-pz {
+  display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 7px 4px 6px; cursor: pointer; color: var(--dim);
+  background: linear-gradient(180deg, rgba(44, 35, 96, 0.72), rgba(14, 10, 36, 0.9));
+  border: 1px solid rgba(177, 140, 255, 0.18); border-radius: 9px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), inset 0 -2px 0 rgba(0, 0, 0, 0.4);
+  transition: transform .15s var(--ease-out), border-color .15s, box-shadow .2s, color .15s;
+}
+.ch-pz:hover { transform: translateY(-2px); color: var(--txt); border-color: color-mix(in srgb, var(--acc) 60%, transparent); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 6px 14px -8px var(--acc); }
+.ch-pz--on {
+  color: var(--void); border-color: var(--acc);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--acc) 55%, white), var(--acc));
+  box-shadow: 0 0 18px -3px var(--acc), inset 0 1px 0 rgba(255, 255, 255, 0.5), inset 0 -2px 0 rgba(0, 0, 0, 0.25);
+}
+.ch-pz__n { font-family: var(--mono); font-size: var(--fs-md); font-weight: 800; line-height: 1; }
 .ch-pz__marks { display: flex; gap: 2px; flex-wrap: wrap; justify-content: center; }
 .ch-mk {
   display: inline-flex; align-items: center; justify-content: center; width: 13px; height: 13px;
-  font-family: var(--mono); font-size: 9.5px; font-weight: 700; line-height: 1; color: var(--dimmer);
-  border: 1px solid var(--lane); border-radius: 2px;
+  font-family: var(--mono); font-size: 9.5px; font-weight: 800; line-height: 1; color: var(--dimmer);
+  background: #0b0823; border: 1px solid var(--lane); border-radius: 3px;
 }
-.ch-mk--ok { color: var(--ok); }
-.ch-mk--warn { color: var(--warn); }
-.ch-mk--err { color: var(--err); }
-.ch-mk--live { color: var(--lane-ink); background: var(--lane); }
+.ch-mk--ok { color: var(--ok); animation: ch-pop .45s var(--ease-spring) both; }
+.ch-mk--warn { color: var(--warn); animation: ch-pop .45s var(--ease-spring) both; }
+.ch-mk--err { color: var(--err); animation: ch-pop .45s var(--ease-spring) both; }
+.ch-mk--live { color: var(--lane-ink); background: var(--lane); animation: ch-blink 1s ease-in-out infinite; }
 
-.ch-step { display: flex; gap: 6px; flex-wrap: wrap; }
+.ch-nav { display: flex; gap: 6px; flex-wrap: wrap; }
 
-/* How Jev is asked: the state, field by field. */
-.ch-asked { gap: 6px; }
+/* How Jev is asked: the state as a terminal reads it out. */
+.ch-asked { gap: 7px; }
 .ch-asked__sub { font-family: var(--mono); font-size: var(--fs-xs); color: var(--dim); }
-.ch-asked__q { font-size: var(--fs-md); line-height: 1.45; color: var(--txt); }
-.ch-state { display: flex; flex-direction: column; gap: 4px; margin: 0 0 4px; }
-.ch-state__row { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 8px; font-family: var(--mono); font-size: 11.5px; line-height: 1.5; }
-.ch-state dt { color: var(--cy); overflow-wrap: anywhere; }
+.ch-asked__q { font-size: var(--fs-md); line-height: 1.45; color: var(--txt); padding-left: 10px; border-left: 2px solid var(--acc); }
+.ch-state {
+  display: flex; flex-direction: column; gap: 5px; margin: 0 0 4px; padding: 9px 10px; border-radius: 8px;
+  background: linear-gradient(180deg, rgba(3, 2, 12, 0.75), rgba(10, 7, 30, 0.75));
+  box-shadow: inset 0 1px 8px rgba(0, 0, 0, 0.7), inset 0 0 0 1px rgba(177, 140, 255, 0.12);
+}
+.ch-state__row { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 8px; font-family: var(--mono); font-size: 11.5px; line-height: 1.5; }
+.ch-state dt { color: var(--acc); overflow-wrap: anywhere; }
 .ch-state dd { margin: 0; color: var(--txt); overflow-wrap: anywhere; }
-.ch-answer__mv { font-family: var(--mono); font-size: 20px; font-weight: 700; }
+
+.ch-answer.is-out { box-shadow: inset 0 3px 0 var(--ok), 0 0 30px -14px var(--ok), 0 16px 34px -22px rgba(0, 0, 0, 0.95); }
+.ch-answer__mv {
+  display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 24px; font-weight: 800; color: var(--ok);
+  text-shadow: 0 0 14px rgba(62, 245, 160, 0.55); animation: ch-pop .55s var(--ease-spring) both;
+}
+.ch-answer__hash {
+  display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%;
+  font-size: 16px; color: #2a1600; background: var(--yl); box-shadow: 0 0 14px -2px var(--yl); text-shadow: none;
+}
+.ch-answer__sealed {
+  font-family: var(--mono); font-size: var(--fs-sm); color: var(--dim); padding: 8px 10px; border-radius: 8px;
+  border: 1px dashed rgba(177, 140, 255, 0.3); background: rgba(0, 0, 0, 0.2);
+}
 
 /* ── The board ── */
-.ch-boardbox { padding: 6px; }
-.ch-board { display: block; width: 100%; height: auto; }
-.ch-sq--l { fill: color-mix(in srgb, var(--txt) 62%, var(--dim)); }
-.ch-sq--d { fill: color-mix(in srgb, var(--dim) 86%, var(--void)); }
-.ch-lit rect { fill: color-mix(in srgb, var(--lane) 45%, transparent); }
-.ch-mates rect { fill: none; stroke: var(--ok); stroke-width: 3; }
-.ch-frame { fill: none; stroke: var(--edge-hot); stroke-width: 1.5; }
-.ch-coords text { font-family: var(--mono); font-size: 12px; fill: var(--dim); text-anchor: middle; }
-.ch-pc {
+
+/* The cabinet around the board: a bevelled bezel lit in the neon, its edge in
+ * the colour of the lane whose moves it shows. */
+.ch-bezel {
+  --edge-c: var(--acc);
+  position: relative; padding: 10px; border-radius: 18px;
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--acc) 26%, #1a1440) 0%, #0c0922 55%, color-mix(in srgb, var(--acc) 12%, #0c0922) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 -4px 10px rgba(0, 0, 0, 0.6),
+    0 0 0 1px color-mix(in srgb, var(--edge-c) 50%, transparent),
+    0 26px 50px -26px rgba(0, 0, 0, 0.95), 0 0 64px -30px var(--edge-c);
+  transition: box-shadow .35s var(--ease-out);
+}
+.ch-bezel--live { --edge-c: var(--lane); }
+.ch-bezel::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0;
+  box-shadow: 0 0 0 2px var(--yl), 0 0 44px -8px var(--yl);
+}
+.ch-bezel.is-mate::after { animation: ch-bezelmate 1.8s ease-out both; }
+@keyframes ch-bezelmate { 0% { opacity: 0; } 12% { opacity: 1; } 30% { opacity: .35; } 45% { opacity: 1; } 100% { opacity: .4; } }
+
+/* While the lane in view is thinking, a light sweeps the board. */
+.ch-scan { position: absolute; inset: 10px; z-index: 1; overflow: hidden; border-radius: 6px; pointer-events: none; }
+.ch-scan i {
+  position: absolute; top: 0; bottom: 0; left: 0; width: 40%;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--lane, var(--acc)) 24%, transparent), transparent);
+  animation: ch-scan 1.8s ease-in-out infinite;
+}
+@keyframes ch-scan { from { transform: translateX(-100%); } to { transform: translateX(260%); } }
+
+.ch-board { display: block; width: 100%; height: auto; overflow: visible; }
+.ch-stop-l0 { stop-color: #7168bd; }
+.ch-stop-l1 { stop-color: #5a51a2; }
+.ch-stop-d0 { stop-color: #2e2764; }
+.ch-stop-d1 { stop-color: #1e1846; }
+.ch-stop-w0 { stop-color: #ffffff; }
+.ch-stop-w1 { stop-color: #cbc2f4; }
+.ch-stop-k0 { stop-color: #4a3f92; }
+.ch-stop-k1 { stop-color: #0c0922; }
+.ch-stop-s0 { stop-color: #ffffff; stop-opacity: .12; }
+.ch-stop-s1 { stop-color: #ffffff; stop-opacity: 0; }
+.ch-bevel-hi { fill: none; stroke: rgba(255, 255, 255, 0.16); stroke-width: 1.4; }
+.ch-bevel-lo { fill: none; stroke: rgba(0, 0, 0, 0.38); stroke-width: 1.4; }
+.ch-bevel, .ch-sheen { pointer-events: none; }
+.ch-frame { fill: none; stroke: color-mix(in srgb, var(--acc) 75%, white); stroke-width: 1.5; }
+.ch-frame__glow { fill: #0b0823; stroke: var(--acc); stroke-width: 3; stroke-opacity: .45; }
+.ch-coords text {
+  font-family: var(--mono); font-size: 12.5px; font-weight: 700; text-anchor: middle;
+  fill: color-mix(in srgb, var(--acc) 65%, var(--dim));
+}
+
+/* The lane's squares: from and to, lit in its colour. */
+.ch-lit__fill { fill: var(--lane); opacity: .34; }
+.ch-lit__edge { fill: none; stroke: var(--lane); stroke-width: 3; }
+.ch-lit__sq--from .ch-lit__edge { stroke-dasharray: 7 5; stroke-width: 2.5; }
+.ch-lit__sq { animation: ch-fade .35s ease-out both; }
+.ch-lit__sq--to { animation-delay: .3s; }
+
+/* The mates, once the key is out: a lit ring on each mating square. */
+.ch-mates rect { fill: rgba(62, 245, 160, 0.14); stroke: var(--ok); stroke-width: 3; stroke-dasharray: 10 6; animation: ch-fade .5s ease-out both; }
+
+/* The mated king's square: it flashes, then keeps a glow. */
+.ch-mate__sq { fill: var(--err); animation: ch-mateflash 1.6s ease-out .45s both; }
+.ch-mate__ring { transform-box: fill-box; transform-origin: center; fill: none; stroke: var(--yl); stroke-width: 3; animation: ch-fade .4s ease-out .45s both; }
+@keyframes ch-mateflash {
+  0% { opacity: 0; } 12% { opacity: .9; } 26% { opacity: .2; } 40% { opacity: .9; } 54% { opacity: .2; } 68% { opacity: .8; } 100% { opacity: .5; }
+}
+
+/* Pieces: filled glyphs with a lit gradient, standing on a soft shadow; a new
+ * position drops them in, one after another. */
+.ch-pc text, .ch-ghost {
   font-family: 'Segoe UI Symbol', 'Noto Sans Symbols 2', 'Noto Sans Symbols', 'Apple Symbols', 'DejaVu Sans', serif;
   font-size: 46px; text-anchor: middle; dominant-baseline: central; pointer-events: none;
 }
-.ch-pc--w { fill: color-mix(in srgb, var(--txt) 25%, white); stroke: var(--void); stroke-width: 1.5px; paint-order: stroke; }
-.ch-pc--b { fill: var(--void); stroke: color-mix(in srgb, var(--txt) 50%, white); stroke-width: 0.8px; }
+.ch-pc { animation: ch-drop .42s var(--ease-out) calc(var(--i, 0) * 14ms) both; }
+.ch-pc__shadow { fill: rgba(0, 0, 0, 0.5); }
+.ch-pc--w text, .ch-ghost.ch-pc--w { stroke: #140f33; stroke-width: 1.7px; paint-order: stroke; }
+.ch-pc--b text, .ch-ghost.ch-pc--b { stroke: #d9d1ff; stroke-width: 1.1px; paint-order: stroke; }
+.ch-pc text { transition: opacity .3s; }
+.ch-pc--taken text { opacity: .38; }
+.ch-ghost { opacity: .5; transform-box: fill-box; transform-origin: center; animation: ch-ghost .45s var(--ease-spring) .42s both; }
 
-.ch-arrows { filter: drop-shadow(0 0 1.5px var(--void)); animation: ch-fade .35s ease-out both; }
+/* Arrows: a neon tube each (a soft glow, a dark casing, the lit core, a shine),
+ * drawn from the piece to its square; the likeliest last and on top. */
 .ch-arrow path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
-.ch-arrow--lane path { stroke: var(--lane); }
-.ch-arrow--lane polygon { fill: var(--lane); }
-.ch-arrow--err path { stroke: var(--err); stroke-dasharray: 8 7; }
-.ch-arrow--err polygon { fill: var(--err); }
-.ch-x { fill: none; stroke: var(--err); stroke-width: 5; stroke-linecap: round; }
-@keyframes ch-fade { from { opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .ch-arrows { animation: none; } }
+.ch-arrow__glow { stroke: var(--lane); opacity: .2; }
+.ch-arrow__case { stroke: #07051a; opacity: .62; }
+.ch-arrow__core { stroke: var(--lane); }
+.ch-arrow__shine { stroke: #ffffff; opacity: .5; }
+.ch-arrow__head { fill: var(--lane); stroke: #07051a; stroke-width: 2.5; stroke-linejoin: round; paint-order: stroke; }
+.ch-arrow--top .ch-arrow__glow { opacity: .34; }
+.ch-arrow--lane path { stroke-dasharray: 100; animation: ch-draw .55s var(--ease-out) var(--d, 0ms) both; }
+.ch-arrow--lane .ch-arrow__head { transform-box: fill-box; transform-origin: center; animation: ch-pop .35s var(--ease-spring) calc(var(--d, 0ms) + .38s) both; }
+.ch-arrow--err .ch-arrow__glow { stroke: var(--err); }
+.ch-arrow--err .ch-arrow__core { stroke: var(--err); stroke-dasharray: 9 7; }
+.ch-arrow--err .ch-arrow__head { fill: var(--err); }
+.ch-arrow--err { animation: ch-foul .5s ease-out var(--d, 0ms) both; }
 
-.ch-caption { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-left: 24px; font-size: var(--fs-sm); color: var(--dim); }
+/* A foul's ✕, where the illegal move meant to land. */
+.ch-xbadge { transform-box: fill-box; transform-origin: center; animation: ch-pop .4s var(--ease-spring) var(--d, 0ms) both; }
+.ch-xbadge circle { fill: var(--err); stroke: #07051a; stroke-width: 2.5; }
+.ch-xbadge path { fill: none; stroke: #ffffff; stroke-width: 3; stroke-linecap: round; }
+.ch-xsq { fill: rgba(255, 77, 106, 0.18); stroke: var(--err); stroke-width: 2.5; stroke-dasharray: 6 5; }
 
+/* The mate's badge on the king's square. */
+.ch-matebadge__in { transform-box: fill-box; transform-origin: center; animation: ch-pop .5s var(--ease-spring) .55s both; }
+.ch-matebadge circle { fill: var(--yl); stroke: #07051a; stroke-width: 2.5; }
+.ch-matebadge text { font-family: var(--mono); font-size: 14px; font-weight: 800; fill: #2a1600; text-anchor: middle; dominant-baseline: central; }
+
+/* The setup's sample plays itself on a loop, as the cabinet does on the floor.
+ * Every loop ends drawn, so with motion off it simply shows the picture. */
+.ch-board--demo .ch-pc { animation: none; }
+.ch-board--demo .ch-arrow--lane path { animation: ch-draw-loop 5s var(--ease-out) var(--d, 0ms) infinite; }
+.ch-board--demo .ch-arrow--lane .ch-arrow__head { animation: ch-head-loop 5s ease-out var(--d, 0ms) infinite; }
+.ch-board--demo .ch-ghost { animation: ch-ghost-loop 5s ease-out infinite; }
+.ch-board--demo .ch-lit__sq { animation: ch-ghost-loop 5s ease-out infinite; }
+.ch-board--demo .ch-mate__sq { animation: ch-mate-loop 5s ease-out infinite; }
+.ch-board--demo .ch-mate__ring, .ch-board--demo .ch-matebadge__in { animation: ch-ring-loop 5s ease-out infinite; }
+@keyframes ch-draw-loop { 0% { stroke-dashoffset: 100; } 14% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 0; } }
+@keyframes ch-head-loop { 0%, 9% { opacity: 0; transform: scale(0); } 16% { opacity: 1; transform: scale(1.15); } 20%, 100% { opacity: 1; transform: none; } }
+@keyframes ch-ghost-loop { 0%, 14% { opacity: 0; } 22%, 100% { opacity: .5; } }
+@keyframes ch-mate-loop { 0%, 24% { opacity: 0; } 30% { opacity: .9; } 36% { opacity: .2; } 42% { opacity: .9; } 48% { opacity: .2; } 54% { opacity: .8; } 100% { opacity: .5; } }
+@keyframes ch-ring-loop { 0%, 24% { opacity: 0; transform: scale(.4); } 32% { opacity: 1; transform: scale(1.1); } 38%, 100% { opacity: 1; transform: none; } }
+.ch-board--demo .ch-ghost { opacity: .5; }
+
+.ch-caption { display: flex; justify-content: space-between; align-items: center; gap: 8px 14px; flex-wrap: wrap; padding: 0 6px; }
+.ch-caption__v { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; min-height: 26px; }
+.ch-caption__mv { font-size: var(--fs-md); font-weight: 700; color: var(--txt); }
+.ch-caption__k { font-size: var(--fs-xs); color: var(--dim); }
+.ch-verdict {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 12px; border-radius: 999px;
+  font-family: var(--display); font-size: var(--fs-xs); font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+  border: 1px solid currentColor; animation: ch-pop .45s var(--ease-spring) both;
+}
+.ch-verdict--ok { color: var(--ok); background: var(--ok-dim); box-shadow: 0 0 16px -6px var(--ok); }
+.ch-verdict--warn { color: var(--warn); background: var(--am-dim); box-shadow: 0 0 16px -6px var(--warn); }
+.ch-verdict--err { color: var(--err); background: var(--err-dim); box-shadow: 0 0 16px -6px var(--err); }
+.ch-verdict--live { color: #ff7cc4; background: var(--mg-dim); animation: ch-blink 1.2s ease-in-out infinite; }
+
+/* Whose moves the board shows: a pill per lane, lit in its colour. */
 .ch-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
 .ch-tab {
-  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; font-size: var(--fs-sm);
-  color: var(--dim); background: none; border: 1px solid var(--rule); border-radius: 3px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 7px; padding: 4px 13px 4px 5px; font-size: var(--fs-sm); font-weight: 600;
+  color: var(--dim); background: rgba(255, 255, 255, 0.03); border: 1px solid var(--rule); border-radius: 999px; cursor: pointer;
+  transition: color .15s, border-color .15s, background .2s, box-shadow .2s;
 }
-.ch-tab:hover { color: var(--txt); border-color: var(--edge-hot); }
-.ch-tab--on { color: var(--txt); border-color: var(--edge-hot); background: var(--cy-dim); }
+.ch-tab:hover { color: var(--txt); border-color: color-mix(in srgb, var(--lane) 60%, transparent); }
+.ch-tab--on {
+  color: var(--txt); border-color: var(--lane); background: color-mix(in srgb, var(--lane) 18%, transparent);
+  box-shadow: 0 0 18px -6px var(--lane), inset 0 0 12px -6px var(--lane);
+}
 
 /* ── A lane ── */
-.ch-lane { gap: 8px; }
+.ch-lane { gap: 10px; transition: box-shadow .4s var(--ease-out); }
+.ch-lane--lead {
+  box-shadow: inset 0 3px 0 var(--lane), 0 0 0 1px rgba(255, 225, 77, 0.42), 0 0 30px -12px rgba(255, 225, 77, 0.7),
+    0 16px 34px -22px rgba(0, 0, 0, 0.95);
+}
+.ch-tally {
+  display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; padding: 9px 12px; border-radius: 12px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.34), rgba(0, 0, 0, 0.14));
+  box-shadow: inset 0 1px 8px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+.ch-tally__score { display: flex; align-items: flex-end; gap: 5px; }
+.ch-tally__of { display: flex; flex-direction: column; font-family: var(--mono); font-size: var(--fs-md); font-weight: 700; line-height: 1.05; color: var(--txt-2); }
+.ch-tally__of small { font-size: var(--fs-micro); font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
+.ch-pips { display: flex; flex-wrap: wrap; gap: 3px; flex: 1; min-width: 90px; }
+.ch-pip {
+  display: inline-flex; align-items: center; justify-content: center; width: 17px; height: 17px; border-radius: 4px;
+  font-family: var(--mono); font-size: 10px; font-weight: 900; line-height: 1;
+  background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.09);
+}
+.ch-pip--ok { color: #03140c; background: var(--ok); border-color: var(--ok); box-shadow: 0 0 9px -1px var(--ok); animation: ch-pop .45s var(--ease-spring) both; }
+.ch-pip--warn { color: #1d1100; background: var(--warn); border-color: var(--warn); box-shadow: 0 0 9px -1px var(--warn); animation: ch-pop .45s var(--ease-spring) both; }
+.ch-pip--err { color: var(--err); background: var(--err-dim); border-color: var(--err); animation: ch-pop .45s var(--ease-spring) both; }
+.ch-pip--playing { background: color-mix(in srgb, var(--lane) 40%, transparent); border-color: var(--lane); animation: ch-blink 1s ease-in-out infinite; }
+.ch-pip--out { opacity: .35; }
+.ch-pip--view { outline: 2px solid var(--txt); outline-offset: 1px; }
+.ch-lead {
+  display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px;
+  font-family: var(--display); font-size: var(--fs-xs); font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+  color: #2a1600; background: linear-gradient(180deg, #fff09a, var(--yl)); box-shadow: 0 0 16px -4px rgba(255, 225, 77, 0.85);
+  animation: ch-pop .5s var(--ease-spring) both;
+}
 .ch-wait { font-size: var(--fs-sm); }
 .ch-meta { font-size: var(--fs-xs); color: var(--dim); }
 .ch-note { font-size: var(--fs-sm); color: color-mix(in srgb, var(--txt) 50%, var(--dim)); }
-.ch-tries { list-style: none; display: flex; flex-direction: column; gap: 5px; }
-.ch-try { display: flex; gap: 8px; align-items: baseline; font-size: var(--fs-md); line-height: 1.4; }
-.ch-try__mv { flex-shrink: 0; font-family: var(--mono); font-weight: 700; color: var(--txt); }
-.ch-try__why { color: color-mix(in srgb, var(--txt) 50%, var(--dim)); overflow-wrap: anywhere; }
-.ch-try--foul .ch-try__mv { color: var(--err); }
-.ch-try--ok .ch-try__mv { color: var(--ok); }
+.ch-tries { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.ch-try {
+  display: flex; gap: 10px; align-items: baseline; padding: 6px 10px; border-radius: 8px; font-size: var(--fs-md); line-height: 1.4;
+  background: rgba(255, 255, 255, 0.03); border-left: 3px solid var(--rule); animation: ch-slide .35s var(--ease-out) both;
+}
+.ch-try__mv { flex-shrink: 0; font-family: var(--mono); font-weight: 800; color: var(--txt); }
+.ch-try__why { color: color-mix(in srgb, var(--txt) 55%, var(--dim)); overflow-wrap: anywhere; }
+.ch-try--foul { background: var(--err-dim); border-left-color: var(--err); animation: ch-shake .45s ease-out both; }
+.ch-try--foul .ch-try__mv { color: var(--err); text-decoration: line-through; text-decoration-thickness: 2px; }
+.ch-try--ok { background: var(--ok-dim); border-left-color: var(--ok); }
+.ch-try--ok .ch-try__mv { color: var(--ok); text-shadow: 0 0 10px rgba(62, 245, 160, 0.5); }
+.ch-try--miss { border-left-color: var(--err); }
+.ch-strike { color: var(--err); font-weight: 700; }
 
 /* ── The session ── */
-.ch-session { gap: 6px; }
-.ch-table td, .ch-table th { padding: 5px 6px; }
+.ch-session { gap: 6px; overflow-x: auto; }
+.ch-table td, .ch-table th { padding: 6px 6px; }
 .ch-table__who { display: flex; align-items: center; gap: 6px; min-width: 0; }
-.ch-table__who span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ch-table__who > span:nth-child(2) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ch-table__solved { font-weight: 800; color: var(--txt); }
+.ch-table__lead td { background: rgba(255, 225, 77, 0.06); }
+.ch-table__lead .ch-table__solved { color: var(--yl); text-shadow: 0 0 10px rgba(255, 225, 77, 0.5); }
+.ch-table__star { color: var(--yl); text-shadow: 0 0 8px rgba(255, 225, 77, 0.8); }
+
+/* ── Motion ── */
+@keyframes ch-fade { from { opacity: 0; } }
+@keyframes ch-slide { from { opacity: 0; transform: translateY(6px); } }
+@keyframes ch-pop { from { opacity: 0; transform: scale(.3); } 70% { transform: scale(1.12); } }
+@keyframes ch-blink { 50% { opacity: .45; } }
+@keyframes ch-draw { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+@keyframes ch-drop { from { opacity: 0; transform: translateY(-14px); } }
+@keyframes ch-ghost { from { opacity: 0; transform: scale(.55); } }
+@keyframes ch-foul { 0% { opacity: 0; transform: translateX(0); } 30% { opacity: 1; transform: translateX(4px); } 50% { transform: translateX(-4px); } 70% { transform: translateX(2px); } }
+@keyframes ch-shake { 0% { opacity: 0; transform: translateX(0); } 30% { opacity: 1; transform: translateX(5px); } 50% { transform: translateX(-4px); } 70% { transform: translateX(2px); } }

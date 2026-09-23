@@ -384,6 +384,27 @@ export function stepNotes(step) {
   return out
 }
 
+/** 1st · 2nd · 3rd · 4th · 11th · 22nd — a rank as the podium badges print it. */
+export function ordinal(n) {
+  const k = Math.round(n)
+  const teen = k % 100 >= 11 && k % 100 <= 13
+  const suffix = teen ? 'th' : ['th', 'st', 'nd', 'rd'][k % 10] ?? 'th'
+  return `${k}${suffix}`
+}
+
+/**
+ * The sign over the page when a race ends in front of you: who won, by the
+ * race's own ranking (`race.winner`), and how many hops it took — or, when
+ * nobody reached the target, GAME OVER. `lane` is the winner's index, or null.
+ */
+export function raceFinale(race) {
+  const w = race.winner != null ? race.lanes[race.winner] : null
+  if (!w) return { win: false, lane: null, headline: 'GAME OVER', sub: `Nobody reached ${race.target.title}.` }
+  const hops = `${fmtInt(w.hops)} hop${w.hops === 1 ? '' : 's'}`
+  const headline = race.lanes.length > 1 ? `PLAYER ${w.index + 1} WINS!` : 'FINISHED!'
+  return { win: true, lane: w.index, headline, sub: `${w.label} — ${hops} to ${race.target.title}` }
+}
+
 /** The line under a racer's name: who runs it, and the thinking it runs on. */
 export function laneSub(ln) {
   const who = ln.kind === 'judgment' ? `${ln.provider} · judgment` : ln.provider
@@ -663,13 +684,14 @@ export function parseParams(search) {
   return { tab: q.get('tab') === 'history' ? 'history' : 'race', race: q.get('race') || null }
 }
 
-/** …and back: the query string for a place, '' for the bare setup. */
+/** …and back: the query string for a place, `?tab=race` for the bare setup (the
+ *  bare address is the Arcade's floor). */
 export function paramsSearch({ tab, race }) {
   const q = new URLSearchParams()
   if (tab === 'history') q.set('tab', 'history')
   if (race) q.set('race', race)
   const s = q.toString()
-  return s ? `?${s}` : ''
+  return s ? `?${s}` : '?tab=race'
 }
 
 /* ── The race trace (chart) ────────────────────────────────────────────────── */

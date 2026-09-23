@@ -15,8 +15,13 @@ import {
 
 describe('routes', () => {
   it('leaves every WikiRace address to WikiRace', () => {
-    for (const s of ['', '?race=abc123', '?tab=history', '?tab=race', '?game=', '?game=Bad!']) {
+    for (const s of ['?race=abc123', '?tab=history', '?tab=race', '?tab=race&race=abc123']) {
       assert.deepEqual(parseRoute(s), { view: 'wikirace' }, s)
+    }
+  })
+  it('opens on the Arcade: the bare address, ?tab=arcade, and anything it cannot read', () => {
+    for (const s of ['', '?tab=arcade', '?tab=nonsense', '?game=', '?game=Bad!']) {
+      assert.deepEqual(parseRoute(s), { view: 'hub' }, s)
     }
   })
   it('names the hub and a game, with or without a run', () => {
@@ -26,10 +31,11 @@ describe('routes', () => {
     assert.deepEqual(parseRoute('?game=chess&run=<script>'), { view: 'game', game: 'chess', run: null })
   })
   it('round-trips', () => {
-    for (const r of [{ view: 'hub' }, { view: 'game', game: 'switchboard', run: null }, { view: 'game', game: 'bigsort', run: 'abcdef123456' }]) {
+    for (const r of [{ view: 'hub' }, { view: 'wikirace' }, { view: 'game', game: 'switchboard', run: null }, { view: 'game', game: 'bigsort', run: 'abcdef123456' }]) {
       assert.deepEqual(parseRoute(routeSearch(r)), r)
     }
-    assert.equal(routeSearch({ view: 'wikirace' }), '')
+    assert.equal(routeSearch({ view: 'hub' }), '')
+    assert.equal(routeSearch({ view: 'wikirace' }), '?tab=race')
   })
 })
 

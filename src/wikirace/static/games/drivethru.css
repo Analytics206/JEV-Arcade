@@ -1,126 +1,365 @@
-/* Drive-Thru: every rule under .dt-… The receipts are paper and the cars are
- * drawn, so their few literal colours are the mockup's own. */
+/* Drive-Thru: every rule under .dt-… The receipts are paper and the cars, the
+ * speaker and the booths are drawn, so their few literal colours are the
+ * drawing's own; the chrome is tokens. --acc is the cabinet's neon (orange),
+ * --lane a window's colour. */
 
 /* ── Setup ─────────────────────────────────────────────────────────────────── */
 
 .dt-setup { gap: 16px; }
 .dt-params { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .dt-thr { grid-column: 1 / -1; }
-.dt-thr input { accent-color: var(--cy); }
+.dt-thr input { accent-color: var(--acc); }
 .dt-thr b { font-family: var(--mono); font-size: var(--fs-md); color: var(--txt); }
 .dt-side { display: flex; flex-direction: column; gap: 16px; }
 .dt-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.dt-how { display: flex; flex-direction: column; gap: 14px; }
+.dt-how__flow {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.05fr) auto minmax(0, 1.15fr);
+  gap: 10px; align-items: start; padding: 14px; border-radius: 14px;
+  background: radial-gradient(120% 100% at 50% 0%, color-mix(in srgb, var(--acc) 10%, transparent), transparent 70%), rgba(0, 0, 0, 0.22);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acc) 22%, transparent), inset 0 2px 14px rgba(0, 0, 0, 0.5);
+}
+.dt-how__step { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.dt-how__k { font-family: var(--display); font-size: var(--fs-label); font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--acc); }
+.dt-how__arrow { align-self: center; font-size: 18px; color: var(--acc); text-shadow: 0 0 10px var(--acc); animation: dt-nudge 1.4s ease-in-out infinite; }
+@media (max-width: 1180px) {
+  .dt-how__flow { grid-template-columns: minmax(0, 1fr); }
+  .dt-how__arrow { display: none; }
+}
 
 /* ── The stage ─────────────────────────────────────────────────────────────── */
 
-.dt-stage { display: grid; grid-template-columns: 270px minmax(0, 1fr) 290px; gap: 14px; align-items: start; }
+.dt-stage { display: grid; grid-template-columns: 280px minmax(0, 1fr) 300px; gap: 16px; align-items: start; }
 @media (max-width: 1150px) { .dt-stage { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .dt-tickets { grid-column: 1 / -1; order: 3; } }
-@media (max-width: 760px) { .dt-stage { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 760px) { .dt-stage { grid-template-columns: minmax(0, 1fr); } .dt-tickets { order: 0; } }
 .dt-right { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 
+/* The customer's words: a speech bubble, the words coming through one by one,
+ * the change marked like a highlighter. */
+.dt-speech { position: relative; min-height: 64px; }
 .dt-bubble {
-  position: relative; padding: 12px 14px; font-size: 14px; line-height: 1.55;
-  color: var(--void); background: var(--txt); border-radius: 10px;
+  position: relative; padding: 12px 14px; font-size: 14px; line-height: 1.55; color: #150f2e;
+  background: linear-gradient(180deg, #ffffff, #ebe8ff); border-radius: 14px 14px 14px 5px;
+  box-shadow: 0 12px 24px -14px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.35), 0 0 28px -12px var(--acc);
+  animation: dt-pop .35s var(--ease-spring) both; transform-origin: 30% 100%;
 }
 .dt-bubble::after {
-  content: ''; position: absolute; left: 34px; bottom: -9px; border: 9px solid transparent;
-  border-bottom: 0; border-top-color: var(--txt);
+  content: ''; position: absolute; left: 28%; bottom: -10px; border: 10px solid transparent; border-bottom: 0; border-top-color: #ebe8ff;
 }
-.dt-change { color: var(--void); background: var(--warn); border-radius: 2px; padding: 0 2px; }
-.dt-speaker__art { display: block; width: 100%; max-width: 250px; height: auto; margin-top: 4px; }
-.dt-road { stroke: #1d2a44; stroke-width: 2; }
-.dt-bigcar path { fill: #c98500; }
-.dt-bigcar__glass { fill: var(--void); }
-.dt-wheel { fill: #1d2a44; stroke: var(--dim); stroke-width: 2; }
-.dt-post rect { fill: #2a3a55; }
-.dt-post .dt-post__box { fill: #0e1a2c; stroke: var(--cy); stroke-width: 1.5; }
-.dt-post__grille { stroke: var(--dim); stroke-width: 1.5; }
-.dt-gold { display: flex; flex-direction: column; gap: 3px; padding-top: 8px; border-top: 1px solid var(--rule); font-size: var(--fs-sm); }
+.dt-bubble--wait { color: #4b4670; font-style: italic; }
+.dt-bubble--sample { font-size: var(--fs-sm); animation: none; }
+.dt-word { display: inline-block; animation: dt-word .28s var(--ease-out) calc(var(--w, 0) * 45ms) both; }
+.dt-change {
+  color: #150f2e; padding: 0 2px; border-radius: 3px;
+  background: linear-gradient(180deg, transparent 6%, #ffc56b 6% 94%, transparent 94%);
+}
+.dt-bubble__tag {
+  display: inline-block; margin-left: 6px; padding: 1px 7px; vertical-align: 1px; border-radius: 999px;
+  font-family: var(--mono); font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  color: #6b3a00; background: #ffd79a; animation: dt-pop .4s var(--ease-spring) 1s both;
+}
+.dt-dots { display: inline-flex; gap: 3px; vertical-align: middle; }
+.dt-dots i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; animation: dt-dot 1s ease-in-out infinite; }
+.dt-dots i:nth-child(2) { animation-delay: .15s; }
+.dt-dots i:nth-child(3) { animation-delay: .3s; }
+
+/* The speaker post and the car at it, at night. */
+.dt-scene { display: block; width: 100%; height: auto; margin-top: 4px; }
+.dt-scene.dt-car--0 { --car: #ff4fd8; }
+.dt-scene.dt-car--1 { --car: #ffe14d; }
+.dt-scene.dt-car--2 { --car: #c3c9ee; }
+.dt-scene.dt-car--3 { --car: #3ef4ff; }
+.dt-stop-road0 { stop-color: #1d1745; }
+.dt-stop-road1 { stop-color: #0a0720; }
+.dt-stop-beam0 { stop-color: #fff2b8; stop-opacity: .5; }
+.dt-stop-beam1 { stop-color: #fff2b8; stop-opacity: 0; }
+.dt-stop-body0 { stop-color: color-mix(in srgb, var(--car, #c3c9ee) 55%, white); }
+.dt-stop-body1 { stop-color: color-mix(in srgb, var(--car, #c3c9ee) 70%, #1a1238); }
+.dt-curb { stroke: color-mix(in srgb, var(--acc) 60%, transparent); stroke-width: 1.5; }
+.dt-dashes rect { fill: rgba(255, 225, 77, 0.45); }
+.dt-bigcar { animation: dt-drivein 1s var(--ease-out) both; }
+.dt-bigcar__body { stroke: #07051a; stroke-width: 2; stroke-linejoin: round; }
+.dt-bigcar__glass { fill: #0d1030; stroke: rgba(255, 255, 255, 0.28); stroke-width: 1; }
+.dt-bigcar__lamp { fill: #fff6c8; }
+.dt-bigcar__tail { fill: var(--err); }
+.dt-bigcar__shadow { fill: rgba(0, 0, 0, 0.55); }
+.dt-beam { animation: dt-fade .5s ease-out .8s both; }
+.dt-wheel { fill: #0b0a1c; stroke: #3f4470; stroke-width: 2.5; }
+.dt-hub { fill: #9aa3cf; }
+.dt-post__pole { fill: #2a2456; }
+.dt-post__box { fill: #140d2e; stroke: var(--acc); stroke-width: 2; }
+.dt-post__grille { stroke: color-mix(in srgb, var(--acc) 75%, white); stroke-width: 2; stroke-linecap: round; opacity: .7; }
+.dt-post__led { fill: var(--ok); }
+.dt-waves path { fill: none; stroke: var(--yl); stroke-width: 2.5; stroke-linecap: round; opacity: 0; }
+.dt-scene.is-talking .dt-post__grille { animation: dt-grille .45s ease-in-out infinite alternate; }
+.dt-scene.is-talking .dt-post__led { animation: dt-blink .8s steps(1) infinite; }
+.dt-scene.is-talking .dt-waves path { animation: dt-wave 1.2s ease-out calc(var(--n, 0) * .18s) infinite; }
+
+.dt-gold {
+  display: flex; flex-direction: column; gap: 4px; padding: 9px 11px; border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255, 225, 77, 0.13), rgba(255, 225, 77, 0.04));
+  border: 1px solid rgba(255, 225, 77, 0.38); animation: dt-pop .4s var(--ease-spring) both;
+}
+.dt-gold__k { font-family: var(--display); font-size: var(--fs-micro); font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--yl); }
+.dt-gold__v { font-size: var(--fs-sm); line-height: 1.45; color: var(--txt); }
 .dt-nav { display: flex; gap: 6px; flex-wrap: wrap; }
 .dt-navbtn {
-  padding: 3px 10px; font-size: var(--fs-sm); color: var(--dim); background: none;
-  border: 1px solid var(--rule); border-radius: 3px; cursor: pointer;
+  padding: 5px 12px; cursor: pointer; border-radius: 8px;
+  font-family: var(--display); font-size: var(--fs-xs); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--txt-2);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+  border: 1px solid var(--rule); box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.35);
+  transition: color .15s, border-color .15s, box-shadow .15s, transform .1s;
 }
-.dt-navbtn:hover:not(:disabled) { color: var(--cy); border-color: var(--edge-hot); }
-.dt-navbtn:disabled { opacity: .4; cursor: default; }
-.dt-navbtn--on { color: var(--cy); border-color: var(--edge-hot); }
+.dt-navbtn:hover:not(:disabled) { color: var(--acc); border-color: var(--acc); box-shadow: 0 0 14px -5px var(--acc), inset 0 -2px 0 rgba(0, 0, 0, 0.35); }
+.dt-navbtn:active:not(:disabled) { transform: translateY(1px); }
+.dt-navbtn:disabled { opacity: .35; cursor: default; }
+.dt-navbtn--on { color: var(--void); background: var(--acc); border-color: var(--acc); }
+.dt-navbtn--on:hover:not(:disabled) { color: var(--void); }
 
-/* ── Tickets: paper ────────────────────────────────────────────────────────── */
+/* ── Tickets: a printer per window, and the paper it feeds ─────────────────── */
 
-.dt-tickets { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; align-items: start; min-width: 0; }
-.dt-ticket {
-  display: flex; flex-direction: column; gap: 6px; padding: 12px 14px 14px;
-  color: var(--void); background: #eef2f8; border-top: 4px solid var(--lane); border-radius: 3px;
-  font-family: var(--mono); font-size: var(--fs-md);
+.dt-tickets { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; align-items: start; min-width: 0; }
+.dt-ticket { position: relative; display: flex; flex-direction: column; min-width: 0; }
+.dt-printer {
+  position: relative; z-index: 2; height: 17px; margin: 0 -4px; border-radius: 8px;
+  background: linear-gradient(180deg, #332b6c, #120d2c);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 6px 12px -6px rgba(0, 0, 0, 0.9), 0 0 0 1px color-mix(in srgb, var(--lane) 55%, transparent), 0 0 18px -8px var(--lane);
 }
-.dt-ticket--empty { background: #c9d2e0; }
-.dt-ticket__hd { display: flex; align-items: center; gap: 8px; font-weight: 700; letter-spacing: .1em; font-size: var(--fs-xs); color: #3b4a66; }
-.dt-ticket__who { font-weight: 400; letter-spacing: 0; max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dt-ticket__sub { font-size: var(--fs-xs); color: #3b4a66; }
-.dt-ticket__rule { border-top: 1px dashed var(--dim); }
-.dt-ticket__none { font-size: var(--fs-sm); color: #3b4a66; }
-.dt-ticket__pts { font-weight: 700; font-size: var(--fs-sm); }
+.dt-printer__slot { position: absolute; left: 12px; right: 12px; bottom: 3px; height: 3px; border-radius: 2px; background: #05030f; box-shadow: inset 0 1px 2px #000; }
+.dt-printer__led { position: absolute; right: 8px; top: 3px; width: 5px; height: 5px; border-radius: 50%; background: var(--lane); box-shadow: 0 0 6px var(--lane); }
+.dt-printer.is-busy .dt-printer__led { background: var(--yl); box-shadow: 0 0 6px var(--yl); animation: dt-blink .5s steps(1) infinite; }
+
+.dt-paper {
+  position: relative; z-index: 1; margin: -5px 4px 8px; padding: 14px 13px 14px;
+  display: flex; flex-direction: column; gap: 6px; color: #1c1733; font-family: var(--mono); font-size: var(--fs-sm);
+  background:
+    repeating-linear-gradient(180deg, transparent 0 22px, rgba(60, 50, 120, 0.05) 22px 23px),
+    radial-gradient(120% 50% at 50% 0%, rgba(0, 0, 0, 0.1), transparent 70%),
+    linear-gradient(180deg, #fffdf6, #f1ecdd);
+  box-shadow: 0 16px 26px -16px rgba(0, 0, 0, 0.95);
+  animation: dt-feed .6s var(--ease-out) backwards;
+}
+/* The torn edge: teeth along the bottom. */
+.dt-paper::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 100%; height: 6px;
+  background: conic-gradient(from -45deg at 50% 100%, #f1ecdd 90deg, transparent 0) 0 0 / 12px 6px repeat-x;
+}
+.dt-paper--stub { gap: 5px; }
+.dt-ticket--empty .dt-paper { opacity: .72; }
+.dt-ticket--dropped .dt-paper { background: linear-gradient(180deg, #ece7da, #ddd6c4); }
+.dt-ticket--dropped .dt-paper::after { background: conic-gradient(from -45deg at 50% 100%, #ddd6c4 90deg, transparent 0) 0 0 / 12px 6px repeat-x; }
+.dt-ticket--exact .dt-paper { box-shadow: 0 16px 26px -16px rgba(0, 0, 0, 0.95), 0 0 28px -12px var(--ok); }
+
+.dt-ticket__hd { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: var(--fs-xs); font-weight: 700; color: #3b3566; }
+.dt-ticket__hd .g-num { width: 20px; height: 20px; }
+.dt-ticket__who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dt-ticket__ms { font-weight: 400; white-space: nowrap; }
+.dt-ticket__no { text-align: center; font-size: var(--fs-xs); font-weight: 800; letter-spacing: .14em; color: #1c1733; }
+.dt-ticket__sub { text-align: center; font-size: 11px; color: #5b557f; }
+.dt-ticket__rule { border-top: 2px dashed rgba(28, 23, 51, 0.26); margin: 2px 0; }
+.dt-ticket__none { font-size: var(--fs-sm); color: #4b4670; }
+.dt-ticket__why { font-size: 11px; color: #5b557f; animation: dt-printline .28s var(--ease-out) calc(.25s + var(--i, 0) * 70ms) both; }
+
 .dt-rows { list-style: none; display: flex; flex-direction: column; gap: 2px; }
-.dt-row { display: flex; align-items: baseline; gap: 8px; }
+.dt-row {
+  display: flex; align-items: baseline; gap: 8px; padding: 1px 5px; margin: 0 -5px; border-radius: 3px;
+  animation: dt-printline .28s var(--ease-out) calc(.25s + var(--i, 0) * 70ms) both;
+}
 .dt-row__k { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.dt-row__v { color: #3b4a66; }
-.dt-row__mark { font-weight: 700; }
-.dt-row--item .dt-row__k { font-weight: 700; }
-.dt-row--sub, .dt-row--none { padding-left: 16px; }
-.dt-row--none .dt-row__k { color: #3b4a66; font-style: italic; }
+.dt-row__v { color: #5b557f; }
+.dt-row__mark { font-weight: 900; }
+.dt-row--item .dt-row__k { font-weight: 800; }
+.dt-row--sub, .dt-row--none, .dt-row--alts { padding-left: 21px; }
+.dt-row--none .dt-row__k { color: #5b557f; font-style: italic; }
 .dt-row--clarify .dt-row__k { font-style: italic; }
-.dt-row--foul .dt-row__k { font-size: var(--fs-sm); color: #3b4a66; }
-.dt-row--least { background: rgba(255, 181, 69, 0.35); padding-top: 2px; padding-bottom: 2px; margin: 0 -4px; padding-right: 4px; }
-.dt-row--least:not(.dt-row--sub):not(.dt-row--none) { padding-left: 4px; }
-.dt-row--sub.dt-row--least, .dt-row--none.dt-row--least { padding-left: 20px; }
-.dt-row--alts { padding-left: 16px; font-size: var(--fs-sm); color: #3b4a66; }
-.dt-readback { font-family: var(--body); font-size: var(--fs-md); line-height: 1.45; color: var(--void); }
+.dt-row--foul .dt-row__k { font-size: 11.5px; color: #6d6790; }
+.dt-row--alts { font-size: 11.5px; color: #5b557f; }
+/* The least sure part: a highlighter stroke, and a ? for the read-back. */
+.dt-row--least { background: linear-gradient(180deg, transparent 8%, rgba(255, 204, 0, 0.6) 8% 92%, transparent 92%); }
+.dt-row__q {
+  display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; margin-left: 2px; vertical-align: 1px;
+  border-radius: 50%; font-size: 10px; font-weight: 900; color: var(--yl); background: #1c1733;
+}
+.dt-row--bad { background: rgba(255, 77, 106, 0.16); }
+.dt-row--bad .dt-row__k { color: #a3142f; }
+
+.dt-readback {
+  display: flex; flex-direction: column; gap: 3px; padding: 7px 9px; border-radius: 8px;
+  font-family: var(--body); font-size: var(--fs-sm); line-height: 1.4; color: #1c1733;
+  background: rgba(255, 204, 0, 0.2); border: 1.5px dashed rgba(150, 100, 0, 0.55);
+  animation: dt-printline .28s var(--ease-out) calc(.25s + var(--i, 0) * 70ms) both;
+}
+.dt-readback__k { font-family: var(--mono); font-size: 10.5px; font-weight: 700; letter-spacing: .03em; color: #7a5300; }
+.dt-readback__q { font-size: var(--fs-md); }
+.dt-readback--none { display: block; padding: 0; font-family: var(--mono); font-size: 11px; color: #5b557f; background: none; border: 0; }
+
+.dt-total {
+  display: flex; align-items: baseline; gap: 6px; font-size: var(--fs-md); font-weight: 900; letter-spacing: .06em;
+  animation: dt-printline .28s var(--ease-out) calc(.25s + var(--i, 0) * 70ms) both;
+}
+.dt-total__lead { flex: 1; min-width: 12px; border-bottom: 2px dotted rgba(28, 23, 51, 0.35); transform: translateY(-4px); }
+
+/* The stamp: slammed on once the ticket has printed. */
+.dt-stamp {
+  position: relative; z-index: 3; align-self: center; margin: 4px 0 -2px; padding: 5px 12px; pointer-events: none; white-space: nowrap;
+  font-family: var(--display); font-size: 19px; font-weight: 900; letter-spacing: .08em; line-height: 1;
+  border: 3px double currentColor; border-radius: 8px; opacity: .86; mix-blend-mode: multiply;
+  transform: rotate(-11deg);
+  animation: dt-stamp .42s cubic-bezier(.2, 1.5, .4, 1) calc(.4s + var(--i, 0) * 70ms) both;
+}
+.dt-stamp--ok { color: #0b8a4f; }
+.dt-stamp--err { color: #c4153a; }
+.dt-stamp--warn { color: #b06400; }
+
 /* State on paper: the semantic tokens, darkened to read on a light ground. */
-.dt-t-ok { color: color-mix(in srgb, var(--ok) 50%, black); }
+.dt-t-ok { color: color-mix(in srgb, var(--ok) 45%, black); }
 .dt-t-err { color: color-mix(in srgb, var(--err) 62%, black); }
 .dt-t-warn { color: color-mix(in srgb, var(--warn) 52%, black); }
+/* …and on the night. */
+.dt-t-okl { color: var(--ok); }
+.dt-t-warnl { color: var(--warn); }
 
-/* ── The calls, the menu ───────────────────────────────────────────────────── */
+/* ── The calls: a terminal ─────────────────────────────────────────────────── */
 
 .dt-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
 .dt-tab {
-  display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; font-size: var(--fs-sm); max-width: 100%;
-  color: var(--dim); background: none; border: 1px solid var(--rule); border-radius: 3px; cursor: pointer;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 3px 11px 3px 4px; cursor: pointer;
+  font-size: var(--fs-sm); font-weight: 600; color: var(--dim); background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--rule); border-radius: 999px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  transition: color .15s, border-color .15s, background .2s, box-shadow .2s;
 }
-.dt-tab--on { color: var(--txt); border-color: var(--edge-hot); background: var(--cy-dim); }
-.dt-code { font-size: 11.5px; line-height: 1.6; overflow-wrap: anywhere; }
-.dt-calls__why { font-size: var(--fs-sm); line-height: 1.5; color: #aab7cc; }
-.dt-menu__list { list-style: none; display: flex; flex-direction: column; gap: 3px; font-size: var(--fs-sm); }
-.dt-menu__list li { display: flex; gap: 8px; justify-content: space-between; }
-.dt-menu__item { color: var(--txt); }
-.dt-menu__opts { color: var(--dim); font-size: var(--fs-xs); text-align: right; }
+.dt-tab .g-num { width: 20px; height: 20px; border-radius: 50%; }
+.dt-tab:hover { color: var(--txt); border-color: color-mix(in srgb, var(--lane) 60%, transparent); }
+.dt-tab--on { color: var(--txt); border-color: var(--lane); background: color-mix(in srgb, var(--lane) 18%, transparent); box-shadow: 0 0 16px -6px var(--lane); }
+.dt-term {
+  display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 10px;
+  background: linear-gradient(180deg, #05030f, #0d0924);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06), inset 0 2px 14px rgba(0, 0, 0, 0.8), 0 0 24px -14px var(--lane, var(--acc));
+}
+.dt-term__prompt { font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); }
+.dt-code { margin: 0; font-family: var(--mono); font-size: 11.5px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--txt-2); }
+.dt-code__ln { position: relative; display: block; padding-left: 13px; animation: dt-typeline .3s var(--ease-out) calc(var(--i, 0) * 90ms) both; }
+.dt-code__ln::before { content: '›'; position: absolute; left: 0; color: color-mix(in srgb, var(--acc) 80%, white); }
+.dt-tk--fn { color: var(--acc); font-weight: 700; }
+.dt-tk--key { color: #b3a8ff; }
+.dt-tk--str { color: var(--yl); }
+.dt-tk--num { color: var(--cy); }
+.dt-tk--punct { color: var(--dim); }
+.dt-tk--comment { color: var(--dim); font-style: italic; }
+.dt-tk--foul { color: var(--err); font-style: italic; }
+.dt-calls__none { font-size: var(--fs-sm); }
+.dt-calls__why { font-size: var(--fs-sm); line-height: 1.5; color: var(--txt-2); }
+
+/* ── The menu board: lit, the items on the order in view glowing ───────────── */
+
+.dt-menu {
+  position: relative; display: flex; flex-direction: column; gap: 10px; padding: 14px 12px 12px; border-radius: 14px;
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.015) 0 2px, transparent 2px 6px),
+    radial-gradient(140% 90% at 50% 0%, color-mix(in srgb, var(--acc) 18%, #120c2a), #0a0719 72%);
+  border: 2px solid color-mix(in srgb, var(--acc) 72%, transparent);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6), 0 0 30px -10px var(--acc), inset 0 0 26px -10px var(--acc);
+}
+.dt-menu__sign { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 4px; }
+.dt-menu__sign .px { font-size: 20px; color: var(--acc); filter: drop-shadow(0 0 5px var(--acc)); animation: neon-on 1.4s linear both; }
+.dt-menu__note { font-size: var(--fs-xs); color: var(--dim); text-align: right; }
+.dt-menu__list { list-style: none; display: flex; flex-direction: column; gap: 3px; }
+.dt-menu__row {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 8px; border-radius: 7px;
+  border-bottom: 1px dashed rgba(255, 106, 61, 0.14); transition: background .3s, box-shadow .3s;
+}
+.dt-menu__row:last-child { border-bottom: 0; }
+.dt-menu__item { font-family: var(--display); font-size: var(--fs-sm); font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--txt); transition: color .3s, text-shadow .3s; }
+.dt-menu__opts { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 3px; }
+.dt-menu__size {
+  display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%;
+  font-family: var(--mono); font-size: 10px; font-weight: 800; color: var(--yl); border: 1px solid rgba(255, 225, 77, 0.5);
+}
+.dt-menu__mod { padding: 1px 6px; font-family: var(--mono); font-size: 10px; color: var(--dim); border: 1px solid var(--rule); border-radius: 999px; }
+.dt-menu__row.is-on { background: color-mix(in srgb, var(--lane) 20%, transparent); box-shadow: inset 3px 0 0 var(--lane), 0 0 18px -8px var(--lane); }
+.dt-menu__row.is-on .dt-menu__item { color: #ffffff; text-shadow: 0 0 10px var(--lane); }
 
 /* ── The windows ───────────────────────────────────────────────────────────── */
 
-.dt-window__row { display: flex; align-items: center; gap: 14px; }
-.dt-window__score { display: flex; flex-direction: column; align-items: center; min-width: 64px; }
-.dt-window__score span { font-size: 30px; font-weight: 700; line-height: 1; }
-.dt-window__score small { font-size: var(--fs-xs); color: var(--dim); }
-.dt-window__strip { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.dt-window__strip svg { display: block; width: 100%; height: auto; }
-.dt-window__counts { font-size: var(--fs-xs); color: var(--ok); }
-.dt-window__counts.dt-t-warn { color: var(--warn); }
-.dt-booth { fill: none; stroke: var(--lane); stroke-width: 2; }
-.dt-booth__pane { fill: color-mix(in srgb, var(--lane) 30%, transparent); }
-.dt-more { font-family: var(--mono); font-size: 10px; fill: var(--dim); }
-.dt-mini path { fill: var(--dim); }
-.dt-mini--busy path { fill: var(--lane); }
-.dt-mini .dt-wheel { stroke-width: 1; }
-.dt-marks { display: flex; flex-wrap: wrap; gap: 3px; }
-.dt-mark {
-  display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; padding: 0;
-  font-family: var(--mono); font-size: var(--fs-xs); font-weight: 700; color: var(--dim); background: none;
-  border: 1px solid var(--lane); border-radius: 2px; cursor: pointer;
+.dt-window { gap: 12px; transition: box-shadow .4s var(--ease-out); }
+.dt-window--lead {
+  box-shadow: inset 0 3px 0 var(--lane), 0 0 0 1px rgba(255, 225, 77, 0.42), 0 0 30px -12px rgba(255, 225, 77, 0.7),
+    0 16px 34px -22px rgba(0, 0, 0, 0.95);
 }
-.dt-mark--ok { color: var(--ok); }
-.dt-mark--err { color: var(--err); }
-.dt-mark--warn { color: var(--warn); }
-.dt-mark--busy { color: var(--lane-ink); background: var(--lane); }
-.dt-mark--on { outline: 2px solid var(--cy); outline-offset: 1px; }
-.dt-window__stats { border-top: none; padding-top: 0; }
+.dt-window__row { display: flex; align-items: center; gap: 12px 14px; flex-wrap: wrap; }
+.dt-window__score {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 76px; padding: 8px 10px 6px; border-radius: 12px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.36), rgba(0, 0, 0, 0.16));
+  box-shadow: inset 0 1px 8px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+.dt-window__score small { font-family: var(--display); font-size: var(--fs-micro); font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
+.dt-window__strip { flex: 1; min-width: 180px; display: flex; flex-direction: column; gap: 4px; }
+.dt-window__counts { font-size: var(--fs-xs); color: var(--dim); }
+.dt-lanesvg { display: block; width: 100%; height: auto; }
+.dt-lanesvg__road { fill: #120e2c; }
+.dt-booth__wall { fill: #221a4c; stroke: color-mix(in srgb, var(--lane) 70%, transparent); stroke-width: 1.5; }
+.dt-booth__awning { fill: var(--lane); }
+.dt-booth__pane { fill: color-mix(in srgb, var(--lane) 35%, #fff3c4); }
+.dt-more { font-family: var(--mono); font-size: 10px; font-weight: 700; fill: var(--dim); }
+
+/* A car in a window's lane: it rolls in, slides up as the line moves, and
+ * pulls away once served. */
+.dt-mini { transition: transform .7s var(--ease-out); }
+.dt-mini__in { animation: dt-arrive .6s var(--ease-out) both; }
+.dt-mini__body { fill: #3b3c6e; stroke: #07051a; stroke-width: 1; }
+.dt-mini__glass { fill: #0d1030; }
+.dt-mini__lamp { fill: #fff3c4; }
+.dt-mini--busy .dt-mini__body, .dt-mini--gone .dt-mini__body { fill: var(--lane); }
+.dt-mini--gone .dt-mini__in { animation: dt-leave 1.2s ease-in both; }
+
+.dt-marks { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.dt-mark {
+  display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; padding: 0; cursor: pointer;
+  font-family: var(--mono); font-size: 11px; font-weight: 900; color: var(--dim);
+  background: rgba(255, 255, 255, 0.03); border: 1px solid color-mix(in srgb, var(--lane) 55%, transparent); border-radius: 5px;
+  transition: transform .15s var(--ease-out), border-color .15s;
+}
+.dt-mark:hover { transform: translateY(-2px); border-color: var(--lane); }
+.dt-mark--ok { color: #03140c; background: var(--ok); border-color: var(--ok); box-shadow: 0 0 9px -1px var(--ok); animation: dt-pop .45s var(--ease-spring) both; }
+.dt-mark--err { color: var(--err); background: var(--err-dim); border-color: var(--err); animation: dt-pop .45s var(--ease-spring) both; }
+.dt-mark--warn { color: #1d1100; background: var(--warn); border-color: var(--warn); animation: dt-pop .45s var(--ease-spring) both; }
+.dt-mark--busy { color: var(--lane-ink); background: var(--lane); border-color: var(--lane); animation: dt-pulse 1s ease-in-out infinite; }
+.dt-mark--wait { opacity: .75; }
+.dt-mark--on { outline: 2px solid var(--txt); outline-offset: 2px; }
+.dt-streak, .dt-lead {
+  display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px; white-space: nowrap;
+  font-family: var(--display); font-size: var(--fs-xs); font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+  color: #2a1600; background: linear-gradient(180deg, #fff09a, var(--yl)); box-shadow: 0 0 16px -4px rgba(255, 225, 77, 0.85);
+  animation: dt-pop .5s var(--ease-spring) both;
+}
+.dt-lead { position: absolute; top: -12px; left: 0; right: 0; z-index: 2; width: max-content; margin: 0 auto; }
+.dt-streak { margin-left: 6px; color: var(--yl); background: rgba(255, 225, 77, 0.1); box-shadow: inset 0 0 0 1px rgba(255, 225, 77, 0.5); }
+
+.dt-window__stats { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 20px; }
+.dt-spark { display: flex; flex-direction: column; min-width: 0; }
+.dt-spark svg { display: block; width: 120px; height: 26px; }
+.dt-spark__line { fill: none; stroke: var(--lane); stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
+.dt-spark__fill { fill: color-mix(in srgb, var(--lane) 22%, transparent); }
+
+/* ── Motion ────────────────────────────────────────────────────────────────── */
+
+@keyframes dt-fade { from { opacity: 0; } }
+@keyframes dt-pop { from { opacity: 0; transform: scale(.4); } 70% { transform: scale(1.1); } }
+@keyframes dt-word { from { opacity: 0; transform: translateY(5px); } }
+@keyframes dt-dot { 0%, 100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
+@keyframes dt-blink { 50% { opacity: .2; } }
+@keyframes dt-pulse { 50% { opacity: .55; } }
+@keyframes dt-nudge { 50% { transform: translateX(3px); } }
+@keyframes dt-grille { from { opacity: .35; } to { opacity: 1; } }
+@keyframes dt-wave { 0% { opacity: 0; } 30% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes dt-drivein { from { transform: translateX(-200px); } 78% { transform: translateX(5px); } }
+@keyframes dt-feed { from { clip-path: inset(0 0 100% 0); transform: translateY(-10px); } }
+@keyframes dt-printline { from { opacity: 0; transform: translateY(-4px); } }
+@keyframes dt-typeline { from { opacity: 0; transform: translateX(-6px); } }
+@keyframes dt-stamp {
+  0% { opacity: 0; transform: rotate(-11deg) scale(2.6); }
+  60% { opacity: .95; transform: rotate(-11deg) scale(.92); }
+  100% { opacity: .86; transform: rotate(-11deg) scale(1); }
+}
+@keyframes dt-arrive { from { opacity: 0; transform: translateX(-34px); } }
+@keyframes dt-leave { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateX(48px); } }

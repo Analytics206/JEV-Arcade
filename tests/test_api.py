@@ -259,7 +259,7 @@ def test_health_and_the_page(race_env):
     client = race_env["client"]
     assert client.get("/api/health").json()["ok"] is True
     page = client.get("/")
-    assert page.status_code == 200 and "WikiRace" in page.text
+    assert page.status_code == 200 and "JEV-Arcade" in page.text
 
 
 def test_a_host_name_it_was_not_given_is_refused(race_env):

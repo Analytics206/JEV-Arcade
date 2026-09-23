@@ -2,17 +2,22 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  beamOf,
   cardOf,
   composite,
   dotOf,
+  finaleOf,
   formula,
   lede,
   matrixOf,
   orderOf,
+  podiumOf,
   presetOf,
   presetWeights,
   pts,
   rank,
+  rankMoves,
+  ranksOf,
   tilt,
 } from '../../src/wikirace/static/games/judges.logic.js'
 
@@ -67,9 +72,36 @@ describe('the leaderboard', () => {
     const same = matrixOf({ scored: [0, 1, 2].map((c) => ({ c, judges: [cell(2), cell(2), cell(2)] })) }, 3, 3)
     assert.deepEqual(rank(contestants, same, [1, 1, 1]).map((r) => r.k), [0, 1, 2])
   })
+  it('says who moved, and how far, when the weights re-rank the board', () => {
+    const kidsFirst = rank(contestants, m, [5, 0, 0])
+    const flatFirst = rank(contestants, m, [0, 5, 5])
+    assert.deepEqual(rankMoves(ranksOf(kidsFirst), flatFirst), { 0: -1, 1: 1 })
+    assert.deepEqual(rankMoves(ranksOf(flatFirst), flatFirst), {})
+    assert.deepEqual(rankMoves(null, flatFirst), {})
+    assert.deepEqual(rankMoves({ 0: 3 }, flatFirst), { 0: 1 })
+  })
+  it('stands the top three on a podium: second, first, third', () => {
+    const full = matrixOf({ scored: [0, 1, 2].map((c) => ({ c, judges: [cell(c), cell(2), cell(2)] })) }, 3, 3)
+    const rows = rank(contestants, full, [5, 1, 1])
+    assert.deepEqual(podiumOf(rows).map((p) => [p.place, p.row.c.name]), [[2, 'B'], [1, 'C'], [3, 'A']])
+    assert.deepEqual(podiumOf(rank(contestants, m, [5, 0, 0])).map((p) => p.place), [2, 1]) // C not scored yet
+    assert.deepEqual(podiumOf([]), [])
+  })
+  it('announces the board’s leader when the scores are in, not a lane’s win', () => {
+    const rows = rank(contestants, m, [5, 0, 0])
+    assert.deepEqual(finaleOf(null, rows, { label: 'Kids first' }), { headline: 'SCORES ARE IN!', sub: 'A tops “Kids first” · drag a weight to re-rank' })
+    assert.match(finaleOf(null, rows, null).sub, /tops your weights/)
+    assert.equal(finaleOf(null, rank(contestants, matrixOf({}, 3, 3), [1, 1, 1]), null), null)
+  })
 })
 
 describe('the cards', () => {
+  it('light a judge’s spotlight by its weight', () => {
+    assert.equal(beamOf(0), 0.12)
+    assert.equal(beamOf(5), 1)
+    assert.ok(beamOf(3) > beamOf(2))
+    assert.equal(beamOf(9), 1)
+  })
   it('tilt more the wider the spread, alternating sides, within a limit', () => {
     assert.ok(Math.abs(tilt(0.8, 0)) > Math.abs(tilt(0.2, 0)))
     assert.ok(tilt(0.5, 0) < 0 && tilt(0.5, 1) > 0)

@@ -11,7 +11,10 @@ import {
   exitsOf,
   fmtInt,
   fmtMoney,
+  ghostBody,
   ghostPath,
+  ghostPoints,
+  ghostsEaten,
   hourCost,
   isFresh,
   isOpen,
@@ -20,9 +23,13 @@ import {
   mazeLabel,
   mazeSize,
   meanLag,
+  pacHalves,
   parseLayout,
   pupil,
+  recentlyEaten,
   scaredMouth,
+  screenText,
+  soloFinale,
   startView,
   stepOf,
   stickArms,
@@ -30,7 +37,9 @@ import {
   thinkingText,
   ticksAnswered,
   wallRects,
+  upOf,
   wedgePath,
+  winnersOf,
   wordsRows,
 } from '../../src/wikirace/static/games/ghostmaze.logic.js'
 
@@ -105,6 +114,75 @@ describe('sprites', () => {
     assert.match(scaredMouth(0, 0), /^M-7\.2 4\.2 L-3\.6 1\.7 L0 4\.2 L3\.6 1\.7 L7\.2 4\.2$/)
     assert.deepEqual(pupil('left'), [-1.5, 0])
     assert.deepEqual(pupil(null), [0, 0])
+  })
+  it('ripples a ghost’s skirt over two frames, inside its box', () => {
+    const a = ghostBody(0, 0, 12, 0)
+    const b = ghostBody(0, 0, 12, 1)
+    assert.notEqual(a, b)
+    for (const d of [a, b]) {
+      assert.match(d, /^M-12 [\d.]+ V0 A12 12 0 0 1 12 0 V[\d.]+( L-?[\d.]+ [\d.]+){12} Z$/)
+      const ys = [...d.matchAll(/L(-?[\d.]+) (-?[\d.]+)/g)].map((m) => Number(m[2]))
+      assert.ok(ys.every((y) => y > 0 && y <= 12))
+    }
+    assert.match(a, /^M-12 12 V0/) // frame 0 stands on its hem's edges
+    assert.match(b, /^M-12 8\.25 V0/) // frame 1 has them lifted, half a wave on
+  })
+  it('splits the player into two halves that chomp', () => {
+    assert.deepEqual(pacHalves(13), { top: 'M-13 0 A13 13 0 0 1 13 0 Z', bottom: 'M-13 0 A13 13 0 0 0 13 0 Z' })
+  })
+})
+
+describe('what just happened', () => {
+  it('reads a ghost’s points off the score’s jump', () => {
+    assert.equal(ghostPoints(200), 200)
+    assert.equal(ghostPoints(210), 200) // a pellet on the same tick
+    assert.equal(ghostPoints(410), 400)
+    assert.equal(ghostPoints(800), 800)
+    assert.equal(ghostPoints(10), null)
+    assert.equal(ghostPoints(NaN), null)
+  })
+  it('finds the ghosts eaten between two views', () => {
+    const before = [[1, 'n', 0, 'up'], [2, 'f', 0, 'left'], [3, 'f', 0, null]]
+    const after = [[1, 'n', 0, 'up'], [9, 'e', 1, null], [4, 'f', 0, 'down']]
+    assert.deepEqual(ghostsEaten(before, after), ['Pinky'])
+    assert.deepEqual(ghostsEaten(after, after), [])
+    assert.deepEqual(ghostsEaten(null, after), [])
+  })
+  it('keeps the last few tiles eaten, power pellets marked', () => {
+    assert.deepEqual(recentlyEaten(L, [at(1, 0), at(0, 0), at(2, 0)], 2), [{ cell: at(0, 0), power: true }, { cell: at(2, 0), power: false }])
+    assert.deepEqual(recentlyEaten(L, undefined), [])
+  })
+  it('names each lane’s player as the arcade does', () => {
+    assert.equal(upOf(0), '1UP')
+    assert.equal(upOf(3), '4UP')
+  })
+  it('writes READY!, GAME OVER and the rest over the maze', () => {
+    assert.equal(screenText(lane()), null)
+    assert.equal(screenText(lane(), true).text, 'READY!')
+    assert.equal(screenText(lane({ tick: 0 })).text, 'READY!')
+    assert.deepEqual(screenText(lane({ pause: 6, caught_at: 38, lives: 2 })), { text: 'READY!', sub: 'caught on tick 38 · 2 lives left', tone: 'ready' })
+    assert.deepEqual(screenText(lane({ ended: 'caught', caught_at: 90 })), { text: 'GAME OVER', sub: 'caught on tick 90', tone: 'err' })
+    assert.equal(screenText(lane({ ended: 'cleared' })).text, 'CLEARED!')
+    assert.equal(screenText(lane({ ended: 'time', lives: 1 })).sub, '1 life left')
+  })
+})
+
+describe('who won', () => {
+  const run = (...lanes) => ({ lanes: lanes.map((l, index) => ({ index, label: `p${index + 1}`, status: 'done', ...l })) })
+  it('is the most points among the lanes that played their game out', () => {
+    assert.deepEqual(winnersOf(run({ score: 1670 }, { score: 1510 })), [0])
+    assert.deepEqual(winnersOf(run({ score: 900 }, { score: 2100, status: 'error' }, { score: 1200 })), [2])
+  })
+  it('shares a tie, and names nobody alone or when nobody finished', () => {
+    assert.deepEqual(winnersOf(run({ score: 800 }, { score: 800 }, { score: 20 })), [0, 1])
+    assert.deepEqual(winnersOf(run({ score: 800 })), [])
+    assert.deepEqual(winnersOf(run({ score: 800, status: 'error' }, { score: 10, status: 'stopped' })), [])
+    assert.deepEqual(winnersOf({}), [])
+  })
+  it('ends a round of one with its own words', () => {
+    assert.deepEqual(soloFinale(run({ score: 1670, ended: 'caught' })), { headline: 'GAME OVER', sub: 'p1 · 1,670 points' })
+    assert.equal(soloFinale(run({ score: 2310, ended: 'cleared' })).headline, 'CLEARED!')
+    assert.equal(soloFinale(run({ score: 1 }, { score: 2 })), null)
   })
 })
 

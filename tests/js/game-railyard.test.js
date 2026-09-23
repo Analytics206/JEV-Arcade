@@ -3,21 +3,27 @@ import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   bigStation,
+  bladeAngle,
   costAgainst,
   defaultTiers,
   ease,
   fmtUsd,
   niceCeil,
+  routePath,
   ruleLine,
   scatterScales,
   snippet,
   trackPose,
   trainText,
+  tripPath,
   yardLayout,
+  yardOutcome,
   yardSummary,
 } from '../../src/wikirace/static/games/railyard.logic.js'
 
 const near = (a, b, eps = 1e-6) => assert.ok(Math.abs(a - b) < eps, `${a} ≉ ${b}`)
+/** The x a path's last horizontal run ends at. */
+const ex3 = (d) => Number(d.slice(d.lastIndexOf('H') + 1))
 
 describe('default tiers', () => {
   it('ranks by list price, keeps lane order when a price is unknown, and makes Ollama local', () => {
@@ -85,6 +91,30 @@ describe('the yard', () => {
     assert.equal(costAgainst(0.06, 0.04).word, 'dearer')
     assert.equal(costAgainst(0.01, 0), null)
   })
+  it('draws a whole trip as one path from the front of the queue to the platform', () => {
+    const L = yardLayout(3)
+    for (const s of [0, 1, 2]) {
+      const trip = tripPath(L, s)
+      const start = trackPose(L, s, 0)
+      const end = trackPose(L, s, 1)
+      assert.deepEqual([trip.x, trip.y], [start.x, start.y])
+      assert.ok(trip.d.startsWith('M0 0 H'), 'relative to where the train waits')
+      const [ex, ey] = trip.d.match(/C.* (-?[\d.]+) (-?[\d.]+) H(-?[\d.]+)$/).slice(1).map(Number)
+      assert.equal(ey, end.y - trip.y, 'the curve ends on its track')
+      assert.equal(ex3(trip.d), end.x - trip.x, 'and runs on to where the train stops')
+      assert.ok(Number.isFinite(ex))
+    }
+    assert.equal(tripPath(L, 9).d, 'M0 0')
+  })
+  it('lights the route the points are set for, and throws the blade towards it', () => {
+    const L = yardLayout(3)
+    assert.equal(routePath(L, 0), `M0 ${L.mainY} H540 ${L.tracks[0].d.slice(L.tracks[0].d.indexOf('C'))}`)
+    assert.ok(routePath(L, 2).endsWith('H880'))
+    assert.equal(routePath(L, 7), L.main)
+    const [up, straight, down] = [0, 1, 2].map((s) => bladeAngle(L, s))
+    assert.ok(up < 0 && down > 0 && straight === 0, `${up} ${straight} ${down}`)
+    near(up, -down, 1e-9)
+  })
   it('prints the rule a train took', () => {
     assert.deepEqual(['private', 'private_no_local', 'unsure_up', 'unsure_top', 'pick'].map(ruleLine), [0, 0, 1, 1, 2])
   })
@@ -112,8 +142,16 @@ describe('the router against always one station', () => {
     assert.deepEqual(s.always.map((a) => [a.tier, a.right, a.n]), [['small', 1, 2], ['large', 1, 2]])
     near(s.always[0].cost, 0.002)
     near(s.always[1].cost, 0.02)
-    assert.deepEqual(s.traffic.map((t) => [t.received, t.delivered]), [[2, 1], [1, 1]])
+    assert.deepEqual(s.traffic.map((t) => [t.received, t.delivered, t.right]), [[2, 1, 1], [1, 1, 1]])
     assert.equal(s.traffic[1].last.k, 1)
+  })
+  it('closes the round with the router against the top tier, never a winner', () => {
+    const s = yardSummary(run)
+    const out = yardOutcome({ ...run, total: 3 }, s)
+    assert.equal(out.headline, 'YARD CLOSED')
+    assert.equal(out.sub, "Jev's routing 100% right for $0.011 · always large 50% for $0.02 · 45% cheaper")
+    assert.equal(yardOutcome({ ...run, total: 2 }, s).headline, 'ALL TRAINS IN')
+    assert.equal(yardOutcome({ ...run, total: 3 }, yardSummary({ stations: run.stations, trains: [], lanes: run.lanes })), null)
   })
   it('has nothing to compare before the first delivery', () => {
     const s = yardSummary({ stations: run.stations, trains: [], lanes: run.lanes })

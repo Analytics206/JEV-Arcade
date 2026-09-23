@@ -121,6 +121,69 @@ export function wallSummary(label, topics, t, total) {
   return `${label}'s wall: ${t.sorted} of ${total} articles sorted${parts.length ? `: ${parts.join(', ')}` : ''}${fouls}.`
 }
 
+/** The articles that landed since the wall was last drawn: those UNSORTED in
+ *  *before* and answered (a topic or a foul) in *after*. */
+export function freshCells(before, after) {
+  const out = []
+  if (!before || before.length !== after.length) return out
+  for (let k = 0; k < after.length; k++) if (before[k] === UNSORTED && after[k] !== UNSORTED) out.push(k)
+  return out
+}
+
+/** A topic's short name for a bin too narrow for its whole name: SCI, PPL, GEO… */
+const ABBR = { science: 'SCI', people: 'PPL', places: 'GEO', arts: 'ART', nature: 'NAT', history: 'HIS', sport: 'SPT', other: 'OTH' }
+export const topicAbbr = (key) => ABBR[key] ?? String(key ?? '').slice(0, 3).toUpperCase()
+
+/**
+ * A lane's sorted landscape: each topic's share of the round, then the fouls
+ * and what has not landed, as segments that add up to the whole wall.
+ * @returns {[{kind: 'topic'|'foul'|'unsorted', i?: number, n: number, share: number}]}
+ */
+export function landscape(t, total) {
+  const all = Math.max(1, total)
+  return [
+    ...t.counts.map((n, i) => ({ kind: 'topic', i, n, share: n / all })),
+    { kind: 'foul', n: t.fouls, share: t.fouls / all },
+    { kind: 'unsorted', n: t.unsorted, share: t.unsorted / all },
+  ]
+}
+
+/**
+ * Who won, by the game's own rule: a lane's score is the articles it sorted
+ * (fouls are not sorted), so the most wins, and lanes level at the top tie.
+ * No winner in a solo round, or when nobody sorted anything.
+ * @returns {number[]} lane indexes
+ */
+export function sortWinners(lanes) {
+  const ls = lanes ?? []
+  if (ls.length < 2) return []
+  const top = Math.max(...ls.map((ln) => Number(ln.score) || 0))
+  if (!(top > 0)) return []
+  return ls.filter((ln) => (Number(ln.score) || 0) === top).map((ln) => ln.index)
+}
+
+/** The finale's words for a round: the winners, or for a round every lane
+ *  finished or a solo one, what happened (ALL SORTED, TIME'S UP). */
+export function sortOutcome(run) {
+  const lanes = run?.lanes ?? []
+  const n = run?.total ?? 0
+  const winners = sortWinners(lanes)
+  const everyone = lanes.length > 0 && lanes.every((ln) => (Number(ln.score) || 0) >= n && n > 0)
+  const count = (ln) => `${fmtN(Number(ln.score) || 0)} of ${fmtN(n)}`
+  if (lanes.length === 1) {
+    const ln = lanes[0]
+    if (everyone) return { winners, headline: 'ALL SORTED', sub: `${ln.label} sorted all ${fmtN(n)} articles` }
+    if (ln.timed_out) return { winners, headline: "TIME'S UP", sub: `${ln.label} sorted ${count(ln)} articles` }
+    return { winners }
+  }
+  if (everyone) return { winners, headline: 'ALL SORTED', sub: `every lane sorted all ${fmtN(n)} articles` }
+  if (winners.length === 1) {
+    const ln = lanes.find((l) => l.index === winners[0])
+    return { winners, sub: `${ln.label} · ${count(ln)} sorted` }
+  }
+  return { winners }
+}
+
 /** The cursor moved by an arrow key on a wall of *cols* columns and *n* cells. */
 export function stepCursor(at, key, cols, n) {
   const i = at < 0 ? 0 : at
