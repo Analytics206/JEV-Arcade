@@ -172,3 +172,14 @@ def test_the_page_answers_to_localhost_and_the_names_it_is_given():
     assert _load({"WIKIRACE_ALLOWED_HOSTS": "WikiRace.lan, 192.168.1.20"}).allowed_hosts == (
         "localhost", "127.0.0.1", "wikirace.lan", "192.168.1.20")
     assert _load({"WIKIRACE_ALLOWED_HOSTS": "*"}).allowed_hosts == ("*",)
+
+
+def test_the_canonical_host_is_a_bare_name_answered_to_with_its_twin():
+    s = _load({"WIKIRACE_CANONICAL_HOST": "https://JEV-Arcade.com/"})
+    assert s.canonical_host == "jev-arcade.com"
+    assert s.allowed_hosts == ("localhost", "127.0.0.1", "jev-arcade.com", "www.jev-arcade.com")
+    assert _load({"WIKIRACE_CANONICAL_HOST": "www.jev-arcade.com"}).allowed_hosts[2:] == (
+        "www.jev-arcade.com", "jev-arcade.com")
+    assert _load().canonical_host is None
+    bad = _load({"WIKIRACE_CANONICAL_HOST": "not a host"})
+    assert bad.canonical_host is None and any("WIKIRACE_CANONICAL_HOST" in w for w in bad.warnings)

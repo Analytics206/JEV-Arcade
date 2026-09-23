@@ -1,8 +1,9 @@
 # Secrets: your keys live here and never in git
 .env
-.env.*
-!.env.example
-!env.example
+
+# Your own deployment beside compose.yaml (a tunnel, a proxy)
+compose.*.yaml
+compose.*.yml
 
 # Race history
 data/

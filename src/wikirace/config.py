@@ -179,6 +179,9 @@ class Settings:
     #: elsewhere must not be able to reach it by pointing a name of its own at
     #: 127.0.0.1 (DNS rebinding). "*" answers to any.
     allowed_hosts: tuple[str, ...] = ("localhost", "127.0.0.1")
+    #: WIKIRACE_CANONICAL_HOST: the one public address (`jev-arcade.com`). Its
+    #: twin (`www.` added or taken away) and plain http redirect to it.
+    canonical_host: str | None = None
     #: The .env file that was read, or None.
     env_file: str | None = None
     providers: Mapping[str, ProviderConfig] = field(default_factory=dict)
@@ -324,13 +327,35 @@ def _truthy(raw: str) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
-def _hosts(raw: str) -> tuple[str, ...]:
+def _hosts(raw: str, canonical: str | None = None) -> tuple[str, ...]:
     """WIKIRACE_ALLOWED_HOSTS: names beyond localhost the page is served under
-    (`wikirace.lan, 192.168.1.20`), or `*` for any."""
+    (`wikirace.lan, 192.168.1.20`), or `*` for any. The canonical host and its
+    twin are answered to without being listed."""
     extra = [h.strip().lower() for h in raw.split(",") if h.strip()]
     if "*" in extra:
         return ("*",)
-    return tuple(dict.fromkeys(["localhost", "127.0.0.1", *extra]))
+    public = [canonical, twin_host(canonical)] if canonical else []
+    return tuple(dict.fromkeys(["localhost", "127.0.0.1", *extra, *public]))
+
+
+def twin_host(host: str) -> str:
+    """The other name people type for a site: `www.` added or taken away."""
+    return host[4:] if host.startswith("www.") else f"www.{host}"
+
+
+_HOSTNAME = re.compile(r"(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}")
+
+
+def _canonical(raw: str, warnings: list[str]) -> str | None:
+    """WIKIRACE_CANONICAL_HOST as a bare name: `https://JEV-Arcade.com/` is
+    `jev-arcade.com`."""
+    name = re.sub(r"^[a-z][a-z0-9+.-]*://", "", raw.strip().lower()).split("/")[0]
+    if not name:
+        return None
+    if not _HOSTNAME.fullmatch(name):
+        warnings.append(f"WIKIRACE_CANONICAL_HOST={raw!r} is not a domain name (jev-arcade.com); ignored")
+        return None
+    return name
 
 
 # ── loading ──────────────────────────────────────────────────────────────────
@@ -389,6 +414,7 @@ def load_settings(
             if spec.id == "ollama" else DEFAULT_OLLAMA_NUM_CTX,
         )
 
+    canonical = _canonical(get("WIKIRACE_CANONICAL_HOST")[0], warnings)
     return Settings(
         host=get("WIKIRACE_HOST", "127.0.0.1")[0],
         port=_int(get("WIKIRACE_PORT")[0], DEFAULT_PORT, "WIKIRACE_PORT", warnings, 1, 65535),
@@ -396,7 +422,8 @@ def load_settings(
         thinking=_level(get("WIKIRACE_THINKING")[0], "WIKIRACE_THINKING", warnings),
         max_races=_int(get("WIKIRACE_MAX_RACES")[0], DEFAULT_MAX_RACES, "WIKIRACE_MAX_RACES", warnings, 1, 16),
         user_agent=get("WIKIRACE_USER_AGENT", DEFAULT_USER_AGENT)[0],
-        allowed_hosts=_hosts(get("WIKIRACE_ALLOWED_HOSTS")[0]),
+        allowed_hosts=_hosts(get("WIKIRACE_ALLOWED_HOSTS")[0], canonical),
+        canonical_host=canonical,
         in_docker=in_docker,
         env_file=str(path) if path else None,
         providers=providers,

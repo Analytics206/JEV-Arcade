@@ -273,6 +273,28 @@ def test_a_host_name_it_was_not_given_is_refused(race_env):
                        ).status_code == 400
 
 
+def test_the_public_site_has_one_address(tmp_path):
+    settings = _settings(tmp_path, WIKIRACE_CANONICAL_HOST="jev-arcade.com")
+    app = create_app(settings, wiki=Wiki(get=fake_wikipedia), providers={})
+    with TestClient(app, base_url="http://localhost") as client:
+        def visit(host, path="/", proto="https", method="GET"):
+            return client.request(method, path, follow_redirects=False,
+                                  headers={"host": host, "x-forwarded-proto": proto})
+
+        # The bare name, over https, is the site.
+        assert visit("jev-arcade.com").status_code == 200
+        # www is sent to it, with the path and query kept.
+        r = visit("www.jev-arcade.com", "/?tab=race&race=a%20b")
+        assert r.status_code == 301 and r.headers["location"] == "https://jev-arcade.com/?tab=race&race=a%20b"
+        # So is plain http, and a POST stays a POST.
+        assert visit("jev-arcade.com", "/api/health", proto="http").headers["location"] == (
+            "https://jev-arcade.com/api/health")
+        assert visit("www.jev-arcade.com", "/api/races", method="POST").status_code == 308
+        # At home nothing moves, and a name nobody gave is still refused.
+        assert visit("localhost", "/api/health", proto="http").status_code == 200
+        assert visit("attacker.example", "/api/health").status_code == 400
+
+
 def test_keys_never_reach_the_page_or_the_race(race_env):
     client = race_env["client"]
     assert "sk-or-test" not in client.get("/api/models").text

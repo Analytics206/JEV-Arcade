@@ -16,10 +16,13 @@ from typing import Any
 
 from fastapi import FastAPI
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.datastructures import Headers
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from . import __version__, api, store
-from .config import Settings, load_settings
+from .config import Settings, load_settings, twin_host
 from .games import api as games_api
 from .games import runs as game_runs
 from .games import store as games_store
@@ -61,6 +64,32 @@ def begin_closing(app: FastAPI) -> None:
     game_runs.wake_all()
 
 
+class CanonicalHost:
+    """WIKIRACE_CANONICAL_HOST: the public site has one address. A visit to
+    its twin (`www.jev-arcade.com` for `jev-arcade.com`, or the other way) is
+    sent there with its path and query, and so is a visit over plain http,
+    which the proxy in front (a Cloudflare Tunnel) reports in
+    X-Forwarded-Proto. localhost, and any other name, is left alone."""
+
+    def __init__(self, app: ASGIApp, host: str) -> None:
+        self.app, self.host, self.twin = app, host, twin_host(host)
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "http":
+            headers = Headers(scope=scope)
+            name = headers.get("host", "").split(":")[0].lower()
+            plain = headers.get("x-forwarded-proto", "").split(",")[0].strip().lower() == "http"
+            if name == self.twin or (name == self.host and plain):
+                path = scope.get("raw_path") or scope["path"].encode()
+                query = scope.get("query_string") or b""
+                url = f"https://{self.host}{path.decode('latin-1')}" + (f"?{query.decode('latin-1')}" if query else "")
+                # 308 keeps a POST a POST; a page load gets the 301 every browser caches.
+                status = 301 if scope["method"] in ("GET", "HEAD") else 308
+                await RedirectResponse(url, status_code=status)(scope, receive, send)
+                return
+        await self.app(scope, receive, send)
+
+
 def create_app(
     settings: Settings | None = None, *, wiki: Wiki | None = None, providers: dict[str, Any] | None = None,
 ) -> FastAPI:
@@ -88,6 +117,9 @@ def create_app(
     # points a name of its own at 127.0.0.1 (DNS rebinding) is refused before
     # it can start a race on your keys. WIKIRACE_ALLOWED_HOSTS adds names.
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(settings.allowed_hosts))
+    if settings.canonical_host:
+        # Added last, so it runs first.
+        app.add_middleware(CanonicalHost, host=settings.canonical_host)
     app.include_router(api.router)
     app.include_router(games_api.router)
     # Last, so /api/* is matched first; `html=True` serves index.html at "/".

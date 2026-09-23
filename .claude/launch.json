@@ -1,0 +1,24 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "wikirace",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": [
+        "run",
+        "wikirace"
+      ],
+      "port": 8008
+    },
+    {
+      "name": "arcade-demo",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": [
+        "run",
+        "python",
+        "tests/games/demo_server.py"
+      ],
+      "port": 8002
+    }
+  ]
+}

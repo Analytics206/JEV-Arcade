@@ -115,6 +115,15 @@ docker compose up -d
 Open <http://localhost:8000>. Race history lives on the `wikirace-data` volume. The page is
 published on `127.0.0.1` only; see [Security](#security).
 
+### On your own domain
+
+Behind a proxy or tunnel of your own (a Cloudflare Tunnel to `http://wikirace:8000`, say), set
+`WIKIRACE_CANONICAL_HOST=example.com`. The page then answers to `example.com` and
+`www.example.com`, and sends `www` and plain http to `https://example.com`. A second compose file
+beside `compose.yaml` (`compose.*.yaml` is ignored by git) keeps your deployment out of the
+repository. There is no login, so every visitor plays on your keys: put in `.env` only the
+providers you mean to pay for.
+
 ## Settings
 
 One file, `.env`, configures both ways of running: `wikirace` reads it from the working
@@ -151,6 +160,7 @@ OPENAI_THINKING=low
 | `WIKIRACE_DB` | `data/wikirace.db` | race history (Docker: the `/data` volume) |
 | `WIKIRACE_MAX_RACES` | `2` | races that may run at once |
 | `WIKIRACE_ALLOWED_HOSTS` | `localhost`, `127.0.0.1` | other names or addresses the page is opened under (`wikirace.lan, 192.168.1.20`), or `*` |
+| `WIKIRACE_CANONICAL_HOST` | none | the public address (`example.com`); `www.` and plain http redirect to it, see [On your own domain](#on-your-own-domain) |
 | `WIKIRACE_USER_AGENT` | `wikirace/<version> (repo URL)` | what Wikipedia is told; put your own contact here |
 
 A value WikiRace cannot use (a misspelt level, say) is ignored and shown as a warning in the race
