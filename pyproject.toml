@@ -25,7 +25,7 @@ dependencies = [
 wikirace = "wikirace.__main__:main"
 
 [project.urls]
-Homepage = "https://github.com/Analytics206/wikirace"
+Homepage = "https://github.com/Analytics206/JEV-Arcade"
 
 [dependency-groups]
 dev = [

@@ -402,7 +402,9 @@ export function raceFinale(race) {
   if (!w) return { win: false, lane: null, headline: 'GAME OVER', sub: `Nobody reached ${race.target.title}.` }
   const hops = `${fmtInt(w.hops)} hop${w.hops === 1 ? '' : 's'}`
   const headline = race.lanes.length > 1 ? `PLAYER ${w.index + 1} WINS!` : 'FINISHED!'
-  return { win: true, lane: w.index, headline, sub: `${w.label} — ${hops} to ${race.target.title}` }
+  const when = Number.isFinite(w.elapsed_ms) ? ` in ${fmtDuration(w.elapsed_ms)}` : ''
+  const first = race.lanes.length > 1 ? 'first to' : 'reached'
+  return { win: true, lane: w.index, headline, sub: `${w.label} — ${first} ${race.target.title}${when}, ${hops}` }
 }
 
 /** The line under a racer's name: who runs it, and the thinking it runs on. */

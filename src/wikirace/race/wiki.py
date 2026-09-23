@@ -43,7 +43,7 @@ PAGEVIEWS_TOP = "https://wikimedia.org/api/rest_v1/metrics/pageviews/top/en.wiki
 ARTICLE_URL = "https://en.wikipedia.org/wiki/"
 
 #: Used when the caller names none; the app passes WIKIRACE_USER_AGENT.
-USER_AGENT = "wikirace (https://github.com/Analytics206/wikirace)"
+USER_AGENT = "wikirace (https://github.com/Analytics206/JEV-Arcade)"
 
 _TIMEOUT = 20.0
 _PAGE_TTL = 6 * 3600.0

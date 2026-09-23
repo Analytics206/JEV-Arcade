@@ -326,10 +326,18 @@ def foul_note(
 
 
 def rank(lanes: Sequence[dict[str, Any]]) -> list[int]:
-    """Finished lanes, best first: fewest hops, then least thinking time, then
-    whoever crossed the line first. Lanes that did not finish are unranked."""
+    """Finished lanes, best first: it is a race, so whoever reached the target
+    first wins and the rest place in the order they crossed the line
+    (`finish_order`; failing that, the race clock when each finished). Fewer
+    hops only settles a dead heat. Lanes that did not finish are unranked."""
     done = [ln for ln in lanes if ln.get("status") == "finished"]
-    done.sort(key=lambda ln: (ln.get("hops", 0), ln.get("think_ms", 0), ln.get("finish_order") or 99))
+    last = float("inf")
+
+    def place(ln: dict[str, Any]) -> tuple[float, float, int]:
+        clock = ln.get("elapsed_ms")
+        return (ln.get("finish_order") or last, last if clock is None else clock, ln.get("hops", 0))
+
+    done.sort(key=place)
     return [int(ln["index"]) for ln in done]
 
 

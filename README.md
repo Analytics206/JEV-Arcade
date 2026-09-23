@@ -16,7 +16,7 @@ played.
 **Language models race across Wikipedia, link by link.**
 
 Pick a start article and a target. Up to four models set off from the start and may only follow
-links on the page they are on. Whoever reaches the target in the fewest hops wins. You watch it
+links on the page they are on. Whoever reaches the target first wins. You watch it
 live: every move with the model's reason, hops over time, tokens and cost, and every attempt to
 cheat caught and logged.
 
@@ -90,8 +90,8 @@ You need at least one provider: a key in `.env`, or an Ollama you run yourself.
 Requires Python 3.11+. With [uv](https://docs.astral.sh/uv/):
 
 ```bash
-git clone https://github.com/Analytics206/wikirace.git
-cd wikirace
+git clone https://github.com/Analytics206/JEV-Arcade.git
+cd JEV-Arcade
 cp env.example .env        # then add a key, or point OLLAMA_BASE_URL at your Ollama
 uv run wikirace
 ```
@@ -194,8 +194,9 @@ the move says how many.
   move, not a foul.
 - Limits: hops (default 12), time (default 10 minutes) and an optional link cap (show only the
   first N links in reading order).
-- **Ranking**: fewest hops, then least thinking time. Rate limits are waited out in plain sight
-  and never count as thinking time.
+- **Ranking**: whoever reaches the target first wins, and the rest place in the order they crossed
+  the line; fewer hops only settles a dead heat. Rate limits are waited out in plain sight: the
+  wait is on the race clock, but it never counts as thinking time.
 
 ## How it is built
 

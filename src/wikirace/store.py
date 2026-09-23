@@ -120,7 +120,11 @@ def _settle(race: dict[str, Any], status: str, finished_at: str | None) -> dict[
     the `running` snapshot it was last saved with, lanes mid-thought included,
     so its unfinished racers are called stopped, each gets the clock of its
     last move, and the racers that DID finish are ranked, which the race never
-    lived to do."""
+    lived to do.
+
+    Every race that is over is ranked as it is read, by today's rule: a race
+    saved when the fewest hops won still names the racer that got there first.
+    The stored row is not rewritten."""
     race["status"] = status
     race["finished_at"] = race.get("finished_at") or finished_at
     if status == INTERRUPTED:
@@ -131,14 +135,13 @@ def _settle(race: dict[str, Any], status: str, finished_at: str | None) -> dict[
             if ln.get("elapsed_ms") is None and "steps" in ln:  # a summary has no steps
                 steps = ln["steps"] or []
                 ln["elapsed_ms"] = steps[-1]["at_ms"] if steps else 0
-        if not race.get("ranking"):
-            order = rank(race["lanes"])
-            for pos, idx in enumerate(order, start=1):
-                for ln in race["lanes"]:
-                    if ln["index"] == idx:
-                        ln["rank"] = pos
-            race["ranking"] = order
-            race["winner"] = order[0] if order else None
+    if status != "running":
+        order = rank(race["lanes"])
+        places = {idx: pos for pos, idx in enumerate(order, start=1)}
+        for ln in race["lanes"]:
+            ln["rank"] = places.get(ln["index"])
+        race["ranking"] = order
+        race["winner"] = order[0] if order else None
     return race
 
 

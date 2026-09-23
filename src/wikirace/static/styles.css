@@ -475,6 +475,46 @@ input[type='range'] { accent-color: var(--acc, var(--cy)); }
 /* The way back to a race running elsewhere (in the header). */
 .hd .wr-live { border-radius: 999px; }
 
+/* GitHub's mark: in the header beside FREE PLAY, and in the footer. */
+.gh-mark { width: 1em; height: 1em; fill: currentColor; flex-shrink: 0; }
+.hd-gh {
+  display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; flex-shrink: 0;
+  color: var(--txt-2); background: rgba(255, 255, 255, 0.03); border: 1px solid var(--rule); border-radius: 50%;
+  transition: color .15s, border-color .15s, box-shadow .15s, transform .2s var(--ease-spring);
+}
+.hd-gh .gh-mark { width: 17px; height: 17px; }
+.hd-gh:hover { color: #fff; text-decoration: none; border-color: var(--edge-hot); box-shadow: 0 0 14px -3px var(--cy); transform: rotate(-8deg); }
+
+/* ── The footer (brand.js SiteFooter): the foot of every page's scroll ─────── */
+/* A page's scroll area is a column, so the footer sits at its bottom even when
+ * the page is short. */
+.g-main, .wr__stage, .wr__history { display: flex; flex-direction: column; }
+.hub__in, .g-page { width: 100%; }
+
+.ft {
+  position: relative; flex-shrink: 0; margin-top: auto; padding: 20px 26px 24px;
+  background: linear-gradient(180deg, rgba(10, 7, 30, 0), rgba(10, 7, 30, 0.8) 45%);
+}
+.ft::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; height: 1px; pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--cy) 18%, var(--pk) 82%, transparent); opacity: .45;
+}
+.ft__in { display: flex; align-items: center; gap: 12px 20px; flex-wrap: wrap; max-width: 1380px; margin: 0 auto; }
+.ft__brand { display: inline-flex; padding: 2px; border-radius: 4px; }
+.ft__brand:hover { text-decoration: none; }
+.ft__brand .wm { font-size: 14px; }
+.ft__txt { max-width: 64ch; font-size: var(--fs-sm); color: var(--dim); }
+.ft__gh {
+  display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 999px;
+  font-family: var(--mono); font-size: var(--fs-sm); color: var(--txt);
+  background: rgba(255, 255, 255, 0.04); border: 1px solid var(--rule);
+  transition: color .15s, border-color .15s, box-shadow .15s;
+}
+.ft__gh .gh-mark { width: 18px; height: 18px; }
+.ft__gh:hover { color: var(--cy); text-decoration: none; border-color: var(--edge-hot); box-shadow: 0 0 16px -4px var(--cy); }
+/* WikiRace's history pads its page; its footer runs edge to edge anyway. */
+.wr__history > .ft { margin: auto -26px -50px; }
+
 /* Canvas for confetti (fx.js), over everything but never in the way. */
 .fx-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 300; pointer-events: none; }
 
@@ -1434,12 +1474,15 @@ input[type='range'] { accent-color: var(--acc, var(--cy)); }
   .hd__nav { order: 5; flex-basis: 100%; justify-content: space-between; }
   .hd__link { flex: 1; text-align: center; padding: 5px 6px; font-size: var(--fs-xs); letter-spacing: .04em; }
   .hd .wr-live { order: 6; max-width: 100%; }
+  .ft { padding: 16px 14px 20px; }
+  .ft__in { gap: 10px 14px; }
 
   .wr-setup { padding: 12px 12px 24px; }
   .wr-sign__title { font-size: 26px; }
   .wr-sec { padding: 12px 11px 10px; }
   .wr-track { gap: 12px; padding: 12px 12px 32px; }
   .wr__history { padding: 12px; }
+  .wr__history > .ft { margin: auto -12px -12px; }
   .wr-lanerow .wr-sel, .wr-lanerow .wr-custom { font-size: var(--fs-sm); }
   .wr-go { font-size: 15px; padding: 16px 10px; gap: 10px; }
   .wr-attract { padding: 24px 14px 36px; }

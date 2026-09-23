@@ -295,6 +295,57 @@
 .cab--quick .cab__deck { padding: 10px 12px 12px; gap: 4px; }
 .cab--quick .cab__name { font-size: 16px; }
 
+/* ── Open source: the blurb below the cabinets ──────────────────────────────── */
+
+.oss {
+  position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 30px; align-items: center;
+  padding: 28px 32px; border-radius: 20px; overflow: hidden;
+  background:
+    radial-gradient(420px 240px at 0% 50%, rgba(62, 244, 255, 0.15), transparent 70%),
+    radial-gradient(560px 260px at 100% 0%, rgba(255, 79, 216, 0.14), transparent 70%),
+    linear-gradient(180deg, rgba(30, 24, 70, 0.88), rgba(14, 10, 36, 0.92));
+  box-shadow: 0 0 0 1px rgba(62, 244, 255, 0.28), 0 24px 50px -26px rgba(0, 0, 0, 0.9), 0 0 60px -30px var(--pk);
+}
+.oss__badge {
+  display: grid; place-items: center; width: 136px; height: 136px; border-radius: 50%; color: #fff;
+  background: radial-gradient(circle at 35% 30%, #2b2360, #0d0a24 70%);
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, 0.06), 0 0 0 6px rgba(62, 244, 255, 0.4), 0 0 36px rgba(62, 244, 255, 0.45),
+    inset 0 0 26px rgba(255, 79, 216, 0.35);
+  transition: transform .35s var(--ease-spring), box-shadow .3s;
+}
+.oss__badge .gh-mark { width: 66px; height: 66px; filter: drop-shadow(0 0 8px rgba(62, 244, 255, 0.75)); }
+.oss__badge:hover {
+  transform: rotate(-10deg) scale(1.06);
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, 0.08), 0 0 0 6px rgba(255, 79, 216, 0.55), 0 0 44px rgba(255, 79, 216, 0.55),
+    inset 0 0 26px rgba(62, 244, 255, 0.35);
+}
+.oss__body { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.oss__hd { display: flex; align-items: baseline; gap: 10px 16px; flex-wrap: wrap; font-size: 20px; line-height: 1; font-weight: 400; color: var(--cy); }
+.oss__hd .px { filter: drop-shadow(0 0 4px rgba(62, 244, 255, 0.9)) drop-shadow(0 0 14px rgba(62, 244, 255, 0.4)); }
+.oss__hd > span { font-family: var(--display); font-size: 24px; font-weight: 700; letter-spacing: .01em; color: var(--txt); }
+.oss__txt { max-width: 80ch; font-size: 15px; line-height: 1.65; color: var(--txt-2); text-wrap: pretty; }
+.oss__clone {
+  display: flex; align-items: stretch; max-width: 660px; overflow: hidden; border-radius: 10px;
+  background: #050310; border: 1px solid rgba(62, 244, 255, 0.3); box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+}
+.oss__cmd {
+  flex: 1; min-width: 0; padding: 11px 14px; overflow-x: auto; white-space: nowrap;
+  font-family: var(--mono); font-size: var(--fs-sm); color: var(--ok); scrollbar-width: none;
+}
+.oss__prompt { margin-right: 6px; color: var(--dim); user-select: none; }
+.oss__copy {
+  flex-shrink: 0; min-width: 92px; padding: 0 16px; cursor: pointer; border: 0; border-left: 1px solid rgba(62, 244, 255, 0.3);
+  font-family: var(--display); font-size: var(--fs-xs); font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--cy); background: rgba(62, 244, 255, 0.1); transition: background .15s;
+}
+.oss__copy:hover { background: rgba(62, 244, 255, 0.22); }
+.oss__cta { display: flex; gap: 12px; flex-wrap: wrap; }
+.oss__cta .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 10px; }
+.oss__cta .btn:hover { text-decoration: none; }
+.oss__go .gh-mark { width: 16px; height: 16px; }
+
 /* ── The foot ──────────────────────────────────────────────────────────────── */
 
 .hub__foot {
@@ -337,6 +388,11 @@
   .cabs--main .cab--feature .cab__screen { margin: 8px 10px 0; }
   .cab--feature .cab__name { font-size: 22px; }
   .cab--quick .cab__use { display: none; }
+  .oss { grid-template-columns: minmax(0, 1fr); gap: 18px; padding: 20px 18px; }
+  .oss__badge { width: 88px; height: 88px; }
+  .oss__badge .gh-mark { width: 44px; height: 44px; }
+  .oss__hd > span { font-size: 20px; }
+  .oss__txt { font-size: var(--fs-md); }
   .collect__cells { gap: 3px; }
   .collect__cell { width: 9px; height: 15px; }
 }

@@ -11,7 +11,7 @@ import { h } from 'preact'
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import htm from 'htm'
 import { useEndpoint } from '../api.js'
-import { PixelText, SiteHeader, Wordmark } from '../brand.js'
+import { GitHubMark, PixelText, REPO_NAME, REPO_URL, SiteFooter, SiteHeader, Wordmark } from '../brand.js'
 import { usePlays } from '../profile.js'
 import { sfx } from '../sfx.js'
 import { GameFrame, useGames } from './kit.js'
@@ -140,7 +140,7 @@ function tickerLines(runs, races, titleOf) {
   for (const r of races) {
     const w = r.lanes?.find((l) => l.index === r.winner)
     if (r.status === 'running') out.push({ at: r.created_at, text: `NOW RACING: ${r.start?.title} → ${r.target?.title}` })
-    else if (w) out.push({ at: r.created_at, text: `WIKIRACE: ${w.label} WINS IN ${w.hops} HOP${w.hops === 1 ? '' : 'S'}` })
+    else if (w) out.push({ at: r.created_at, text: `WIKIRACE: ${w.label} FIRST TO ${r.target?.title}${Number.isFinite(w.elapsed_ms) ? ` IN ${(w.elapsed_ms / 1000).toFixed(1)}S` : ''}` })
   }
   out.sort((a, b) => String(b.at).localeCompare(String(a.at)))
   return out.slice(0, 10).map((x) => x.text)
@@ -270,6 +270,56 @@ function walk(e) {
   best.scrollIntoView?.({ block: 'nearest', behavior: calm() ? 'auto' : 'smooth' })
 }
 
+/* ── Open source ───────────────────────────────────────────────────────────── */
+
+const CLONE = `git clone ${REPO_URL}.git`
+
+/** Below the cabinets: the arcade is open source, and the next cabinet is yours. */
+function OpenSource() {
+  const [copied, setCopied] = useState(false)
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(CLONE)
+      sfx.coin()
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1800)
+    } catch {
+      /* no clipboard: the command is on screen to select */
+    }
+  }
+  return html`
+    <section class="oss" aria-labelledby="oss-hd">
+      <a class="oss__badge" href=${REPO_URL} target="_blank" rel="noopener noreferrer" onMouseEnter=${sfx.hover}
+        aria-label=${`${REPO_NAME} on GitHub (opens in a new tab)`}>
+        <${GitHubMark} />
+      </a>
+      <div class="oss__body">
+        <h2 class="oss__hd" id="oss-hd"><${PixelText} text="OPEN SOURCE" /><span>Build the next cabinet</span></h2>
+        <p class="oss__txt">
+          The games you're playing here run live on <b>Jev</b> and a free model from OpenRouter. The whole arcade is
+          free and open source under the MIT license, in one repository: the server, every game, the shared kit,
+          the pixel font and these attract screens.
+        </p>
+        <p class="oss__txt">
+          Clone it and run your own on your machine: bring your keys for Claude, GPT, OpenRouter's catalogue or a
+          local Ollama, add a TypeSafe key to seat Jev, and pit whichever models you like against each other. A
+          new game is a Python module, a page and a test on the shared kit, and <a href=${`${REPO_URL}/blob/main/docs/arcade.md`} target="_blank" rel="noopener noreferrer">docs/arcade.md</a> walks through one.
+        </p>
+        <div class="oss__clone">
+          <code class="oss__cmd"><span class="oss__prompt" aria-hidden="true">$</span> ${CLONE}</code>
+          <button type="button" class="oss__copy" onClick=${copy} aria-live="polite">${copied ? '✓ Copied' : 'Copy'}</button>
+        </div>
+        <div class="oss__cta">
+          <a class="btn btn--primary oss__go" href=${REPO_URL} target="_blank" rel="noopener noreferrer">
+            <${GitHubMark} /> View ${REPO_NAME} on GitHub<span class="sr-only"> (opens in a new tab)</span>
+          </a>
+          <a class="btn btn--ghost" href=${`${REPO_URL}/blob/main/docs/arcade.md`} target="_blank" rel="noopener noreferrer">How a game is built</a>
+        </div>
+      </div>
+    </section>
+  `
+}
+
 /* ── The floor ─────────────────────────────────────────────────────────────── */
 
 function Collection({ cards, plays, titleOf }) {
@@ -317,7 +367,7 @@ export function Hub() {
             <h1 class="hero__title"><${Wordmark} class="wm--hero" /></h1>
             <p class="hero__lede">
               Fifteen games that pit <b>Jev</b>, a judgment model that answers with probabilities instead of words,
-              against the text models your keys reach. Every move streams live, scored and priced, and every cheat is caught.
+              against conventional text models. Every move streams live, scored and priced, and every cheat is caught.
             </p>
             <div class="hero__cta">
               <button type="button" class="press" onClick=${() => {
@@ -340,7 +390,7 @@ export function Hub() {
 
         <div class="floorplan" ...${tilt} onKeyDown=${walk}>
           <section class="aisle" aria-labelledby="aisle-main">
-            <h2 class="aisle__hd" id="aisle-main"><${PixelText} text="MAIN FLOOR" /><span class="aisle__note">each cabinet shows one thing Jev does well</span></h2>
+            <h2 class="aisle__hd" id="aisle-main"><${PixelText} text="MAIN FLOOR" /><span class="aisle__note">each cabinet highlights JEV use cases</span></h2>
             <div class="cabs cabs--main">
               ${feature.map((c) => cab(c, 'feature'))}
               ${main.map((c) => cab(c, 'main'))}
@@ -352,11 +402,14 @@ export function Hub() {
           </section>
         </div>
 
-        <footer class="hub__foot">
+        <${OpenSource} />
+
+        <p class="hub__foot">
           <span><${PixelText} text="GAME ON" /></span>
-          <span>Arrow keys walk the floor, Enter plays. Every game runs on the server and keeps its history; the players are Jev and any text model your keys reach.</span>
-        </footer>
+          <span>Arrow keys walk the floor, Enter plays. Every game runs on the server and keeps its history; the players are Jev and the text models this arcade runs.</span>
+        </p>
       </div>
+      <${SiteFooter} />
     </main>
   `
 }
@@ -412,7 +465,7 @@ export function GameView({ route }) {
     const Page = mod
     body = html`<${Page} game=${game} runId=${route.run} />`
   }
-  return html`<main class="g-main scroll-y g-gameview" style=${{ '--acc': accentOf(route.game) }}>${body}</main>`
+  return html`<main class="g-main scroll-y g-gameview" style=${{ '--acc': accentOf(route.game) }}>${body}<${SiteFooter} /></main>`
 }
 
 /** The Arcade: the header, then the floor or a game. */

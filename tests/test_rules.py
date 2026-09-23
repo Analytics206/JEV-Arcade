@@ -205,12 +205,23 @@ def test_the_system_prompt_states_both_fouls():
 # ── Ranking and cost ──────────────────────────────────────────────────────────
 
 
-def test_rank_is_fewest_hops_then_least_thinking():
+def test_rank_is_who_reached_the_target_first():
+    # Fewer hops does not win a race: lane 1 took the shortest path, and the
+    # longest time, so it places last.
     lanes = [
-        {"index": 0, "status": "finished", "hops": 5, "think_ms": 900, "finish_order": 1},
-        {"index": 1, "status": "finished", "hops": 4, "think_ms": 5000, "finish_order": 3},
-        {"index": 2, "status": "finished", "hops": 4, "think_ms": 2000, "finish_order": 2},
+        {"index": 0, "status": "finished", "hops": 5, "think_ms": 900, "elapsed_ms": 4200, "finish_order": 1},
+        {"index": 1, "status": "finished", "hops": 3, "think_ms": 64000, "elapsed_ms": 64600, "finish_order": 3},
+        {"index": 2, "status": "finished", "hops": 6, "think_ms": 2000, "elapsed_ms": 9800, "finish_order": 2},
         {"index": 3, "status": "dq", "hops": 1, "think_ms": 10, "finish_order": None},
+    ]
+    assert rules.rank(lanes) == [0, 2, 1]
+
+
+def test_rank_without_a_finish_order_reads_the_race_clock_then_hops():
+    lanes = [
+        {"index": 0, "status": "finished", "hops": 4, "elapsed_ms": 9000},
+        {"index": 1, "status": "finished", "hops": 6, "elapsed_ms": 5000},
+        {"index": 2, "status": "finished", "hops": 3, "elapsed_ms": 5000},
     ]
     assert rules.rank(lanes) == [2, 1, 0]
 

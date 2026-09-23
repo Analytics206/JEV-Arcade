@@ -61,7 +61,7 @@ from .base import (
 from .ladder import NOTHING, ORDER, Ladder, Rung, nearest
 
 #: OpenRouter's attribution headers: which app is calling, and where it lives.
-OPENROUTER_HEADERS = {"HTTP-Referer": "https://github.com/Analytics206/wikirace", "X-Title": "WikiRace"}
+OPENROUTER_HEADERS = {"HTTP-Referer": "https://github.com/Analytics206/JEV-Arcade", "X-Title": "JEV-Arcade"}
 
 #: Models that take `reasoning_effort` at all.
 _REASONING = re.compile(r"^(?:o\d|gpt-(?:[5-9]|[1-9]\d)|gpt-oss)")

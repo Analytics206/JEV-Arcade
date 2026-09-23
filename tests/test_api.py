@@ -393,8 +393,13 @@ def test_a_race_runs_to_the_finish_and_catches_every_foul(race_env):
     assert jev_lane["tokens_out"] == 0 and jev_lane["cost_estimated"] is True
     assert jev_lane["steps"][0]["detail"]["top"][0]["title"] == "Gamma"
 
-    assert race["status"] == "finished" and race["winner"] == 0 and race["ranking"] == [0, 2]
-    assert good["rank"] == 1 and jev_lane["rank"] == 2 and cheat["rank"] is None
+    # Whoever crossed the line first wins; the fakes answer at once, so which of
+    # the two that is falls to the event loop, and the ranking must follow it.
+    crossed = sorted((ln for ln in race["lanes"] if ln["status"] == "finished"), key=lambda ln: ln["finish_order"])
+    assert race["status"] == "finished" and race["ranking"] == [ln["index"] for ln in crossed]
+    assert sorted(race["ranking"]) == [0, 2]
+    assert race["winner"] == crossed[0]["index"] and crossed[0]["finish_order"] == 1 and crossed[0]["rank"] == 1
+    assert crossed[1]["rank"] == 2 and cheat["rank"] is None
     # Snapshot + stream = the whole race: no step falls between the two, and
     # none is sent twice.
     in_snapshot = sum(len(ln["steps"]) for ln in events[0]["race"]["lanes"])
@@ -601,6 +606,27 @@ def test_a_race_cut_short_by_a_restart_says_so(tmp_path):
     assert race["lanes"][0]["elapsed_ms"] == 4200
     assert race["ranking"] == [1] and race["winner"] == 1 and race["lanes"][1]["rank"] == 1
     assert store.list_races(db)[0]["status"] == "interrupted"
+
+
+def test_a_race_saved_when_fewest_hops_won_names_who_got_there_first(tmp_path):
+    db = str(tmp_path / "b.db")
+    store.init(db)
+    store.save(db, {
+        "id": "old", "status": "finished", "created_at": "2026-09-21T00:00:00+00:00",
+        "finished_at": "2026-09-21T00:01:05+00:00",
+        "start": {"title": "A"}, "target": {"title": "B"}, "winner": 1, "ranking": [1, 0],
+        "lanes": [
+            {"index": 0, "label": "fast", "status": "finished", "hops": 4, "think_ms": 1700,
+             "elapsed_ms": 4200, "finish_order": 1, "rank": 2, "steps": []},
+            {"index": 1, "label": "slow", "status": "finished", "hops": 3, "think_ms": 64100,
+             "elapsed_ms": 64600, "finish_order": 2, "rank": 1, "steps": []},
+            {"index": 2, "label": "out", "status": "dnf", "hops": 2, "think_ms": 100,
+             "elapsed_ms": 600000, "finish_order": None, "rank": None, "steps": []},
+        ],
+    })
+    for race in (store.get(db, "old"), store.list_races(db)[0]):
+        assert race["winner"] == 0 and race["ranking"] == [0, 1]
+        assert [ln["rank"] for ln in race["lanes"]] == [1, 2, None]
 
 
 def test_an_unreadable_race_row_does_not_stop_the_server_starting(tmp_path):

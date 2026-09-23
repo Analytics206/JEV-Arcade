@@ -740,17 +740,17 @@ describe('the podium and the finale', () => {
     assert.deepEqual([11, 12, 13, 21, 22, 23, 101, 111].map(ordinal), ['11th', '12th', '13th', '21st', '22nd', '23rd', '101st', '111th'])
   })
 
-  it("names the winner by the race's own ranking, with its hops", () => {
+  it("names the winner by the race's own ranking: first to the target, and when", () => {
     const r = race({
       status: 'finished', winner: 1, ranking: [1, 0],
-      lanes: [lane(0, { status: 'finished', hops: 5, rank: 2 }), lane(1, { status: 'finished', hops: 3, rank: 1, label: 'jev' })],
+      lanes: [lane(0, { status: 'finished', hops: 3, rank: 2, elapsed_ms: 9800 }), lane(1, { status: 'finished', hops: 5, rank: 1, label: 'jev', elapsed_ms: 4200 })],
     })
-    assert.deepEqual(raceFinale(r), { win: true, lane: 1, headline: 'PLAYER 2 WINS!', sub: 'jev — 3 hops to Goal' })
+    assert.deepEqual(raceFinale(r), { win: true, lane: 1, headline: 'PLAYER 2 WINS!', sub: 'jev — first to Goal in 4.2s, 5 hops' })
   })
 
   it('says one hop, and a solo racer that finishes simply finishes', () => {
     const r = race({ status: 'finished', winner: 0, ranking: [0], lanes: [lane(0, { status: 'finished', hops: 1, rank: 1 })] })
-    assert.deepEqual(raceFinale(r), { win: true, lane: 0, headline: 'FINISHED!', sub: 'model-0 — 1 hop to Goal' })
+    assert.deepEqual(raceFinale(r), { win: true, lane: 0, headline: 'FINISHED!', sub: 'model-0 — reached Goal, 1 hop' })
   })
 
   it('is GAME OVER when nobody reached the target', () => {

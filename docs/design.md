@@ -96,8 +96,9 @@ substance is not. A foul costs a strike and the racer stays put, told why; `stri
 3) disqualify. Revisits are legal and counted. The finish is an exact canonical-title match after
 the first letter ("Red Dwarf" is not "Red dwarf").
 
-**Ranking**: fewest hops, then least thinking time, then who crossed first. Unfinished racers are
-unranked. At most `WIKIRACE_MAX_RACES` (2) races run at once.
+**Ranking**: whoever reached the target first, in the order they crossed the line; fewer hops only
+settles a dead heat. A race saved under the older rule (fewest hops first) is ranked by this one
+when it is read. Unfinished racers are unranked. At most `WIKIRACE_MAX_RACES` (2) races run at once.
 
 **Rate limits are waited out** in plain sight: an HTTP 429 puts the lane in `rate_limited` with a
 note saying when it tries next, after 5, 15, 30 and 60 s (jittered) or the provider's Retry-After

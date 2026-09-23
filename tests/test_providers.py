@@ -514,8 +514,8 @@ def test_openrouter_request_cost_and_headers():
     req = fake.requests[0]
     assert str(req.url) == "https://openrouter.ai/api/v1/chat/completions"
     assert req.headers["authorization"] == "Bearer sk-or-test"
-    assert req.headers["http-referer"] == "https://github.com/Analytics206/wikirace"
-    assert req.headers["x-title"] == "WikiRace"
+    assert req.headers["http-referer"] == "https://github.com/Analytics206/JEV-Arcade"
+    assert req.headers["x-title"] == "JEV-Arcade"
     body = fake.bodies[0]
     assert body["max_tokens"] == 9000 and "max_completion_tokens" not in body
     assert body["reasoning"] == {"effort": "xhigh"} and body["usage"] == {"include": True}

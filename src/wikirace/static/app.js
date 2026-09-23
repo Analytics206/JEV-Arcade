@@ -19,7 +19,7 @@ import { ApiError, api, useEndpoint, useRaceStream } from './api.js'
 import { navigate } from './games/route.js'
 import { SCENES } from './games/attract.js'
 import { RaceTrace } from './trace.js'
-import { PixelText, SiteHeader } from './brand.js'
+import { PixelText, SiteFooter, SiteHeader } from './brand.js'
 import { Counter, Finale, LANE_COLORS, burstFrom, useJustEnded } from './fx.js'
 import { recordPlay } from './profile.js'
 import { sfx } from './sfx.js'
@@ -862,7 +862,7 @@ function Results({ race, now }) {
       html`
         <p class=${winner ? `wr-verdict wr-b${winner.index + 1}` : 'wr-verdict wr-verdict--none'}>
           ${winner
-            ? html`<${CheckeredFlag} wave /><span><${LaneNum} i=${winner.index} /> <b>${winner.label}</b> wins — ${winner.hops} hop${winner.hops === 1 ? '' : 's'}, ${fmtDuration(winner.think_ms)} thinking</span>`
+            ? html`<${CheckeredFlag} wave /><span><${LaneNum} i=${winner.index} /> <b>${winner.label}</b> wins, first to the target in ${fmtDuration(winner.elapsed_ms)} — ${winner.hops} hop${winner.hops === 1 ? '' : 's'}, ${fmtDuration(winner.think_ms)} thinking</span>`
             : `Nobody reached ${race.target.title}.`}
         </p>
       `}
@@ -900,7 +900,7 @@ function Results({ race, now }) {
           </tbody>
         </table>
       </div>
-      <p class="wr-hint">Ranked by fewest hops, then least thinking time; a racer that did not finish is unranked.</p>
+      <p class="wr-hint">Ranked by who reached the target first, in the order they crossed the line; a racer that did not finish is unranked.</p>
     <//>
   `
 }
@@ -1308,6 +1308,7 @@ function WikiRace({ tab, raceId, go, reloadList }) {
     return html`
       <main class="wr__history scroll-y">
         <${History} onOpen=${(id) => go({ race: id })} />
+        <${SiteFooter} />
       </main>
     `
   }
@@ -1353,6 +1354,7 @@ function WikiRace({ tab, raceId, go, reloadList }) {
               />
             `
           : html`<${TrackAttract} />`}
+        <${SiteFooter} />
       </section>
     </main>
   `

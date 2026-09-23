@@ -46,7 +46,7 @@ DEFAULT_MAX_RACES = 2
 #: it, without saying so; see providers/ollama.py.
 DEFAULT_OLLAMA_NUM_CTX = 16384
 #: Wikimedia asks every client to name itself and a way to reach its operator.
-DEFAULT_USER_AGENT = f"wikirace/{__version__} (https://github.com/Analytics206/wikirace)"
+DEFAULT_USER_AGENT = f"wikirace/{__version__} (https://github.com/Analytics206/JEV-Arcade)"
 
 _KEY = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 _LOCAL_HOSTS = frozenset({"localhost", "127.0.0.1", "::1", "0.0.0.0"})
