@@ -489,7 +489,10 @@ input[type='range'] { accent-color: var(--acc, var(--cy)); }
 /* A page's scroll area is a column, so the footer sits at its bottom even when
  * the page is short. */
 .g-main, .wr__stage, .wr__history { display: flex; flex-direction: column; }
-.hub__in, .g-page { width: 100%; }
+/* Every child fills the column's width, as it would in a block: one centred by
+ * `margin: 0 auto` (the race track, the history, the floor) would otherwise
+ * shrink to its content, and a race track has almost none of its own. */
+:where(.g-main, .wr__stage, .wr__history) > :not(.ft) { width: 100%; }
 
 .ft {
   position: relative; flex-shrink: 0; margin-top: auto; padding: 20px 26px 24px;

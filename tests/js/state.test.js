@@ -54,8 +54,10 @@ import {
   timeTicks,
   tipLeft,
   topOptions,
+  traceFrac,
   traceLayout,
   traceOf,
+  traceTime,
   turnElapsed,
   wikiUrl,
   withValue,
@@ -625,8 +627,31 @@ describe('the race trace', () => {
     assert.deepEqual(hopTicks(4), [0, 1, 2, 3, 4])
     assert.deepEqual(hopTicks(12), [0, 2, 4, 6, 8, 10, 12])
     assert.deepEqual(hopTicks(13), [0, 2, 4, 6, 8, 10, 12, 13])
-    assert.deepEqual(timeTicks(25_000), [0, 5000, 10_000, 15_000, 20_000, 25_000])
-    assert.deepEqual(timeTicks(3 * 60_000), [0, 30_000, 60_000, 90_000, 120_000, 150_000, 180_000])
+    // On the compressed clock: round times, as many as fit 44 px apart.
+    assert.deepEqual(timeTicks(10_000, 532), [0, 1000, 2000, 5000, 10_000])
+    assert.deepEqual(timeTicks(10 * 60_000, 1000), [0, 2000, 5000, 10_000, 20_000, 30_000, 60_000, 120_000, 300_000, 600_000])
+    // A phone keeps a few.
+    assert.deepEqual(timeTicks(10 * 60_000, 240), [0, 10_000, 60_000, 300_000])
+  })
+})
+
+describe('the clock on the chart', () => {
+  it('gives a racer done in seconds real width beside one thinking for minutes', () => {
+    // Linear, 7 s of a 10-minute race is 1% of the width: 10 px of 1000.
+    assert.ok(traceFrac(7000, 10 * 60_000) > 0.15)
+    // Early seconds stay nearly even; the long wait is what gets squeezed.
+    const w = (a, b) => traceFrac(b, 600_000) - traceFrac(a, 600_000)
+    assert.ok(w(0, 5000) > w(300_000, 600_000))
+  })
+
+  it('runs from the left edge to the right, and a pointer reads back its time', () => {
+    for (const maxT of [10_000, 95_000, 600_000]) {
+      assert.equal(traceFrac(0, maxT), 0)
+      assert.equal(traceFrac(maxT, maxT), 1)
+      for (const t of [250, 4000, maxT / 3]) assert.ok(Math.abs(traceTime(traceFrac(t, maxT), maxT) - t) < 1e-6)
+    }
+    assert.equal(traceTime(-0.2, 60_000), 0)
+    assert.equal(traceTime(1.5, 60_000), 60_000)
   })
 })
 

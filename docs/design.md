@@ -249,7 +249,7 @@ credentials.
 {"start": "Abraham Lincoln", "target": "Amazon rainforest",
  "lanes": [{"key": "anthropic:claude-haiku-4-5", "thinking": null},
            {"key": "typesafe:jev-1.13.0", "thinking": null}],
- "rules": {"max_hops": 12, "strikes": 3, "time_limit_s": 600, "max_links": 0}}
+ "rules": {"max_hops": 12, "strikes": 3, "time_limit_s": 60, "max_links": 0}}
 ```
 
 1 to 4 lanes. `thinking` is null (the configured level), or one of the levels. Rules: `max_hops`

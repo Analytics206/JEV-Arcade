@@ -426,7 +426,7 @@ export const MAX_LANES = 4
  * @typedef {{start: string, target: string, lanes: LaneDraft[], rules: Rules}} Setup
  */
 
-export const DEFAULT_RULES = { max_hops: 12, strikes: 3, time_limit_s: 600, max_links: 0 }
+export const DEFAULT_RULES = { max_hops: 12, strikes: 3, time_limit_s: 60, max_links: 0 }
 
 /** Each rule's range, as POST /api/races checks it. */
 export const RULE_RANGE = { max_hops: [1, 40], strikes: [1, 10], time_limit_s: [30, 3600], max_links: [0, 10_000] }
@@ -781,13 +781,39 @@ export function hopTicks(max) {
   return out
 }
 
-/** Round-number x ticks in milliseconds for a clock that has run *ms*. */
-export function timeTicks(ms) {
-  const s = Math.max(1, ms / 1000)
-  const steps = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800]
-  const step = steps.find((x) => s / x <= 6) ?? 3600
-  const out = []
-  for (let v = 0; v <= s + 1e-9; v += step) out.push(v * 1000)
+/* The clock is drawn compressed. A race is often a fast racer done in seconds
+ * against a slow one thinking for minutes, and on a linear clock the fast one's
+ * whole race is a sliver at the left edge. So x grows as log(1 + t / TAU):
+ * nearly even over the first few seconds, where hops come quickly, then ever
+ * more squeezed, so a long wait costs little width. The ticks say so. */
+export const TRACE_TAU = 5000
+const warp = (t) => Math.log1p(Math.max(0, t) / TRACE_TAU)
+
+/** The fraction of the plot's width at race time *t*, on a clock that has run *maxT*. */
+export function traceFrac(t, maxT) {
+  return Math.min(1, warp(t) / warp(maxT))
+}
+
+/** The race time at fraction *u* of the plot's width: `traceFrac` undone. */
+export function traceTime(u, maxT) {
+  if (u <= 0) return 0
+  if (u >= 1) return maxT
+  return TRACE_TAU * Math.expm1(u * warp(maxT))
+}
+
+const TICK_S = [1, 2, 5, 10, 20, 30, 60, 120, 300, 600, 1200, 1800, 3600]
+const TICK_GAP = 44
+
+/** Round-number x ticks in milliseconds for a clock that has run *ms*, drawn
+ *  *plotW* px wide: as many as fit at least TICK_GAP px apart on the
+ *  compressed clock. */
+export function timeTicks(ms, plotW) {
+  const out = [0]
+  for (const s of TICK_S) {
+    const t = s * 1000
+    if (t > ms) break
+    if ((traceFrac(t, ms) - traceFrac(out[out.length - 1], ms)) * plotW >= TICK_GAP) out.push(t)
+  }
   return out
 }
 
@@ -822,7 +848,7 @@ export function traceLayout(race, now, width) {
   const yTop = Math.max(maxHops, Math.min(race.rules.max_hops, Math.max(maxHops + 1, 3)))
   const plotW = Math.max(40, width - M.left - M.right)
   const plotH = TRACE_H - M.top - M.bottom
-  const x = (t) => M.left + (t / maxT) * plotW
+  const x = (t) => M.left + traceFrac(t, maxT) * plotW
   const y = (h) => M.top + plotH - (h / yTop) * plotH
   const nudge = (i) => (i - (n - 1) / 2) * 3
 
@@ -853,13 +879,13 @@ export function traceLayout(race, now, width) {
   return {
     traces, width, H: TRACE_H, M, plotW, plotH, maxT, yTop, x, y, lines, horses, fouls,
     yTicks: hopTicks(yTop).map((h) => ({ h, y: y(h) })),
-    xTicks: timeTicks(maxT).map((t) => ({ t, x: x(t) })),
+    xTicks: timeTicks(maxT, plotW).map((t) => ({ t, x: x(t) })),
   }
 }
 
 /** The race time under a pointer at px *px* across the chart, clamped to it. */
 export function timeAt(layout, px) {
-  return Math.min(layout.maxT, Math.max(0, ((px - layout.M.left) / layout.plotW) * layout.maxT))
+  return traceTime((px - layout.M.left) / layout.plotW, layout.maxT)
 }
 
 /** Where the crosshair's tooltip sits: just right of the pointer, kept inside

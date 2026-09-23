@@ -89,7 +89,7 @@ import {
 
 const html = htm.bind(h)
 
-const TIME_LIMITS = [120, 300, 600, 1200, 1800, 3600]
+const TIME_LIMITS = [60, 120, 300, 600, 1200, 1800, 3600]
 const LINK_CAPS = [0, 1000, 500, 250, 100]
 const POOL_HINT = {
   classic: 'Well-known subjects — far apart, still winnable.',
@@ -1129,7 +1129,11 @@ function History({ onOpen }) {
 /* ── The view ──────────────────────────────────────────────────────────────── */
 
 function WikiRace({ tab, raceId, go, reloadList }) {
-  const models = useEndpoint('/models', 0)
+  // The server answers from what the providers last said; the reload button
+  // asks them again (a newly started Ollama, say) and waits for the answer.
+  const [freshModels, setFreshModels] = useState(0)
+  const models = useEndpoint(freshModels ? `/models?fresh=true&n=${freshModels}` : '/models', 0)
+  const reloadModels = useCallback(() => setFreshModels((n) => n + 1), [])
   const stream = useRaceStream(tab === 'race' ? raceId : null)
 
   // ── setup state: subjects are per visit, the line-up is remembered ──
@@ -1156,7 +1160,13 @@ function WikiRace({ tab, raceId, go, reloadList }) {
 
   const race = stream.race
   useEffect(() => {
-    document.title = race && tab === 'race' ? `${race.start.title} ⟶ ${race.target.title} · WikiRace · JEV-Arcade` : 'WikiRace · JEV-Arcade'
+    // Setup and history as the server titles them for search engines (site.py).
+    document.title =
+      race && tab === 'race'
+        ? `${race.start.title} ⟶ ${race.target.title} · WikiRace · JEV-Arcade`
+        : tab === 'history'
+          ? 'WikiRace Hall of Fame · JEV-Arcade'
+          : 'WikiRace · AI models race across Wikipedia · JEV-Arcade'
   }, [race?.start?.title, race?.target?.title, tab])
 
   const textOf = (w) => (w === 'start' ? start : target)
@@ -1318,7 +1328,7 @@ function WikiRace({ tab, raceId, go, reloadList }) {
         <${SetupPanel}
           models=${info}
           modelsError=${models.error}
-          reloadModels=${models.reload}
+          reloadModels=${reloadModels}
           start=${start}
           target=${target}
           startState=${startState}

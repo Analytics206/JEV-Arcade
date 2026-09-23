@@ -371,7 +371,12 @@ export function PlayerPicker({ info, value, onChange, min = 1, max = MAX_LANES, 
           </div>
         `,
       )}
-      ${value.length < max && html`<button type="button" class="g-join" onClick=${add}><span aria-hidden="true">+</span> Player ${value.length + 1}: press to join</button>`}
+      ${value.length < max &&
+      (info
+        ? html`<button type="button" class="g-join" onClick=${add}><span aria-hidden="true">+</span> Player ${value.length + 1}: press to join</button>`
+        : // Not before the models are in: a seat taken now would stop the game
+          // seating its default players when they arrive.
+          html`<button type="button" class="g-join" disabled>Loading models…</button>`)}
     </div>
   `
 }

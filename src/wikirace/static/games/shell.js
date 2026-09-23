@@ -341,7 +341,8 @@ export function Hub() {
   const plays = usePlays()
   const tilt = useTilt()
   useEffect(() => {
-    document.title = 'JEV-Arcade'
+    // As the server titles this view for search engines (site.py).
+    document.title = 'JEV-Arcade · AI games: Jev vs. text models, live'
   }, [])
   const titleOf = useMemo(() => (c) => c.title ?? games.byId.get(c.id)?.title ?? cardOf(c.id)?.title ?? c.id, [games.data])
   const ready = (c) => c.id === 'wikirace' || games.byId.get(c.id)?.ready
@@ -451,8 +452,8 @@ export function GameView({ route }) {
     }
   }, [game?.id, game?.ready])
   useEffect(() => {
-    if (game) document.title = `${game.title} · JEV-Arcade`
-  }, [game?.title])
+    if (game) document.title = game.use_case ? `${game.title} · ${game.use_case} · JEV-Arcade` : `${game.title} · JEV-Arcade`
+  }, [game?.title, game?.use_case])
 
   let body
   if (games.error) body = html`<p class="g-t-err g-pad">${games.error.message}</p>`

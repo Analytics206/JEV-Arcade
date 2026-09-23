@@ -1,9 +1,11 @@
 # Secrets: your keys live here and never in git
 .env
 
-# Your own deployment beside compose.yaml (a tunnel, a proxy)
+# Your own deployment beside compose.yaml (a tunnel, a proxy), and its own
+# files at the site's root (WIKIRACE_SITE_ROOT: a search console's file, say)
 compose.*.yaml
 compose.*.yml
+site-root/
 
 # Race history
 data/

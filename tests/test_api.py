@@ -9,14 +9,16 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import threading
 import time
 
 import pytest
 from fastapi.testclient import TestClient
 
+from wikirace import api as api_module
 from wikirace import store
-from wikirace.app import begin_closing, create_app
+from wikirace.app import begin_closing, create_app, fingerprint
 from wikirace.config import load_settings
 from wikirace.providers.base import (
     Completion,
@@ -260,6 +262,35 @@ def test_health_and_the_page(race_env):
     assert client.get("/api/health").json()["ok"] is True
     page = client.get("/")
     assert page.status_code == 200 and "JEV-Arcade" in page.text
+    # A rebuild must never hide behind a cached copy (a browser's, Cloudflare's).
+    # The page is never kept, and it loads its files from an address that
+    # changes whenever they do, so those may be kept for good.
+    assert page.headers["cache-control"] == "no-cache"
+    m = re.search(r'src="\./v/([0-9a-f]{12})/main\.js"', page.text)
+    assert m, page.text
+    v = m.group(1)
+    assert f'href="./v/{v}/styles.css"' in page.text and f'"preact": "./v/{v}/vendor/preact.module.js"' in page.text
+    for path in ("main.js", "state.js", "games/games.css", "games/registry.js"):
+        r = client.get(f"/v/{v}/{path}")
+        assert r.status_code == 200 and r.headers["cache-control"] == "public, max-age=31536000, immutable"
+    # A page left open across a rebuild still loads, but that copy is not kept.
+    stale = client.get("/v/0123456789ab/state.js")
+    assert stale.status_code == 200 and stale.headers["cache-control"] == "no-cache"
+    # The plain addresses still answer, checked on every load.
+    assert client.get("/styles.css").headers["cache-control"] == "no-cache"
+    etag = client.get("/state.js").headers["etag"]
+    assert client.get("/state.js", headers={"if-none-match": etag}).status_code == 304
+    # Nothing outside the page's folder, by any version.
+    assert client.get(f"/v/{v}/../app.py").status_code == 404
+    assert client.get(f"/v/{v}/%2e%2e/app.py").status_code == 404
+
+
+def test_the_version_changes_when_a_file_does(tmp_path):
+    (tmp_path / "a.js").write_text("one")
+    before = fingerprint(tmp_path)
+    assert fingerprint(tmp_path) == before
+    (tmp_path / "a.js").write_text("two!")
+    assert fingerprint(tmp_path) != before
 
 
 def test_a_host_name_it_was_not_given_is_refused(race_env):
@@ -358,6 +389,37 @@ def test_an_ollama_that_does_not_answer_is_listed_with_why(race_env):
     ollama = next(p for p in body["providers"] if p["id"] == "ollama")
     assert ollama["configured"] and not ollama["available"] and "connection refused" in ollama["reason"]
     assert all(not m["available"] for m in body["models"] if m["provider"] == "ollama")
+
+
+def test_the_models_list_answers_from_what_the_providers_last_said(race_env, monkeypatch):
+    # Asking can take seconds (an Ollama that does not answer is waited for):
+    # the server asks as it starts, and a page is answered from that.
+    client, app = race_env["client"], race_env["app"]
+    _until(lambda: getattr(app.state, "discovered", None) is not None)
+    calls = []
+
+    class Counting(FakeOllama):
+        async def discover(self):
+            calls.append(time.monotonic())
+            return await super().discover()
+
+    race_env["providers"]["ollama"] = Counting(race_env["settings"].providers["ollama"], [])
+    assert client.get("/api/models").status_code == 200  # a new provider is asked, and waited for
+    client.get("/api/models")
+    assert len(calls) == 1  # …and its answer reused
+    body = client.get("/api/models", params={"fresh": "true"}).json()  # the reload button asks again
+    assert len(calls) == 2 and any(m["key"] == "ollama:qwen3.5:4b" for m in body["models"])
+    # An older answer is still given at once, while the providers are asked behind it.
+    monkeypatch.setattr(api_module, "_DISCOVER_FRESH_S", 0.0)
+    assert client.get("/api/models").status_code == 200
+    _until(lambda: len(calls) == 3)
+
+
+def _until(ok, timeout: float = 5.0) -> None:
+    end = time.monotonic() + timeout
+    while not ok():
+        assert time.monotonic() < end, "timed out"
+        time.sleep(0.01)
 
 
 def test_settings_that_were_ignored_are_shown(race_env, tmp_path):

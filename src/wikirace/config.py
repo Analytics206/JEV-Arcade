@@ -182,6 +182,9 @@ class Settings:
     #: WIKIRACE_CANONICAL_HOST: the one public address (`jev-arcade.com`). Its
     #: twin (`www.` added or taken away) and plain http redirect to it.
     canonical_host: str | None = None
+    #: WIKIRACE_SITE_ROOT: a folder of this deployment's own files, served at
+    #: the site's root after the page's own (a search console's file, say).
+    site_root: str | None = None
     #: The .env file that was read, or None.
     env_file: str | None = None
     providers: Mapping[str, ProviderConfig] = field(default_factory=dict)
@@ -374,12 +377,12 @@ def load_settings(
         warnings.append(f"no env file at {env_file}; reading the environment only")
 
     def get(name: str, default: str = "") -> tuple[str, str | None]:
-        value = env.get(name, "")
-        if value.strip():
-            return value.strip(), "environment"
-        value = file_vals.get(name, "")
-        if value.strip():
-            return value.strip(), ".env"
+        for value, source in ((env.get(name, ""), "environment"), (file_vals.get(name, ""), ".env")):
+            value = value.strip()
+            # `KEY=# sk-...` is a value that starts with #, to Compose as to this
+            # reader; whoever wrote it meant the line switched off, so it is.
+            if value and not value.startswith("#"):
+                return value, source
         return default, None
 
     def blanked(name: str) -> bool:
@@ -424,6 +427,7 @@ def load_settings(
         user_agent=get("WIKIRACE_USER_AGENT", DEFAULT_USER_AGENT)[0],
         allowed_hosts=_hosts(get("WIKIRACE_ALLOWED_HOSTS")[0], canonical),
         canonical_host=canonical,
+        site_root=get("WIKIRACE_SITE_ROOT")[0] or None,
         in_docker=in_docker,
         env_file=str(path) if path else None,
         providers=providers,

@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 from collections.abc import AsyncGenerator
 from typing import Annotated, Any
 
@@ -44,6 +45,8 @@ router = APIRouter(prefix="/api")
 POOLS = ("classic", "trending", "wild")
 #: How long the models list waits for an Ollama to say what it has.
 _DISCOVER_TIMEOUT_S = 5.0
+#: How long what the providers said is reused as it is (see `discovered`).
+_DISCOVER_FRESH_S = 30.0
 
 
 def _settings(request: Request) -> Settings:
@@ -86,6 +89,60 @@ async def _discover(cfg: ProviderConfig, provider: Any) -> tuple[list[ModelInfo]
         return None, f"{cfg.label} did not answer within {_DISCOVER_TIMEOUT_S:.0f} s"
 
 
+Found = dict[str, tuple[list[ModelInfo] | None, str | None]]
+
+
+def _asking(app: Any) -> tuple[tuple[Any, ...], list[ProviderConfig]]:
+    """The providers to ask, and a key for their answer: a new provider or
+    new settings (the tests swap both) is a new question."""
+    settings, providers = app.state.settings, app.state.providers
+    asked = [c for c in settings.providers.values() if c.configured and c.id in providers]
+    return (id(settings), *((c.id, id(providers[c.id])) for c in asked)), asked
+
+
+def ask_providers(app: Any) -> asyncio.Task[Found]:
+    """Ask every configured provider what it has, or join the ask already
+    under way. The answer is kept on the app for `discovered`."""
+    key, asked = _asking(app)
+    flight = getattr(app.state, "discovering", None)
+    if flight is not None and flight[0] == key and not flight[1].done():
+        return flight[1]
+    providers = app.state.providers
+
+    async def ask() -> Found:
+        answers = await asyncio.gather(*(_discover(c, providers[c.id]) for c in asked))
+        found = dict(zip([c.id for c in asked], answers, strict=True))
+        app.state.discovered = (key, time.monotonic(), found)
+        return found
+
+    task = asyncio.create_task(ask())
+    # Asked in the background, its failure is the next page's to report.
+    task.add_done_callback(lambda t: t.cancelled() or t.exception())
+    app.state.discovering = (key, task)
+    return task
+
+
+async def discovered(app: Any, *, fresh: bool = False) -> Found:
+    """What each configured provider says it has, by id.
+
+    Asking can take seconds (an Ollama that does not answer is waited for),
+    so the answer is kept. Within _DISCOVER_FRESH_S it is reused as it is;
+    after that the page is still answered from it at once while the
+    providers are asked again behind it, for the next page. Only the first
+    ask waits, and `fresh`: the reload button, after starting an Ollama.
+    The server asks as it starts (app.py), so the first page need not wait."""
+    key, _ = _asking(app)
+    kept = getattr(app.state, "discovered", None)
+    if kept is not None and kept[0] != key:
+        kept = None
+    if kept is not None and not fresh and time.monotonic() - kept[1] < _DISCOVER_FRESH_S:
+        return kept[2]
+    task = ask_providers(app)
+    if kept is not None and not fresh:
+        return kept[2]
+    return await asyncio.shield(task)
+
+
 def _model(
     settings: Settings, cfg: ProviderConfig, model_id: str, *, available: bool, reason: str | None,
     info: ModelInfo | None = None,
@@ -104,22 +161,17 @@ def _model(
 
 
 @router.get("/models")
-async def models(request: Request) -> dict[str, Any]:
+async def models(request: Request, fresh: bool = False) -> dict[str, Any]:
     """Every provider and model a lane can hold, each saying whether it can
-    race right now.
+    race right now. `fresh` asks the providers again and waits for them.
 
     An unavailable one is still listed, with the reason (a missing key, an
     Ollama that did not answer), because a model that silently vanished from
     the picker reads as "not supported" when the truth is something to fix.
     """
-    settings, providers = _settings(request), _providers(request)
+    settings = _settings(request)
     configs = list(settings.providers.values())
-    asked = [c for c in configs if c.configured]
-    found = dict(zip(
-        [c.id for c in asked],
-        await asyncio.gather(*(_discover(c, providers[c.id]) for c in asked)),
-        strict=True,
-    ))
+    found = await discovered(request.app, fresh=fresh)
 
     out_providers: list[dict[str, Any]] = []
     out_models: list[dict[str, Any]] = []
@@ -211,7 +263,7 @@ class RulesIn(BaseModel):
     max_hops: int = Field(default=12, ge=1, le=40)
     #: Fouls allowed before disqualification: the third strike is out.
     strikes: int = Field(default=3, ge=1, le=10)
-    time_limit_s: int = Field(default=600, ge=30, le=3600)
+    time_limit_s: int = Field(default=60, ge=30, le=3600)
     #: 0 shows every link; otherwise the first N in reading order.
     max_links: int = Field(default=0, ge=0, le=10_000)
 

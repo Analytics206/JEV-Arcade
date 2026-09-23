@@ -119,7 +119,9 @@ published on `127.0.0.1` only; see [Security](#security).
 
 Behind a proxy or tunnel of your own (a Cloudflare Tunnel to `http://wikirace:8000`, say), set
 `WIKIRACE_CANONICAL_HOST=example.com`. The page then answers to `example.com` and
-`www.example.com`, and sends `www` and plain http to `https://example.com`. A second compose file
+`www.example.com`, and sends `www` and plain http to `https://example.com`. Every view carries its
+own title, description, canonical address and structured data at that address, and
+`https://example.com/sitemap.xml` (named in `/robots.txt`) lists them, ready for Google Search Console. A second compose file
 beside `compose.yaml` (`compose.*.yaml` is ignored by git) keeps your deployment out of the
 repository. There is no login, so every visitor plays on your keys: put in `.env` only the
 providers you mean to pay for.
@@ -161,6 +163,7 @@ OPENAI_THINKING=low
 | `WIKIRACE_MAX_RACES` | `2` | races that may run at once |
 | `WIKIRACE_ALLOWED_HOSTS` | `localhost`, `127.0.0.1` | other names or addresses the page is opened under (`wikirace.lan, 192.168.1.20`), or `*` |
 | `WIKIRACE_CANONICAL_HOST` | none | the public address (`example.com`); `www.` and plain http redirect to it, see [On your own domain](#on-your-own-domain) |
+| `WIKIRACE_SITE_ROOT` | none | a folder of your site's own files served at its root, such as a search console's verification file (`site-root/` is ignored by git) |
 | `WIKIRACE_USER_AGENT` | `wikirace/<version> (repo URL)` | what Wikipedia is told; put your own contact here |
 
 A value WikiRace cannot use (a misspelt level, say) is ignored and shown as a warning in the race
@@ -202,7 +205,7 @@ the move says how many.
   URLs are forgiven. Substance is not.
 - Naming the target when the page links it under another name (one of its redirects) is the winning
   move, not a foul.
-- Limits: hops (default 12), time (default 10 minutes) and an optional link cap (show only the
+- Limits: hops (default 12), time (default 1 minute) and an optional link cap (show only the
   first N links in reading order).
 - **Ranking**: whoever reaches the target first wins, and the rest place in the order they crossed
   the line; fewer hops only settles a dead heat. Rate limits are waited out in plain sight: the

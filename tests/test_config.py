@@ -174,6 +174,23 @@ def test_the_page_answers_to_localhost_and_the_names_it_is_given():
     assert _load({"WIKIRACE_ALLOWED_HOSTS": "*"}).allowed_hosts == ("*",)
 
 
+def test_a_value_that_starts_with_a_hash_is_a_line_switched_off(tmp_path):
+    # `KEY=# sk-...` is not a comment: Compose hands the container `# sk-...`.
+    # Whoever wrote it meant the provider off, so it is off and greyed out on
+    # the page, without a word about it there.
+    f = tmp_path / ".env"
+    f.write_text("ANTHROPIC_API_KEY=# sk-ant-old\nOPENAI_API_KEY= #sk-old\nOLLAMA_BASE_URL=# http://localhost:11434\n")
+    for s in (load_settings({}, env_file=str(f)), _load({"ANTHROPIC_API_KEY": "# sk-ant-old"})):
+        anthropic = s.providers["anthropic"]
+        assert anthropic.api_key == "" and not anthropic.configured
+        assert anthropic.problem == "set ANTHROPIC_API_KEY in .env"
+        assert s.warnings == ()
+    s = load_settings({}, env_file=str(f))
+    assert not s.providers["openai"].configured and not s.providers["ollama"].configured
+    # A real key in the environment still wins over a switched-off line in the file.
+    assert load_settings({"ANTHROPIC_API_KEY": "sk-ant-live"}, env_file=str(f)).providers["anthropic"].configured
+
+
 def test_the_canonical_host_is_a_bare_name_answered_to_with_its_twin():
     s = _load({"WIKIRACE_CANONICAL_HOST": "https://JEV-Arcade.com/"})
     assert s.canonical_host == "jev-arcade.com"
