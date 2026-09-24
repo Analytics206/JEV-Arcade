@@ -25,6 +25,7 @@ src/wikirace/
   app.py           FastAPI factory: lifespan (DB, providers), /api router, static page
   api.py           /api/*: models, resolve, random, races, the race's event stream
   store.py         race history in SQLite: one row per race, stored whole as JSON
+  site.py          what search engines read: each view's <head>, sitemap.xml, robots.txt
   providers/
     base.py        TextProvider, Completion, ProviderError, LoopClient, retry_after
     anthropic.py   Messages API through the official SDK
@@ -63,8 +64,8 @@ only through mutators that each emit an event, one pure reducer on the page). Se
 
 A race is a background task owned by the server process. It keeps running when the page that
 started it closes, and a page opened later attaches to it. The race state is plain JSON: the
-snapshot a page attaches with is the stored replay is what the page renders. It changes only
-through three mutators, each of which emits the matching event:
+snapshot a page attaches with, the replay that is stored and what the page renders are one and
+the same object. It changes only through three mutators, each of which emits the matching event:
 
 ```
 {"type": "snapshot", "race": {...}}          first, on every connection
@@ -107,11 +108,13 @@ retry. Anything else stops that racer only, in the provider's own words.
 
 **Persistence**: one row per race, `summary` (no steps) for the list and `snapshot` (whole) for
 replay, written by one writer per race off the event loop. A race left `running` by a restart is
-stamped `interrupted` at startup.
+stamped `interrupted` at startup. The Arcade's runs keep their own table, `game_runs`, in the same
+file (games/store.py), written when a run starts and when it ends.
 
 **Stopping the server** (Ctrl+C, `docker stop`) ends every event stream first, since a stream
 stays open for as long as its race runs and the server would otherwise wait on it; a page watching
-reconnects when the server is back. Running races are then stopped and recorded as `stopped`.
+reconnects when the server is back. Running races and game runs are then stopped and recorded as
+`stopped`.
 
 ## Jev, the judgment racer
 
@@ -178,7 +181,10 @@ One `.env` file (copy `env.example`), read by `wikirace` and passed to the conta
 | `WIKIRACE_MAX_RACES` | `2` | Races that may run at once |
 | `WIKIRACE_ALLOWED_HOSTS` | `localhost`, `127.0.0.1` | Host names the server answers to (a DNS-rebinding guard), or `*` |
 | `WIKIRACE_USER_AGENT` | `wikirace/<version> (repo URL)` | What Wikipedia is told; put your own contact here |
-| `WIKIRACE_ENV_FILE` | `./.env` | Which env file `wikirace` reads |
+| `WIKIRACE_ENV_FILE` | `./.env` | Which env file `wikirace` reads (also `--env-file`) |
+| `WIKIRACE_CANONICAL_HOST` | unset | The one public address (`jev-arcade.com`) behind a proxy or tunnel: it and its `www.` twin are answered to, and the twin and plain http (as `X-Forwarded-Proto` reports it) redirect to it over https |
+| `WIKIRACE_SITE_ROOT` | unset | A folder of the deployment's own files, served at the site's root after the page's own (a search console's verification file, say) |
+| `WIKIRACE_IN_DOCKER` | unset; the image sets `1` | Inside the image, `localhost` in `OLLAMA_BASE_URL` means the Docker host |
 | `ANTHROPIC_API_KEY` · `_MODELS` · `_THINKING` · `_BASE_URL` | models: `claude-haiku-4-5, claude-sonnet-5, claude-opus-5` | Anthropic |
 | `OPENAI_API_KEY` · `_MODELS` · `_THINKING` · `_BASE_URL` | models: `gpt-4.1-mini, o4-mini` | OpenAI (any Chat Completions server works via the URL) |
 | `OPENROUTER_API_KEY` · `_MODELS` · `_THINKING` · `_BASE_URL` | models: `deepseek/deepseek-v4-flash, minimax/minimax-m3` | OpenRouter |
@@ -202,7 +208,7 @@ credentials.
 | Method | Path | |
 |---|---|---|
 | GET | `/api/health` | `{"ok": true, "version": "0.1.0"}` |
-| GET | `/api/models` | who can race (below) |
+| GET | `/api/models?fresh=` | who can race (below); `fresh=true` asks the providers again and waits for them |
 | GET | `/api/resolve?q=` | a typed subject as the article a race would use: `{input, title, description, note, candidates: [{title, description}]}` |
 | GET | `/api/random?pool=&count=&exclude=` | `pool` is `classic`, `trending` or `wild`; `count` 1 or 2; `exclude` repeatable: `{pool, subjects: [{title, description}]}` |
 | GET | `/api/races?limit=` | history, newest first: `{races: [race without steps], running: [id]}` |
@@ -278,13 +284,68 @@ step: {turn, from, links, claimed, reason, verdict: ok|off_page|teleport|no_pick
 text step, any of: `stop_reason` (when not a normal stop), `thinking_sent`, `links_shown` (the
 links that fit Ollama's window, when fewer than the page's).
 
+### The Arcade's games
+
+The same shapes, under `/api/games` (games/api.py); [arcade.md](arcade.md) says what a game is.
+Players are named as racers are, `provider:model_id`.
+
+| Method | Path | |
+|---|---|---|
+| GET | `/api/games` | every game: `{games: [{id, title, tagline, use_case, lanes: {min, max}, kinds, needs_jev, ready, params}]}`, `params` being the JSON Schema of what the setup may choose |
+| POST | `/api/games/{game}/runs` | start a run: `{"lanes": [{key, thinking}], "params": {...}}`; 201 with its snapshot. 400 for the wrong number of players, a player the game does not take, or a round that cannot be set up as asked; 422 naming a bad param; 409 when the game is not built yet or four runs are already live; 502 when Wikipedia could not supply the round |
+| GET | `/api/games/runs?game=&limit=` | recent runs, newest first, without their lists: `{runs: [...], running: [id]}` |
+| GET | `/api/games/runs/{id}` | one run, whole |
+| GET | `/api/games/runs/{id}/events` | SSE: snapshot, events, `end` |
+| POST | `/api/games/runs/{id}/stop` | 202 `{id, stopping: true}`; 409 when not running |
+| DELETE | `/api/games/runs/{id}` | `{deleted: id}`; 409 while running, 404 unknown |
+
+A run:
+
+```
+{id, game, status: running|finished|stopped|error|interrupted, created_at, finished_at, elapsed_ms,
+ params, note, lanes: [lane], ...the game's own fields and lists}
+
+lane: {index, key, label, provider, model_id, kind, thinking,
+       status: waiting|playing|rate_limited|done|error|stopped, note,
+       tokens_in, tokens_out, cost, cost_estimated, cost_unknown, think_ms, calls, fouls,
+       score, ...the game's own fields and lists}
+```
+
+Its events (games/runs.py), applied by `static/games/runstate.js`:
+
+```
+{"type": "snapshot", "run": {...}}                        first, on every connection
+{"type": "patch", "patch": {...}}                         top-level fields changed
+{"type": "lane", "lane": i, "patch": {...}}               fields of lane i changed
+{"type": "push", "key": k, "item": x}                     x appended to the list at k
+{"type": "put", "key": k, "index": n, "item": x}          item n of the list at k is now x
+{"type": "lane_push", "lane": i, "key": k, "item": x}     x appended to lane i's list at k
+{"type": "end"}                                           the run is over; the stream closes
+```
+
+At most four runs are live at once, across every game (`runs.MAX_LIVE`); a finished run stays in
+memory for ten minutes, so a page that attaches late still reads it live.
+
+### Outside `/api`
+
+| Method | Path | |
+|---|---|---|
+| GET | `/` (and `/index.html`) | the page, its `<head>` written for the view the query string names (site.py): title, description, canonical address, sharing cards, JSON-LD. Never cached |
+| GET | `/v/<fingerprint>/…` | the page's files at an address that changes whenever one of them does, so a copy may be kept for good; the fingerprint is taken on every page load |
+| GET | `/styles.css`, `/main.js`, … | the same files at their plain addresses, checked on every load |
+| GET | `/sitemap.xml` | every indexed view at the site's address: the floor, WikiRace, the Hall of Fame, each game. A single race or run is `noindex` |
+| GET | `/robots.txt` | everything may be crawled but `/api/docs` and `/api/openapi.json`; names the sitemap |
+| GET | `/api/docs` | the API, described by itself (Swagger UI over `/api/openapi.json`) |
+
 ## The page
 
 No build step. `static/index.html` loads `main.js` as an ES module, and an import map points
 `preact`, `preact/hooks` and `htm` at `static/vendor/`. The address picks the view
 (`games/route.js`): the bare address is the Arcade's floor, `?tab=race`, `?race=<id>` and
 `?tab=history` are WikiRace, `?game=<id>` is one of the Arcade's games. Components are written with
-`htm`'s tagged templates. The pure half (`state.js`: the reducer, formatters, the race-trace
+`htm`'s tagged templates. The server rewrites `index.html` on every load: its `<head>` for the view
+(site.py), and its file references pointed at `/v/<fingerprint>/`, so a rebuild is seen on the next
+load whatever a cache in front holds. The pure half (`state.js`: the reducer, formatters, the race-trace
 geometry, the setup checks) has no DOM and is tested with `node --test tests/js`.
 
 The look is a neon arcade at night, dark only. Fonts are the system's own; the pixel lettering
@@ -296,14 +357,18 @@ visitor's own sound setting and play counts is kept in the browser.
 ## Testing
 
 `uv run pytest` runs everything without a network: Wikipedia is a fake board, providers get an
-`httpx.MockTransport`, and races run end to end against both. `uv run ruff check .` lints.
-`node --test tests/js` tests the page's pure state.
+`httpx.MockTransport`, and races run end to end against both; `tests/games/` runs every game over
+a fake Jev, fake text models and a fake Wikipedia (the `arcade` fixture), and `tests/test_site.py`
+covers what search engines are sent. `uv run ruff check .` lints. `node --test tests/js` tests the
+page's pure state and that every page module parses. CI (`.github/workflows/ci.yml`) runs all of
+it on Python 3.11 to 3.14 and smoke-tests the Docker image.
 
 ## Adding another game
 
-WikiRace is the first game; the rest of the stack does not know it is the only one. The providers
-(`providers/`) and the settings (`config.py`) know nothing about Wikipedia, and the race engine's
-pattern (a background task, JSON state changed only through mutators that emit events, one pure
-reducer on the page, one row per game in SQLite) fits any turn-based contest between models. A new
-game is a package beside `race/` with its own router under `/api/<game>`, and a tab in the page's
-header.
+The Arcade is the answer: [arcade.md](arcade.md) is the contract for a game (one module under
+`games/`, one under `static/games/`, a test, a demo handler), with Switchboard as the reference.
+The providers (`providers/`) and the settings (`config.py`) know nothing about Wikipedia or any
+game, and the race engine's pattern (a background task, JSON state changed only through mutators
+that emit events, one pure reducer on the page, one row per contest in SQLite) is what
+`games/runs.py` generalises. WikiRace keeps its own engine (`race/`) and router because it came
+first and its page is its own.

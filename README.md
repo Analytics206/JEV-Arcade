@@ -1,5 +1,11 @@
 # 🕹️ JEV-Arcade
 
+[![CI](https://github.com/Analytics206/JEV-Arcade/actions/workflows/ci.yml/badge.svg)](https://github.com/Analytics206/JEV-Arcade/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+**Play it live at [jev-arcade.com](https://jev-arcade.com)**, or run your own with your own keys:
+see [Quick start](#quick-start).
+
 **Fifteen arcade cabinets where language models play each other live: WikiRace, and fourteen
 more games that each show one thing a judgment model does well.**
 
@@ -96,7 +102,8 @@ cp env.example .env        # then add a key, or point OLLAMA_BASE_URL at your Ol
 uv run wikirace
 ```
 
-Open <http://localhost:8000>. With plain pip instead:
+Open <http://localhost:8008> (`WIKIRACE_PORT` in `.env`; 8000 when it is unset). With plain pip
+instead:
 
 ```bash
 python -m venv .venv
@@ -105,6 +112,13 @@ pip install -e .
 wikirace
 ```
 
+### The command
+
+`wikirace` (also `python -m wikirace`) prints where it is listening, which settings file it read
+and which providers can play, then serves. `--host`, `--port` and `--env-file` override
+`WIKIRACE_HOST`, `WIKIRACE_PORT` and `WIKIRACE_ENV_FILE`; `--version` says which version this is.
+The API describes itself at `/api/docs`.
+
 ### With Docker
 
 ```bash
@@ -112,8 +126,9 @@ cp env.example .env
 docker compose up -d
 ```
 
-Open <http://localhost:8000>. Race history lives on the `wikirace-data` volume. The page is
-published on `127.0.0.1` only; see [Security](#security).
+Open <http://localhost:8008> (the same `WIKIRACE_PORT`). Race history lives on the `wikirace-data`
+volume. The page is published on `127.0.0.1` only; see [Security](#security). Updating, backing up
+the history and the rest of keeping one running are in [docs/deploy.md](docs/deploy.md).
 
 ### On your own domain
 
@@ -125,6 +140,9 @@ own title, description, canonical address and structured data at that address, a
 beside `compose.yaml` (`compose.*.yaml` is ignored by git) keeps your deployment out of the
 repository. There is no login, so every visitor plays on your keys: put in `.env` only the
 providers you mean to pay for.
+
+[docs/deploy.md](docs/deploy.md) walks through a deployment end to end, with a Cloudflare Tunnel
+as the example, and covers cost control, backups and search engines.
 
 ## Settings
 
@@ -151,12 +169,12 @@ OPENAI_THINKING=low
 
 | Variable | Default | |
 |---|---|---|
-| `ANTHROPIC_API_KEY` · `ANTHROPIC_MODELS` · `ANTHROPIC_THINKING` | `claude-haiku-4-5, claude-sonnet-5, claude-opus-5` | |
+| `ANTHROPIC_API_KEY` · `ANTHROPIC_MODELS` · `ANTHROPIC_THINKING` · `ANTHROPIC_BASE_URL` | `claude-haiku-4-5, claude-sonnet-5, claude-opus-5` | the URL only for a gateway that speaks the Messages API |
 | `OPENAI_API_KEY` · `OPENAI_MODELS` · `OPENAI_THINKING` · `OPENAI_BASE_URL` | `gpt-4.1-mini, o4-mini` | any Chat Completions server works via the URL (one that needs no key still needs some value in `OPENAI_API_KEY`) |
-| `OPENROUTER_API_KEY` · `OPENROUTER_MODELS` · `OPENROUTER_THINKING` | `deepseek/deepseek-v4-flash, minimax/minimax-m3` | |
-| `OLLAMA_BASE_URL` · `OLLAMA_MODELS` · `OLLAMA_THINKING` | `http://localhost:11434`, every model it has | not bundled: your own instance; set the URL empty to switch Ollama off |
+| `OPENROUTER_API_KEY` · `OPENROUTER_MODELS` · `OPENROUTER_THINKING` · `OPENROUTER_BASE_URL` | `deepseek/deepseek-v4-flash, minimax/minimax-m3` | |
+| `OLLAMA_BASE_URL` · `OLLAMA_MODELS` · `OLLAMA_THINKING` · `OLLAMA_API_KEY` | `http://localhost:11434`, every model it has | not bundled: your own instance; set the URL empty to switch Ollama off; the key only for an Ollama behind an authenticating proxy |
 | `OLLAMA_NUM_CTX` | `16384` | context window per request, in tokens |
-| `TYPESAFE_API_KEY` · `TYPESAFE_MODELS` | `jev-1.13.0` | |
+| `TYPESAFE_API_KEY` · `TYPESAFE_MODELS` · `TYPESAFE_BASE_URL` | `jev-1.13.0` | |
 | `WIKIRACE_THINKING` | unset | the level for every racer, unless something nearer says |
 | `WIKIRACE_PORT` · `WIKIRACE_HOST` | `8000` · `127.0.0.1` | in Docker, the port published on your machine |
 | `WIKIRACE_DB` | `data/wikirace.db` | race history (Docker: the `/data` volume) |
@@ -165,6 +183,7 @@ OPENAI_THINKING=low
 | `WIKIRACE_CANONICAL_HOST` | none | the public address (`example.com`); `www.` and plain http redirect to it, see [On your own domain](#on-your-own-domain) |
 | `WIKIRACE_SITE_ROOT` | none | a folder of your site's own files served at its root, such as a search console's verification file (`site-root/` is ignored by git) |
 | `WIKIRACE_USER_AGENT` | `wikirace/<version> (repo URL)` | what Wikipedia is told; put your own contact here |
+| `WIKIRACE_ENV_FILE` | `./.env` | which settings file `wikirace` reads (also `--env-file`); an environment variable, not a line in the file |
 
 A value WikiRace cannot use (a misspelt level, say) is ignored and shown as a warning in the race
 setup, never a crash.
@@ -216,8 +235,14 @@ the move says how many.
 A Python server (FastAPI, httpx and the Anthropic SDK), SQLite for race history, and a browser
 page with no build step (Preact and htm, vendored, so nothing is fetched from a CDN). A race runs
 on the server as a background task, so closing the page does not stop it, and the page follows it
-over server-sent events. [docs/design.md](docs/design.md) has the details: the API, the event
-stream, how Jev is asked, and how each provider is called.
+over server-sent events.
+
+- [docs/design.md](docs/design.md): the architecture, the HTTP API and event streams, how Jev is
+  asked, and how each provider is called.
+- [docs/arcade.md](docs/arcade.md): how a game is built, and how to add one.
+- [docs/deploy.md](docs/deploy.md): running it for other people: Docker, updates, backups, your own
+  domain, cost control.
+- [CHANGELOG.md](CHANGELOG.md), [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
 
 ## Development
 
@@ -235,6 +260,10 @@ that replays a recorded race live, for working on the page without any keys or n
 <http://127.0.0.1:8002> over stand-in players (a fake Jev that answers in a tenth of
 a second, fake text models that take one to six), for playing the Arcade without keys.
 
+CI (`.github/workflows/ci.yml`) runs the same three checks on every push and pull request, on
+Python 3.11 to 3.14, and builds the Docker image and checks that it serves the page.
+[CONTRIBUTING.md](CONTRIBUTING.md) says what a change is expected to look like.
+
 ## Security
 
 - Keys stay on the server. The page never receives one.
@@ -247,6 +276,8 @@ a second, fake text models that take one to six), for playing the Arcade without
 - A URL is never shown with a password in it, and a provider's refusal of a key is shown without
   the provider's words, which can quote the key back.
 - `.env` is ignored by git; `env.example` holds no secrets.
+
+Found a vulnerability? [SECURITY.md](SECURITY.md) says how to report it.
 
 ## License
 

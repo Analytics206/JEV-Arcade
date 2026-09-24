@@ -10,6 +10,12 @@ authors = [{ name = "J. Harrell" }]
 keywords = ["llm", "benchmark", "wikipedia", "wikirace", "typesafe", "ollama", "anthropic", "openai", "openrouter"]
 classifiers = [
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Environment :: Web Environment",
+    "Operating System :: OS Independent",
     "Framework :: FastAPI",
     "Topic :: Games/Entertainment",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
@@ -25,7 +31,10 @@ dependencies = [
 wikirace = "wikirace.__main__:main"
 
 [project.urls]
-Homepage = "https://github.com/Analytics206/JEV-Arcade"
+Homepage = "https://jev-arcade.com"
+Repository = "https://github.com/Analytics206/JEV-Arcade"
+Issues = "https://github.com/Analytics206/JEV-Arcade/issues"
+Changelog = "https://github.com/Analytics206/JEV-Arcade/blob/main/CHANGELOG.md"
 
 [dependency-groups]
 dev = [

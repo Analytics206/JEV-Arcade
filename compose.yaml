@@ -1,8 +1,9 @@
 # WikiRace in Docker:
 #   cp env.example .env     (then add a key or point at your Ollama)
 #   docker compose up -d
-#   open http://localhost:8000
+#   open http://localhost:8008   (WIKIRACE_PORT in .env; 8000 when it is unset)
 # The settings come from .env, the same file `uv run wikirace` reads.
+# docs/deploy.md covers updates, backups and running on a domain of your own.
 name: wikirace
 
 services:

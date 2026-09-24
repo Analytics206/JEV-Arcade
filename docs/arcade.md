@@ -6,6 +6,13 @@ The floor keeps the bare address (`?tab=arcade` still names it); WikiRace lives
 at `?tab=race` (and `?race=<id>`, `?tab=history`, as before); one game at
 `?game=<id>`, one run of it at `?game=<id>&run=<run id>`.
 
+The games' HTTP API (`/api/games/*`), a run's JSON and its events are in
+[design.md](design.md#the-arcades-games). Four runs may be live at once
+across every game (`runs.MAX_LIVE`); a finished run lingers in memory for ten
+minutes; every run is written to the `game_runs` table in the same SQLite file
+as the races. A cabinet listed but not built yet is a `placeholder(...)` in the
+registry (`ready=False`): the floor says so, and starting it is a 409.
+
 Every game is two files and a test, run by shared machinery:
 
 | | Server (`src/wikirace/games/`) | Page (`src/wikirace/static/games/`) |
