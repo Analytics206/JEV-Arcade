@@ -2,13 +2,18 @@
  *
  * The address decides (games/route.js): the bare address, `?race=` and
  * `?tab=history` are WikiRace, exactly as before; `?tab=arcade` and `?game=`
- * are the Arcade. Both listen to the browser's history, so Back walks through
- * races and games alike.
+ * are the Arcade; `?tab=contact` is the Contact page. All listen to the
+ * browser's history, so Back walks through races and games alike.
+ *
+ * Once the page has loaded, the beacon (beacon.js) tells the traffic log what
+ * only the browser knows: screen size, time zone, load time.
  */
 import { h, render } from 'preact'
 import { useEffect, useState } from 'preact/hooks'
 import htm from 'htm'
 import { WikiRace } from './app.js'
+import { reportView } from './beacon.js'
+import { Contact } from './contact.js'
 import { parseRoute } from './games/route.js'
 import { Arcade } from './games/shell.js'
 
@@ -22,7 +27,10 @@ function Root() {
     return () => removeEventListener('popstate', onPop)
   }, [])
   const route = parseRoute(search)
-  return route.view === 'wikirace' ? html`<${WikiRace} />` : html`<${Arcade} route=${route} />`
+  if (route.view === 'wikirace') return html`<${WikiRace} />`
+  if (route.view === 'contact') return html`<${Contact} />`
+  return html`<${Arcade} route=${route} />`
 }
 
 render(html`<${Root} />`, document.getElementById('app'))
+reportView()

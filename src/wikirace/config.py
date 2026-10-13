@@ -41,6 +41,8 @@ THINKING_LEVELS: tuple[str, ...] = ("none", "low", "medium", "high", "xhigh", "m
 DEFAULT_PORT = 8000
 DEFAULT_DB = "data/wikirace.db"
 DEFAULT_MAX_RACES = 2
+#: Days the traffic log and the sign-in log keep a row. Both hold IP addresses.
+DEFAULT_LOG_RETENTION_DAYS = 365
 #: Tokens of context a local Ollama model is given per request. Ollama's own
 #: default is small enough to cut a big article's link list, and the rules with
 #: it, without saying so; see providers/ollama.py.
@@ -185,6 +187,15 @@ class Settings:
     #: WIKIRACE_SITE_ROOT: a folder of this deployment's own files, served at
     #: the site's root after the page's own (a search console's file, say).
     site_root: str | None = None
+    #: WIKIRACE_TRAFFIC_DB: the traffic log, a SQLite file of its own beside
+    #: the history (traffic.py). Empty when WIKIRACE_TRAFFIC_LOG=off.
+    traffic_db: str = "data/traffic.db"
+    #: WIKIRACE_LOG_RETENTION_DAYS: how long the traffic and sign-in logs keep a row.
+    log_retention_days: int = DEFAULT_LOG_RETENTION_DAYS
+    #: The one admin (logins.py): the email they sign in with, and their
+    #: password as `wikirace --hash-password` writes it. Either unset: no admin.
+    admin_email: str | None = None
+    admin_password_hash: str | None = None
     #: The .env file that was read, or None.
     env_file: str | None = None
     providers: Mapping[str, ProviderConfig] = field(default_factory=dict)
@@ -361,6 +372,30 @@ def _canonical(raw: str, warnings: list[str]) -> str | None:
     return name
 
 
+_EMAIL = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
+
+
+def _admin(email_raw: str, hash_raw: str, warnings: list[str]) -> tuple[str | None, str | None]:
+    """WIKIRACE_ADMIN_EMAIL and WIKIRACE_ADMIN_PASSWORD_HASH, both or neither."""
+    from .logins import parse_hash  # noqa: PLC0415 - logins imports nothing from here
+
+    email, hashed = email_raw.strip().lower(), hash_raw.strip()
+    if not email and not hashed:
+        return None, None
+    if not email or not hashed:
+        missing = "WIKIRACE_ADMIN_PASSWORD_HASH" if email else "WIKIRACE_ADMIN_EMAIL"
+        warnings.append(f"admin sign-in is off: {missing} is not set")
+        return None, None
+    if not _EMAIL.fullmatch(email):
+        warnings.append(f"WIKIRACE_ADMIN_EMAIL={email_raw!r} is not an email address, so admin sign-in is off")
+        return None, None
+    if parse_hash(hashed) is None:
+        warnings.append("WIKIRACE_ADMIN_PASSWORD_HASH is not what `wikirace --hash-password` writes, "
+                        "so admin sign-in is off")
+        return None, None
+    return email, hashed
+
+
 # ── loading ──────────────────────────────────────────────────────────────────
 
 
@@ -418,16 +453,28 @@ def load_settings(
         )
 
     canonical = _canonical(get("WIKIRACE_CANONICAL_HOST")[0], warnings)
+    db_path = get("WIKIRACE_DB", DEFAULT_DB)[0]
+    # Beside the history unless named, so Docker's /data volume holds both.
+    traffic_db = get("WIKIRACE_TRAFFIC_DB", str(Path(db_path).with_name("traffic.db")))[0]
+    traffic_on = get("WIKIRACE_TRAFFIC_LOG", "on")[0].lower() not in {"0", "off", "false", "no"}
+    admin_email, admin_hash = _admin(
+        get("WIKIRACE_ADMIN_EMAIL")[0], get("WIKIRACE_ADMIN_PASSWORD_HASH")[0], warnings,
+    )
     return Settings(
         host=get("WIKIRACE_HOST", "127.0.0.1")[0],
         port=_int(get("WIKIRACE_PORT")[0], DEFAULT_PORT, "WIKIRACE_PORT", warnings, 1, 65535),
-        db_path=get("WIKIRACE_DB", DEFAULT_DB)[0],
+        db_path=db_path,
         thinking=_level(get("WIKIRACE_THINKING")[0], "WIKIRACE_THINKING", warnings),
         max_races=_int(get("WIKIRACE_MAX_RACES")[0], DEFAULT_MAX_RACES, "WIKIRACE_MAX_RACES", warnings, 1, 16),
         user_agent=get("WIKIRACE_USER_AGENT", DEFAULT_USER_AGENT)[0],
         allowed_hosts=_hosts(get("WIKIRACE_ALLOWED_HOSTS")[0], canonical),
         canonical_host=canonical,
         site_root=get("WIKIRACE_SITE_ROOT")[0] or None,
+        traffic_db=traffic_db if traffic_on else "",
+        log_retention_days=_int(get("WIKIRACE_LOG_RETENTION_DAYS")[0], DEFAULT_LOG_RETENTION_DAYS,
+                                "WIKIRACE_LOG_RETENTION_DAYS", warnings, 1, 3650),
+        admin_email=admin_email,
+        admin_password_hash=admin_hash,
         in_docker=in_docker,
         env_file=str(path) if path else None,
         providers=providers,

@@ -9,6 +9,7 @@
 import { h } from 'preact'
 import { useEffect, useState } from 'preact/hooks'
 import htm from 'htm'
+import { CONTACT_EMAIL, CONTACT_PHONE, CONTACT_TEL } from './contact.logic.js'
 import { navigate } from './games/route.js'
 import { sfx, soundOn, setSound, onSound } from './sfx.js'
 
@@ -269,7 +270,8 @@ export function GitHubMark({ class: cls }) {
   `
 }
 
-/** The foot of every page: the name, that it is open source, and where. */
+/** The foot of every page: the name, that it is open source and where, and
+ *  how to reach us. */
 export function SiteFooter() {
   return html`
     <footer class="ft">
@@ -282,6 +284,16 @@ export function SiteFooter() {
         }}><${Wordmark} /></a>
         <p class="ft__txt">Open source under the MIT license: the server, every game, the pixel font and these screens.</p>
         <span class="spacer" />
+        <address class="ft__contact">
+          <a class="ft__clink" href="?tab=contact" onClick=${(e) => {
+            if (!plainClick(e)) return
+            e.preventDefault()
+            sfx.select()
+            navigate('?tab=contact')
+          }}>Contact</a>
+          <a href=${`mailto:${CONTACT_EMAIL}`}>${CONTACT_EMAIL}</a>
+          <a href=${`tel:${CONTACT_TEL}`}>${CONTACT_PHONE}</a>
+        </address>
         <a class="ft__gh" href=${REPO_URL} target="_blank" rel="noopener noreferrer" onMouseEnter=${sfx.hover}>
           <${GitHubMark} /> <span>${REPO_NAME}</span><span class="sr-only"> on GitHub (opens in a new tab)</span>
         </a>

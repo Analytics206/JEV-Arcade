@@ -5,6 +5,23 @@ Versions are the `version` in `pyproject.toml`, which `wikirace --version` and `
 
 ## [Unreleased]
 
+### Added
+- **The traffic log**: every request the server answers, in its own `traffic.db` beside the
+  history, with the address as Cloudflare saw it, Cloudflare's location fields, and the browser,
+  system, device and bot read from the user agent. Credentials in query strings and referrers are
+  redacted; `Authorization` and `Cookie` are never kept; the container's healthcheck is left out.
+  Rows older than `WIKIRACE_LOG_RETENTION_DAYS` (365) are swept out. A page-view beacon adds
+  screen size, time zone and load time, with no cookie or identifier.
+- **The admin pages** at `/admin`, linked from nowhere: one admin (`WIKIRACE_ADMIN_EMAIL`, and the
+  password as `wikirace --hash-password` prints its hash), a traffic report (totals, page views and
+  visitors over time, top lists, the request log with filters, detail and CSV), the sign-in log
+  with verified and unverified attempts kept apart, and what the admin did.
+- **The Contact page** (`?tab=contact`), and the email and phone in every page's footer: the form
+  opens the visitor's own email app with the message written in, after keeping a quiet copy
+  (`POST /api/contact`, rate limited, repeats and a trap field dropped) that the admin pages list,
+  with reply by email, mark handled and delete.
+- `docs/traffic.md`: what is kept, where, for how long, and how to delete one person's data.
+
 ### Changed
 - The Docker image runs on Python 3.14 (was 3.12) and uv 0.12.
 - CI also tests Python 3.14, uses current actions (checkout v7, setup-uv v10, setup-node v7),

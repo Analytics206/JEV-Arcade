@@ -1,7 +1,9 @@
 /* The page's client for the WikiRace server (docs/design.md, "HTTP API").
  *
- * Everything is under /api and nothing is authenticated — the server binds to
- * localhost — so there is no token handling here and none should be added. A
+ * Everything is under /api. The game API is not authenticated — the server binds
+ * to localhost — and the admin pages' (/api/admin) session is an HttpOnly cookie
+ * the browser sends by itself, so there is no token handling here and none should
+ * be added. A
  * failed request throws an ApiError carrying the server's own `detail`, which is
  * written to be read by a person, so the page shows it as it came.
  */

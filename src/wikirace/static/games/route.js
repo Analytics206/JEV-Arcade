@@ -4,6 +4,7 @@
  *   ?tab=race, ?race=<id>, ?tab=history    WikiRace: the setup, a race, its history
  *   ?game=<id>                             one game, set up to play
  *   ?game=<id>&run=<run id>                one game's run, live or replayed
+ *   ?tab=contact                           how to reach us, and the contact form
  *
  * The floor keeps the bare address: JEV-Arcade opens on its cabinets.
  * `?tab=arcade` still names it, and every WikiRace link that carries a race or
@@ -14,7 +15,7 @@
 const GAME_ID = /^[a-z][a-z0-9]{1,23}$/
 const RUN_ID = /^[a-f0-9]{6,32}$/
 
-/** @returns {{view: 'wikirace'} | {view: 'hub'} | {view: 'game', game: string, run: string|null}} */
+/** @returns {{view: 'wikirace'} | {view: 'hub'} | {view: 'contact'} | {view: 'game', game: string, run: string|null}} */
 export function parseRoute(search) {
   const q = new URLSearchParams(search)
   const game = q.get('game')
@@ -24,12 +25,14 @@ export function parseRoute(search) {
   }
   const tab = q.get('tab')
   if (q.get('race') || tab === 'race' || tab === 'history') return { view: 'wikirace' }
+  if (tab === 'contact') return { view: 'contact' }
   return { view: 'hub' }
 }
 
 /** …and back: the query string for a place. */
 export function routeSearch(route) {
   if (route.view === 'wikirace') return '?tab=race'
+  if (route.view === 'contact') return '?tab=contact'
   if (route.view === 'game') {
     const q = new URLSearchParams({ game: route.game })
     if (route.run) q.set('run', route.run)

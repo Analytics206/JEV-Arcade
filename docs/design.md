@@ -26,6 +26,10 @@ src/wikirace/
   api.py           /api/*: models, resolve, random, races, the race's event stream
   store.py         race history in SQLite: one row per race, stored whole as JSON
   site.py          what search engines read: each view's <head>, sitemap.xml, robots.txt
+  traffic.py       the traffic log: a middleware, its own SQLite file, the report (docs/traffic.md)
+  logins.py        the admin: password hash, sessions, the sign-in log, the audit log, rate limits
+  enquiries.py     copies of Contact page messages, in the history's database
+  admin.py         /api/contact, /api/beacon, and /api/admin/*, the admin's only
   providers/
     base.py        TextProvider, Completion, ProviderError, LoopClient, retry_after
     anthropic.py   Messages API through the official SDK
@@ -50,7 +54,9 @@ src/wikirace/
   static/          the page: index.html, main.js (the Arcade's floor, a game, or WikiRace),
                    app.js (WikiRace), brand.js (pixel font, header), fx.js (effects), sfx.js
                    (sounds), profile.js (plays in this browser), games/ (the Arcade: shell,
-                   kit, the attract-mode screens, one module per game), styles.css, vendor/
+                   kit, the attract-mode screens, one module per game), contact.js (the
+                   Contact page), beacon.js, styles.css, vendor/; admin.html and admin/ are
+                   the admin pages
 tests/             pytest; tests/games/ for the Arcade; tests/js/ holds `node --test` tests for the
                    page's pure state
 ```
@@ -184,6 +190,9 @@ One `.env` file (copy `env.example`), read by `wikirace` and passed to the conta
 | `WIKIRACE_ENV_FILE` | `./.env` | Which env file `wikirace` reads (also `--env-file`) |
 | `WIKIRACE_CANONICAL_HOST` | unset | The one public address (`jev-arcade.com`) behind a proxy or tunnel: it and its `www.` twin are answered to, and the twin and plain http (as `X-Forwarded-Proto` reports it) redirect to it over https |
 | `WIKIRACE_SITE_ROOT` | unset | A folder of the deployment's own files, served at the site's root after the page's own (a search console's verification file, say) |
+| `WIKIRACE_ADMIN_EMAIL` · `WIKIRACE_ADMIN_PASSWORD_HASH` | unset | The admin pages' one account; the hash is what `wikirace --hash-password` prints ([traffic.md](traffic.md)) |
+| `WIKIRACE_LOG_RETENTION_DAYS` | `365` | Days the traffic and sign-in logs keep a row |
+| `WIKIRACE_TRAFFIC_DB` · `WIKIRACE_TRAFFIC_LOG` | `traffic.db` beside `WIKIRACE_DB` · `on` | The traffic log's file, and `off` to stop it |
 | `WIKIRACE_IN_DOCKER` | unset; the image sets `1` | Inside the image, `localhost` in `OLLAMA_BASE_URL` means the Docker host |
 | `ANTHROPIC_API_KEY` · `_MODELS` · `_THINKING` · `_BASE_URL` | models: `claude-haiku-4-5, claude-sonnet-5, claude-opus-5` | Anthropic |
 | `OPENAI_API_KEY` · `_MODELS` · `_THINKING` · `_BASE_URL` | models: `gpt-4.1-mini, o4-mini` | OpenAI (any Chat Completions server works via the URL) |
@@ -336,13 +345,39 @@ memory for ten minutes, so a page that attaches late still reads it live.
 | GET | `/sitemap.xml` | every indexed view at the site's address: the floor, WikiRace, the Hall of Fame, each game. A single race or run is `noindex` |
 | GET | `/robots.txt` | everything may be crawled but `/api/docs` and `/api/openapi.json`; names the sitemap |
 | GET | `/api/docs` | the API, described by itself (Swagger UI over `/api/openapi.json`) |
+| GET | `/admin` | the admin pages' shell: no data, `noindex`, linked from nowhere ([traffic.md](traffic.md)) |
+
+### The admin, the Contact page and the beacon
+
+All in `admin.py`; [traffic.md](traffic.md) says what each one keeps.
+
+| Method | Path | |
+|---|---|---|
+| POST | `/api/contact` | a copy of a Contact page message: `{name, email, message, cabinet_code}`; 202 for a success, a trap or a repeat alike; 429 past the rate limit |
+| POST | `/api/beacon` | what only the browser knows about a page view (screen, window, time zone, load time), added to the beacon's own row in the traffic log; 204 |
+| POST | `/api/admin/login` | `{email, password}`: sets the session cookie; 401, 429 past the rate limit, 503 with no admin set |
+| POST | `/api/admin/logout` | ends the session |
+| GET | `/api/admin/me` | who is signed in, until when |
+| GET | `/api/admin/traffic` | the report: `?period=24h\|7d\|30d\|90d\|365d\|all&who=people\|bots\|all` |
+| GET | `/api/admin/traffic/requests` | the request log, newest first: the same, plus `kind`, `status` (`4xx`, `404`), `ip`, `path`, `country`, `q`, `page`, `per` |
+| GET | `/api/admin/traffic/requests.csv` | every row those filters match, as CSV |
+| GET | `/api/admin/signins` | the sign-in log: `?verified=all\|yes\|no` |
+| GET | `/api/admin/audit` | what the admin did |
+| GET | `/api/admin/enquiries` | `?status=waiting\|handled\|all`, newest first |
+| POST | `/api/admin/enquiries/{id}/handled` | `{handled: true\|false}` |
+| DELETE | `/api/admin/enquiries/{id}` | |
+
+Every `/api/admin/*` but login and logout checks the session on every request (`require_admin`);
+`tests/test_admin.py` reads the app's own description of its routes and checks that each refuses
+a request without one.
 
 ## The page
 
 No build step. `static/index.html` loads `main.js` as an ES module, and an import map points
 `preact`, `preact/hooks` and `htm` at `static/vendor/`. The address picks the view
 (`games/route.js`): the bare address is the Arcade's floor, `?tab=race`, `?race=<id>` and
-`?tab=history` are WikiRace, `?game=<id>` is one of the Arcade's games. Components are written with
+`?tab=history` are WikiRace, `?game=<id>` is one of the Arcade's games, `?tab=contact` is the
+Contact page. Components are written with
 `htm`'s tagged templates. The server rewrites `index.html` on every load: its `<head>` for the view
 (site.py), and its file references pointed at `/v/<fingerprint>/`, so a rebuild is seen on the next
 load whatever a cache in front holds. The pure half (`state.js`: the reducer, formatters, the race-trace
@@ -352,14 +387,17 @@ The look is a neon arcade at night, dark only. Fonts are the system's own; the p
 (the wordmark, marquees, the LED ticker, clocks) is a 5×7 font drawn as SVG by `brand.js`, and the
 attract-mode screens are SVG with SMIL, paused while out of sight. Sounds are synthesised with Web
 Audio, on unless the visitor mutes them (from the first click, as browsers require). Nothing is fetched from a CDN, and nothing but the
-visitor's own sound setting and play counts is kept in the browser.
+visitor's own sound setting and play counts is kept in the browser. Once loaded, the page sends one
+beacon (`beacon.js`) with its screen size, time zone and load time: no cookie, no identifier.
 
 ## Testing
 
 `uv run pytest` runs everything without a network: Wikipedia is a fake board, providers get an
 `httpx.MockTransport`, and races run end to end against both; `tests/games/` runs every game over
 a fake Jev, fake text models and a fake Wikipedia (the `arcade` fixture), and `tests/test_site.py`
-covers what search engines are sent. `uv run ruff check .` lints. `node --test tests/js` tests the
+covers what search engines are sent; `tests/test_traffic.py` and `tests/test_admin.py` cover the
+traffic log, the report's arithmetic, the sign-in log, the Contact endpoint and that every admin
+endpoint refuses anyone not signed in. `uv run ruff check .` lints. `node --test tests/js` tests the
 page's pure state and that every page module parses. CI (`.github/workflows/ci.yml`) runs all of
 it on Python 3.11 to 3.14 and smoke-tests the Docker image.
 

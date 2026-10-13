@@ -53,3 +53,4 @@ jobs:
           curl -fsS http://localhost:8000/api/models | grep -q '"providers"'
           test "$(docker exec wikirace id -u)" = "10001"
           docker exec wikirace test -f /data/wikirace.db
+          docker exec wikirace test -f /data/traffic.db

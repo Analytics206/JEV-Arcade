@@ -9,7 +9,8 @@ file for the tunnel, and one `.env`.
 
 One container, `wikirace`, built from the `Dockerfile`: Python 3.14, the project installed from
 `uv.lock`, listening on port 8000 inside the container as an unprivileged user (uid 10001), with
-its history in `/data/wikirace.db` on the `wikirace-data` volume. It fetches nothing but Wikipedia
+its history in `/data/wikirace.db` on the `wikirace-data` volume, and its traffic log beside it in
+`/data/traffic.db`. It fetches nothing but Wikipedia
 and the providers your keys name.
 
 Everything is configured by `.env`, which `compose.yaml` hands to the container. `WIKIRACE_HOST`,
@@ -64,6 +65,25 @@ A race that was running when the server stopped is stamped `interrupted` at the 
 its replay shows what it had. Deleting a race or run from its history (`DELETE /api/races/{id}`,
 `DELETE /api/games/runs/{id}`) removes its row; nothing else ever deletes history.
 
+`wikirace.db` also holds the Contact page's enquiries and the sign-in log, so this backup covers
+them. The traffic log is a separate file, `/data/traffic.db`, large and disposable, and needs no
+backup ([traffic.md](traffic.md)).
+
+## The admin pages
+
+`/admin` shows the traffic report, the sign-in log and the Contact page's enquiries, to one admin
+set in `.env`. To switch it on:
+
+```bash
+docker compose run --rm wikirace wikirace --hash-password
+```
+
+Copy the line it prints into `.env` with `WIKIRACE_ADMIN_EMAIL=you@example.com` beside it, then
+`docker compose up -d`. The start-up summary says `admin: you@example.com at /admin`, or with a `!`
+why it is off. Behind Cloudflare, turn on **Add visitor location headers** (your domain, **Rules >
+Settings > Managed Transforms**) for city, region and coordinates in the log. Everything else, and
+what to tell visitors about it, is in [traffic.md](traffic.md).
+
 ## Cost control
 
 There is no login: everyone who reaches the page plays on the keys in `.env`. What keeps a public
@@ -76,7 +96,8 @@ site affordable:
   once across every game. A race is bounded by its hop and time limits (12 hops and one minute by
   default; a visitor may raise them to 40 hops and an hour).
 - Spending limits at the providers themselves: every one of them offers a monthly cap.
-- Nothing rate-limits a visitor. If a public site draws abuse, put the limit in the proxy in front
+- Nothing rate-limits a visitor's games (only the admin sign-in and the Contact form are). If a
+  public site draws abuse, put the limit in the proxy in front
   (Cloudflare's rate-limiting rules, say), not in the arcade.
 
 ## Your own domain
@@ -183,6 +204,8 @@ loopback for a container to reach it (`OLLAMA_HOST=0.0.0.0` on the Ollama side).
 | `! OPENAI_THINKING: …` in the log | a setting was misspelt and ignored; the setup shows the same warning |
 | Ollama's models missing from the setup | Ollama did not answer within 5 s; the setup's reload button asks again |
 | a race `interrupted` in the history | the server restarted while it ran |
+| `/admin` says admin sign-in is off | `WIKIRACE_ADMIN_EMAIL` or `WIKIRACE_ADMIN_PASSWORD_HASH` is missing or malformed; see [The admin pages](#the-admin-pages) |
+| every visitor in the traffic log has one address | requests are not coming through Cloudflare; [traffic.md](traffic.md#troubleshooting) has more |
 | the page looks old after an update | the image was not rebuilt: `docker compose up -d --build`, then check `docker compose ps` |
 
 `docker compose logs wikirace` has the server's log, and `GET /api/health` says which version is

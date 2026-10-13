@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import getpass
 import sys
 
 from . import __version__
@@ -39,8 +40,28 @@ def summary(settings: Settings, host: str, port: int) -> str:
         lines.append(f"  thinking: {settings.thinking} unless a provider or model says otherwise")
     if host not in ("127.0.0.1", "localhost") and not settings.in_docker and "*" not in settings.allowed_hosts:
         lines.append(f"  answering to: {', '.join(settings.allowed_hosts)} (add names in WIKIRACE_ALLOWED_HOSTS)")
+    if settings.admin_email:
+        lines.append(f"  admin: {settings.admin_email} at /admin")
+    if settings.traffic_db:
+        lines.append(f"  traffic log: {settings.traffic_db}, kept {settings.log_retention_days} days")
     lines += [f"  ! {w}" for w in settings.warnings]
     return "\n".join(lines)
+
+
+def hash_password() -> int:
+    """Ask for the admin's password twice and print the line for .env. The
+    password is read without echo and never written anywhere."""
+    from .logins import hash_password as scrypt  # noqa: PLC0415
+
+    first = getpass.getpass("Admin password: ")
+    if len(first) < 12:
+        print("Use at least 12 characters.", file=sys.stderr)
+        return 1
+    if getpass.getpass("Again: ") != first:
+        print("The two did not match.", file=sys.stderr)
+        return 1
+    print(f"WIKIRACE_ADMIN_PASSWORD_HASH={scrypt(first)}")
+    return 0
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -51,7 +72,11 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--port", type=int, help="port (WIKIRACE_PORT, default 8000)")
     parser.add_argument("--env-file", help="settings file to read (WIKIRACE_ENV_FILE, default ./.env)")
     parser.add_argument("--version", action="version", version=f"wikirace {__version__}")
+    parser.add_argument("--hash-password", action="store_true",
+                        help="print WIKIRACE_ADMIN_PASSWORD_HASH for a password you type, and exit")
     args = parser.parse_args(argv)
+    if args.hash_password:
+        sys.exit(hash_password())
 
     settings = load_settings(env_file=args.env_file)
     host, port = args.host or settings.host, args.port or settings.port

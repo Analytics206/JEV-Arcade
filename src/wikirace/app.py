@@ -24,7 +24,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.datastructures import Headers
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from . import __version__, api, site, store
+from . import __version__, admin, api, enquiries, logins, site, store, traffic
 from .config import Settings, load_settings, twin_host
 from .games import api as games_api
 from .games import runs as game_runs
@@ -158,6 +158,11 @@ def create_app(
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         store.init(settings.db_path)
         games_store.init(settings.db_path)
+        logins.init(settings.db_path)
+        enquiries.init(settings.db_path)
+        logins.prune(settings.db_path, settings.log_retention_days)
+        if log is not None:
+            log.start()
         app.state.loop = asyncio.get_running_loop()
         # Ask the providers what they have now, so the first page need not wait.
         api.ask_providers(app)
@@ -169,6 +174,8 @@ def create_app(
         await game_runs.stop_all(_STOP_WAIT_S)
         await aclose_all(app.state.providers)
         await app.state.wiki.aclose()
+        if log is not None:
+            await asyncio.to_thread(log.stop)
 
     app = FastAPI(
         title="WikiRace", version=__version__, lifespan=lifespan,
@@ -177,6 +184,10 @@ def create_app(
     app.state.settings = settings
     app.state.wiki = wiki or Wiki(user_agent=settings.user_agent)
     app.state.providers = providers if providers is not None else build(settings)
+    log = traffic.Traffic(settings.traffic_db, settings.log_retention_days) if settings.traffic_db else None
+    app.state.traffic = log
+    app.state.login_limit = logins.RateLimit(*logins.LOGIN_LIMITS)
+    app.state.contact_limit = enquiries.limiter()
     # No login, so the Host header is checked: a page on another site that
     # points a name of its own at 127.0.0.1 (DNS rebinding) is refused before
     # it can start a race on your keys. WIKIRACE_ALLOWED_HOSTS adds names.
@@ -184,8 +195,14 @@ def create_app(
     if settings.canonical_host:
         # Added last, so it runs first.
         app.add_middleware(CanonicalHost, host=settings.canonical_host)
+    if log is not None:
+        # Outermost, so a redirect or a refused host is logged like any answer.
+        app.add_middleware(traffic.TrafficLog, log=log)
     app.include_router(api.router)
     app.include_router(games_api.router)
+    app.include_router(admin.public)
+    app.include_router(admin.auth)
+    app.include_router(admin.router)
 
     # The page, pointed at today's version of its files: never kept, so a
     # rebuild is picked up on the next load, from the server itself.
@@ -206,6 +223,18 @@ def create_app(
         text = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
         text = site.render(text.replace('"./', f'"./v/{versioned.current}/'), request.query_params, site_base(request))
         return HTMLResponse(text, headers={"Cache-Control": "no-cache"})
+
+    @app.api_route("/admin", methods=["GET", "HEAD"], include_in_schema=False)
+    def admin_page() -> HTMLResponse:
+        """The admin pages' shell. Nothing links here, and it holds no data:
+        everything it shows comes from /api/admin/*, which asks for the
+        session on every request."""
+        versioned.current = fingerprint(STATIC_DIR)
+        text = (STATIC_DIR / "admin.html").read_text(encoding="utf-8")
+        text = text.replace('"./', f'"./v/{versioned.current}/')
+        return HTMLResponse(text, headers={
+            "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow", "Referrer-Policy": "same-origin",
+        })
 
     @app.api_route("/sitemap.xml", methods=["GET", "HEAD"], include_in_schema=False)
     def sitemap(request: Request) -> Response:

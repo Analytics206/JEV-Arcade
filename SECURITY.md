@@ -2,7 +2,7 @@
 
 ## What JEV-Arcade is, and is not, built to withstand
 
-- **There is no login.** Whoever can reach the page can start races and games on the keys in
+- **There is no login to play.** Whoever can reach the page can start races and games on the keys in
   your `.env`. The server binds to `127.0.0.1` by default and Docker publishes it on `127.0.0.1`
   only. Open it further only behind something that limits who gets in or how much they can spend
   (`WIKIRACE_MAX_RACES`, the providers' own spending limits); the public site runs on a free
@@ -13,6 +13,13 @@
 - **The Host header is checked** (`WIKIRACE_ALLOWED_HOSTS`, plus the canonical host and its
   twin), so a page elsewhere cannot reach a local server by pointing a name of its own at
   `127.0.0.1` (DNS rebinding).
+- **The admin pages** (`/admin`, [docs/traffic.md](docs/traffic.md)) have one account: its
+  password is kept only as a scrypt hash, its session token only as a SHA-256 on the server and in
+  an `HttpOnly`, `SameSite=Strict` cookie scoped to `/api/admin`. Every admin endpoint checks the
+  session on every request, and a test checks that each refuses a request without one. Failed
+  sign-ins are rate limited per address and in all, and logged. The logs hold IP addresses and
+  emails but never a password, a session token, an `Authorization` or `Cookie` header, or a
+  credential in a query string.
 - **Nothing is fetched at run time** but Wikipedia and the providers you configured. The page's
   libraries are vendored, with their npm integrity hashes recorded
   (`src/wikirace/static/vendor/README.md`).

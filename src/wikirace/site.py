@@ -42,6 +42,11 @@ HISTORY_DESCRIPTION = (
     "Every WikiRace on JEV-Arcade: which AI model reached the target first, in how many hops, and what "
     "it cost. Replay any race move by move."
 )
+CONTACT_TITLE = "Contact · JEV-Arcade"
+CONTACT_DESCRIPTION = (
+    "Write to JEV-Arcade at contact@JEV-Arcade.com or call 510-560-5429: questions, ideas for a cabinet, "
+    "or a race worth talking about."
+)
 KEYWORDS = (
     "JEV-Arcade", "Jev", "TypeSafe", "judgment model", "AI games", "LLM games", "AI arcade", "WikiRace",
     "Wikipedia game", "AI model comparison", "LLM benchmark", "AI evaluation", "LLM guardrails",
@@ -84,6 +89,7 @@ def _game_view(game: Game, *, index: bool = True) -> View:
 HUB = View(HUB_TITLE, HUB_DESCRIPTION, "")
 WIKIRACE = View(WIKIRACE_TITLE, WIKIRACE_DESCRIPTION, "?tab=race")
 HISTORY = View(HISTORY_TITLE, HISTORY_DESCRIPTION, "?tab=history")
+CONTACT = View(CONTACT_TITLE, CONTACT_DESCRIPTION, "?tab=contact")
 
 
 def view_of(query: Mapping[str, str]) -> View:
@@ -101,6 +107,8 @@ def view_of(query: Mapping[str, str]) -> View:
         return WIKIRACE
     if tab == "history":
         return HISTORY
+    if tab == "contact":
+        return CONTACT
     # The floor, under whatever else it answers to (?tab=arcade, a tracking
     # tag): its canonical address says which one to show.
     return HUB
@@ -108,7 +116,7 @@ def view_of(query: Mapping[str, str]) -> View:
 
 def indexed_views() -> list[View]:
     """Every view worth a search result, in the floor's order."""
-    return [HUB, WIKIRACE, HISTORY, *(_game_view(g) for g in GAMES.values() if g.ready)]
+    return [HUB, WIKIRACE, HISTORY, *(_game_view(g) for g in GAMES.values() if g.ready), CONTACT]
 
 
 def _attr(s: str) -> str:

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#07051a" />
+    <meta name="robots" content="noindex, nofollow" />
+    <!-- The admin pages (app.py serves this at /admin; admin/admin.js). Nothing links here. -->
+    <title>Admin · JEV-Arcade</title>
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' shape-rendering='crispEdges'%3E%3Crect width='32' height='32' rx='7' fill='%2307051a'/%3E%3Crect x='5' y='21' width='22' height='6' rx='2' fill='%23ff4fd8'/%3E%3Crect x='14' y='12' width='4' height='10' fill='%23e8eeff'/%3E%3Crect x='10' y='4' width='12' height='10' rx='5' fill='%233ef4ff'/%3E%3Crect x='22' y='17' width='4' height='4' rx='1' fill='%23ffe14d'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./admin/admin.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "preact": "./vendor/preact.module.js",
+          "preact/hooks": "./vendor/hooks.module.js",
+          "htm": "./vendor/htm.module.js"
+        }
+      }
+    </script>
+    <script type="module" src="./admin/admin.js"></script>
+  </head>
+  <body class="app-ground">
+    <div id="app"></div>
+    <noscript><p style="padding: 16px">The admin pages need JavaScript.</p></noscript>
+  </body>
+</html>

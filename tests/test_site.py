@@ -70,6 +70,9 @@ def test_each_view_names_itself(client):
     race = _head(client, "?tab=race")
     assert race["title"] == site.WIKIRACE_TITLE and race["canonical"] == f"{BASE}/?tab=race"
     assert _head(client, "?tab=history")["canonical"] == f"{BASE}/?tab=history"
+    contact = _head(client, "?tab=contact")
+    assert contact["title"] == site.CONTACT_TITLE and contact["canonical"] == f"{BASE}/?tab=contact"
+    assert "contact@JEV-Arcade.com" in contact["description"] and "510-560-5429" in contact["description"]
 
     customs = _head(client, "?game=customs")
     assert customs["title"] == "Customs · LLM guardrails · JEV-Arcade"
@@ -98,7 +101,7 @@ def test_a_reader_without_javascript_gets_the_words_and_every_view_linked(client
     assert "<h1>Needle Hunt · line-by-line search · JEV-Arcade</h1>" in noscript
     for gid in GAMES:
         assert f'href="/?game={gid}"' in noscript
-    assert 'href="/?tab=race"' in noscript
+    assert 'href="/?tab=race"' in noscript and 'href="/?tab=contact"' in noscript
 
 
 def test_the_sitemap_is_every_view_at_the_public_address(client):
@@ -108,8 +111,8 @@ def test_the_sitemap_is_every_view_at_the_public_address(client):
     urls = ET.fromstring(r.content).findall("s:url", ns)
     locs = [u.find("s:loc", ns).text for u in urls]
     assert locs == [f"{BASE}/", f"{BASE}/?tab=race", f"{BASE}/?tab=history",
-                    *(f"{BASE}/?game={g.id}" for g in GAMES.values() if g.ready)]
-    assert len(locs) == 17
+                    *(f"{BASE}/?game={g.id}" for g in GAMES.values() if g.ready), f"{BASE}/?tab=contact"]
+    assert len(locs) == 18
     assert all(re.fullmatch(r"\d{4}-\d{2}-\d{2}", u.find("s:lastmod", ns).text) for u in urls)
 
 

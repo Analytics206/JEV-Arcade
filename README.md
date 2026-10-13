@@ -184,6 +184,9 @@ OPENAI_THINKING=low
 | `WIKIRACE_SITE_ROOT` | none | a folder of your site's own files served at its root, such as a search console's verification file (`site-root/` is ignored by git) |
 | `WIKIRACE_USER_AGENT` | `wikirace/<version> (repo URL)` | what Wikipedia is told; put your own contact here |
 | `WIKIRACE_ENV_FILE` | `./.env` | which settings file `wikirace` reads (also `--env-file`); an environment variable, not a line in the file |
+| `WIKIRACE_ADMIN_EMAIL` · `WIKIRACE_ADMIN_PASSWORD_HASH` | none | the admin pages at `/admin`; `wikirace --hash-password` prints the hash, see [Admin, traffic and enquiries](#admin-traffic-and-enquiries) |
+| `WIKIRACE_LOG_RETENTION_DAYS` | `365` | days the traffic and sign-in logs keep a row |
+| `WIKIRACE_TRAFFIC_DB` · `WIKIRACE_TRAFFIC_LOG` | `traffic.db` beside the history · `on` | the traffic log's file, and `off` to stop it |
 
 A value WikiRace cannot use (a misspelt level, say) is ignored and shown as a warning in the race
 setup, never a crash.
@@ -230,6 +233,23 @@ the move says how many.
   the line; fewer hops only settles a dead heat. Rate limits are waited out in plain sight: the
   wait is on the race clock, but it never counts as thinking time.
 
+## Admin, traffic and enquiries
+
+The site keeps three records, and shows them on admin pages at `/admin` that only its admin can
+read (nothing on the site links there): **every request** it serves (address, country, page,
+browser, referrer and the rest, in its own `traffic.db`), **every admin sign-in** and failed
+attempt, and a **copy of every Contact page message**. The Contact page (`?tab=contact`) opens the
+visitor's own email app with their message written in; the server sends no mail.
+
+The arcade has no accounts; the admin pages have one, set in `.env`:
+
+```bash
+uv run wikirace --hash-password     # prints WIKIRACE_ADMIN_PASSWORD_HASH=...
+```
+
+then `WIKIRACE_ADMIN_EMAIL=you@example.com` beside it. [docs/traffic.md](docs/traffic.md) says what
+is kept and for how long, how to delete one person's data, and what to switch on in Cloudflare.
+
 ## How it is built
 
 A Python server (FastAPI, httpx and the Anthropic SDK), SQLite for race history, and a browser
@@ -242,6 +262,8 @@ over server-sent events.
 - [docs/arcade.md](docs/arcade.md): how a game is built, and how to add one.
 - [docs/deploy.md](docs/deploy.md): running it for other people: Docker, updates, backups, your own
   domain, cost control.
+- [docs/traffic.md](docs/traffic.md): the traffic log, the sign-in log, Contact page enquiries, and
+  the admin pages that read them.
 - [CHANGELOG.md](CHANGELOG.md), [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
 
 ## Development
@@ -267,9 +289,12 @@ Python 3.11 to 3.14, and builds the Docker image and checks that it serves the p
 ## Security
 
 - Keys stay on the server. The page never receives one.
-- There is no login. The server binds to `127.0.0.1` by default, and Docker publishes it on
-  `127.0.0.1` only. If you open it to your network, anyone who reaches it can start races on your
-  API credits.
+- There is no login to play. The server binds to `127.0.0.1` by default, and Docker publishes it
+  on `127.0.0.1` only. If you open it to your network, anyone who reaches it can start races on
+  your API credits.
+- The admin pages are the only thing that signs in: one admin, a password kept as a scrypt hash,
+  a session in an `HttpOnly`, `SameSite=Strict` cookie, checked by the server on every admin
+  request, and failed sign-ins rate limited and logged.
 - It answers only to the host names it is given (`localhost` and `127.0.0.1` unless
   `WIKIRACE_ALLOWED_HOSTS` adds more), so a web page elsewhere cannot reach it by pointing a name of
   its own at your machine.
