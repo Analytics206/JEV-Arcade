@@ -185,6 +185,18 @@ def test_the_beacon_adds_to_its_own_row_and_is_bounded(app_env):
     assert b[1]["timezone"] == ""
 
 
+def test_a_log_that_cannot_be_opened_never_stops_the_site(tmp_path):
+    # A file where the log's folder should be: it can never be created.
+    (tmp_path / "blocked").write_text("not a folder")
+    settings = load_settings({"WIKIRACE_DB": str(tmp_path / "w.db"),
+                              "WIKIRACE_TRAFFIC_DB": str(tmp_path / "blocked" / "traffic.db")}, read_file=False)
+    app = create_app(settings, providers={})
+    with TestClient(app, base_url="http://localhost") as c:
+        assert c.get("/").status_code == 200 and c.get("/api/health").status_code == 200
+        assert c.post("/api/beacon", json={"sw": 1}).status_code == 204
+        assert not app.state.traffic.running and "traffic.db" in app.state.traffic.problem
+
+
 def test_rows_survive_a_restart_once_each(tmp_path):
     db = str(tmp_path / "t.db")
     for run in range(2):

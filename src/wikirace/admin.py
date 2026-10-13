@@ -240,7 +240,9 @@ router = APIRouter(prefix="/api/admin", dependencies=[Depends(require_admin)])
 @router.get("/me")
 def me(admin: Admin, request: Request) -> dict[str, Any]:
     s = _settings(request)
-    return {**admin, "retention_days": s.log_retention_days, "traffic_log": bool(s.traffic_db)}
+    log = getattr(request.app.state, "traffic", None)
+    return {**admin, "retention_days": s.log_retention_days, "traffic_log": bool(log and log.running),
+            "traffic_problem": log.problem if log else None}
 
 
 # ── The traffic report ───────────────────────────────────────────────────────

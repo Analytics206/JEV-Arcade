@@ -183,7 +183,7 @@ The endpoint is open to anyone, so it is fenced:
 | `WIKIRACE_ADMIN_EMAIL` | none | the admin's email; with the hash, switches the admin pages on |
 | `WIKIRACE_ADMIN_PASSWORD_HASH` | none | what `wikirace --hash-password` prints |
 | `WIKIRACE_LOG_RETENTION_DAYS` | `365` | days the traffic and sign-in logs keep a row (1–3650) |
-| `WIKIRACE_TRAFFIC_DB` | `traffic.db` beside `WIKIRACE_DB` | where the traffic log is |
+| `WIKIRACE_TRAFFIC_DB` | `traffic.db` beside `WIKIRACE_DB` | where the traffic log is; in Docker always `/data/traffic.db` (`compose.yaml`) |
 | `WIKIRACE_TRAFFIC_LOG` | `on` | `off` stops the traffic log (the beacon is then ignored) |
 
 ### Cloudflare's visitor location
@@ -234,6 +234,7 @@ download the CSV.
 | every visitor has the same address (the tunnel's or `172.x`) | the requests do not come through Cloudflare, or a proxy in between drops `CF-Connecting-IP` and `X-Forwarded-For` |
 | no city, region or coordinates | Cloudflare's visitor location headers are off (see above) |
 | no country at all | the request did not come through Cloudflare (on your own network, say) |
+| `traffic log: off, cannot open …` at start-up, and the admin page says the log is off | the file named by `WIKIRACE_TRAFFIC_DB` cannot be written; the site runs without the log. Leave the setting out and it goes beside the history |
 | the report is empty | the period is too short, or the audience is People and only bots came; try Everyone. `WIKIRACE_TRAFFIC_LOG=off` says so at the foot of the page |
 | page views lower than you expect | moving between views in the page is not a page load, and Cloudflare-cached files are not seen |
 | no "Median load" or screen sizes | the beacon is blocked (some content blockers do), or JavaScript is off |

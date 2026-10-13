@@ -436,11 +436,24 @@ class Traffic:
         self.dropped = 0
         self._q: queue.Queue[dict[str, Any] | None] = queue.Queue(maxsize=_QUEUE_MAX)
         self._thread: threading.Thread | None = None
+        #: Why the log could not start, or None.
+        self.problem: str | None = None
+
+    @property
+    def running(self) -> bool:
+        return self._thread is not None
 
     def start(self) -> None:
+        """Open the file and start writing. A log that cannot be opened is
+        switched off with a warning: it never stops the site from starting."""
         if self._thread is not None:
             return
-        init(self.db_path)
+        try:
+            init(self.db_path)
+        except Exception as exc:  # noqa: BLE001
+            self.problem = f"{self.db_path}: {exc}"
+            print(f"traffic log: off, cannot open {self.problem}", flush=True)
+            return
         self._thread = threading.Thread(target=self._run, name="traffic-log", daemon=True)
         self._thread.start()
 

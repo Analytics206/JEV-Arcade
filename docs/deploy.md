@@ -14,8 +14,8 @@ its history in `/data/wikirace.db` on the `wikirace-data` volume, and its traffi
 and the providers your keys name.
 
 Everything is configured by `.env`, which `compose.yaml` hands to the container. `WIKIRACE_HOST`,
-`WIKIRACE_DB` and the port inside the container are fixed by `compose.yaml` and override anything
-in `.env`; `WIKIRACE_PORT` in `.env` sets the port published on the host.
+`WIKIRACE_DB`, `WIKIRACE_TRAFFIC_DB` and the port inside the container are fixed by `compose.yaml`
+and override anything in `.env`; `WIKIRACE_PORT` in `.env` sets the port published on the host.
 
 ## First start
 

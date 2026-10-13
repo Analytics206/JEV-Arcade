@@ -19,6 +19,7 @@ services:
       WIKIRACE_HOST: 0.0.0.0
       WIKIRACE_PORT: "8000"
       WIKIRACE_DB: /data/wikirace.db
+      WIKIRACE_TRAFFIC_DB: /data/traffic.db
     ports:
       # 127.0.0.1: reachable from this machine only. Drop it to open the page to
       # your network, and know that anyone who reaches it spends your API credits.

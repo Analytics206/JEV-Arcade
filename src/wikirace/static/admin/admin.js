@@ -125,7 +125,9 @@ function Admin() {
               : html`<${EnquiriesPanel} /><${TrafficReport} />`}
             <p class="ad-foot">
               The traffic and sign-in logs keep ${me.retention_days} days (WIKIRACE_LOG_RETENTION_DAYS); enquiries are
-              kept until you delete them.${me.traffic_log ? '' : ' The traffic log is off (WIKIRACE_TRAFFIC_LOG).'}
+              kept until you delete them.${me.traffic_log ? '' : me.traffic_problem
+                ? ` The traffic log is off: it could not open ${me.traffic_problem}.`
+                : ' The traffic log is off (WIKIRACE_TRAFFIC_LOG).'}
             </p>
           </div>
         </main>
