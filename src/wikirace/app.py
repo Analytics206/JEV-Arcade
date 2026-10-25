@@ -24,7 +24,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.datastructures import Headers
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from . import __version__, admin, api, enquiries, logins, site, store, traffic
+from . import __version__, admin, api, enquiries, logins, owners, site, store, traffic
 from .config import Settings, load_settings, twin_host
 from .games import api as games_api
 from .games import runs as game_runs
@@ -158,6 +158,7 @@ def create_app(
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         store.init(settings.db_path)
         games_store.init(settings.db_path)
+        owners.init(settings.db_path)
         logins.init(settings.db_path)
         enquiries.init(settings.db_path)
         logins.prune(settings.db_path, settings.log_retention_days)
@@ -188,6 +189,7 @@ def create_app(
     app.state.traffic = log
     app.state.login_limit = logins.RateLimit(*logins.LOGIN_LIMITS)
     app.state.contact_limit = enquiries.limiter()
+    app.state.start_limit = api.start_limit(settings)
     # No login, so the Host header is checked: a page on another site that
     # points a name of its own at 127.0.0.1 (DNS rebinding) is refused before
     # it can start a race on your keys. WIKIRACE_ALLOWED_HOSTS adds names.

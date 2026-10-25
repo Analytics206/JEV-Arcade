@@ -528,6 +528,11 @@ def running_count() -> int:
     return sum(1 for r in _LIVE.values() if not r.done)
 
 
+def too_many(max_live: int) -> str:
+    return (f"{max_live} race{'s are' if max_live != 1 else ' is'} already running"
+            " — stop one or let it finish first")
+
+
 def live_races() -> list[LiveRace]:
     return list(_LIVE.values())
 
@@ -540,10 +545,7 @@ def start_race(
     """Create a race, record it, and set it running. Returns at once. Must be
     called on the loop's thread."""
     if running_count() >= max_live:
-        raise TooManyRaces(
-            f"{max_live} race{'s are' if max_live != 1 else ' is'} already running"
-            " — stop one or let it finish first"
-        )
+        raise TooManyRaces(too_many(max_live))
     state: dict[str, Any] = {
         "id": uuid.uuid4().hex[:12],
         "status": "running",

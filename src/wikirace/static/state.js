@@ -431,19 +431,27 @@ export const DEFAULT_RULES = { max_hops: 12, strikes: 3, time_limit_s: 60, max_l
 /** Each rule's range, as POST /api/races checks it. */
 export const RULE_RANGE = { max_hops: [1, 40], strikes: [1, 10], time_limit_s: [30, 3600], max_links: [0, 10_000] }
 
-/** A rule's value inside its range; a blank or junk entry is the lowest. */
-export function clampRule(k, v) {
+/** A rule's range on this server: RULE_RANGE, narrowed by `limits`, the most a
+ *  public site lets a visitor's race ask for (GET /api/models; null elsewhere). */
+export function ruleRange(k, limits) {
   const [lo, hi] = RULE_RANGE[k]
+  const most = limits?.[k]
+  return [lo, Number.isFinite(most) ? Math.max(lo, Math.min(hi, most)) : hi]
+}
+
+/** A rule's value inside its range; a blank or junk entry is the lowest. */
+export function clampRule(k, v, limits) {
+  const [lo, hi] = ruleRange(k, limits)
   const n = Math.round(Number(v))
   return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : lo
 }
 
 /** Rules from anywhere (a saved setup, a rematch) that the server will take. */
-export function sanitizeRules(r) {
+export function sanitizeRules(r, limits) {
   const out = {}
   for (const k of Object.keys(DEFAULT_RULES)) {
     const v = r && typeof r === 'object' ? r[k] : undefined
-    out[k] = v != null && v !== '' && Number.isFinite(Number(v)) ? clampRule(k, v) : DEFAULT_RULES[k]
+    out[k] = v != null && v !== '' && Number.isFinite(Number(v)) ? clampRule(k, v, limits) : clampRule(k, DEFAULT_RULES[k], limits)
   }
   return out
 }

@@ -7,6 +7,13 @@
   only. Open it further only behind something that limits who gets in or how much they can spend
   (`WIKIRACE_MAX_RACES`, the providers' own spending limits); the public site runs on a free
   model and Jev for this reason. [docs/deploy.md](docs/deploy.md) has more.
+- **A public site holds visitors to what you chose** (`WIKIRACE_PUBLIC`, on with
+  `WIKIRACE_CANONICAL_HOST`): only the models the `*_MODELS` lists name, thinking up to
+  `WIKIRACE_MAX_THINKING`, races of at most 20 hops and 10 minutes, and
+  `WIKIRACE_STARTS_PER_HOUR` starts per address an hour. A start with no room is refused before
+  anything is fetched or billed. Only the browser that started a race or a game run, or the admin,
+  may stop or delete it: the start's answer carries an owner token, which the server keeps only
+  as a SHA-256.
 - **Keys stay on the server.** The page never receives one; a provider's refusal of a key is
   reported without the provider's words, which can quote it back; URLs are shown without their
   passwords; race and run records hold no key.

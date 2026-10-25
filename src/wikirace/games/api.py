@@ -10,7 +10,9 @@
 
 Players are named as racers are, `provider:model_id`, and checked the same way
 (games/players.py). A game's own `params` are validated by its model: a bad
-one is a 422 naming the field.
+one is a 422 naming the field. On a public site a start counts against the
+visitor's hourly starts, and only its owner stops or deletes a run, as for a
+race (api.py, owners.py).
 """
 from __future__ import annotations
 
@@ -22,7 +24,8 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, ValidationError
 
-from ..api import LaneIn
+from .. import owners
+from ..api import LaneIn, admit, may_change
 from ..race.wiki import WikiError
 from . import runs, store
 from .players import BadPlayers, resolve_players
@@ -74,22 +77,27 @@ async def start_run(game_id: str, body: RunIn, request: Request) -> dict[str, An
         settings=settings, providers=request.app.state.providers, wiki=request.app.state.wiki,
         players=players, params=params,
     )
-    extra: dict[str, Any] = {}
-    if game.prepare is not None:
-        try:
-            extra = await game.prepare(ctx)
-        except GameInputError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-        except (GameSourceError, WikiError) as exc:
-            raise HTTPException(status_code=502, detail=str(exc)) from exc
     try:
-        run = runs.start_run(
-            game=game.id, players=players, params=params.model_dump(), db_path=settings.db_path,
-            play=lambda r: game.play(r, ctx), extra=extra,
-        )
+        # The place is held from here, before `prepare` (which may call a
+        # paid model), so a start that cannot run spends nothing.
+        with runs.slot():
+            admit(request)
+            extra: dict[str, Any] = {}
+            if game.prepare is not None:
+                try:
+                    extra = await game.prepare(ctx)
+                except GameInputError as exc:
+                    raise HTTPException(status_code=400, detail=str(exc)) from exc
+                except (GameSourceError, WikiError) as exc:
+                    raise HTTPException(status_code=502, detail=str(exc)) from exc
+            run = runs.start_run(
+                game=game.id, players=players, params=params.model_dump(), db_path=settings.db_path,
+                play=lambda r: game.play(r, ctx), extra=extra, held=True,
+            )
     except runs.TooManyRuns as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
-    return run.state
+    # The token rides on this answer alone: never in the run, which anyone may read.
+    return {**run.state, "owner_token": owners.issue(settings.db_path, "run", run.id)}
 
 
 @router.get("/runs")
@@ -152,8 +160,8 @@ async def run_events(run_id: str, request: Request) -> StreamingResponse:
     )
 
 
-@router.post("/runs/{run_id}/stop", status_code=202)
-async def stop_run(run_id: str) -> dict[str, Any]:
+def stop(run_id: str) -> dict[str, Any]:
+    """Stop a running run, whoever asks: the endpoints decide who may."""
     live = runs.get_live(run_id)
     if live is None or live.done:
         raise HTTPException(status_code=409, detail=f"run {run_id} is not running")
@@ -161,14 +169,27 @@ async def stop_run(run_id: str) -> dict[str, Any]:
     return {"id": run_id, "stopping": True}
 
 
-@router.delete("/runs/{run_id}")
-async def delete_run(run_id: str, request: Request) -> dict[str, Any]:
+async def remove(run_id: str, db_path: str) -> dict[str, Any]:
+    """Drop a run that is over, whoever asks: the endpoints decide who may."""
     live = runs.get_live(run_id)
     if live is not None and not live.done:
         raise HTTPException(status_code=409, detail="stop the game before deleting it")
     if live is not None:
         await live.flushed()
     runs.forget(run_id)
-    if not store.delete(_db(request), run_id):
+    if not store.delete(db_path, run_id):
         raise HTTPException(status_code=404, detail=f"no run {run_id}")
+    owners.forget(db_path, "run", run_id)
     return {"deleted": run_id}
+
+
+@router.post("/runs/{run_id}/stop", status_code=202)
+async def stop_run(run_id: str, request: Request) -> dict[str, Any]:
+    may_change(request, "run", run_id)
+    return stop(run_id)
+
+
+@router.delete("/runs/{run_id}")
+async def delete_run(run_id: str, request: Request) -> dict[str, Any]:
+    may_change(request, "run", run_id)
+    return await remove(run_id, _db(request))

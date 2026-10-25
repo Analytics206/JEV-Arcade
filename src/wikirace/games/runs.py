@@ -32,7 +32,7 @@ import contextlib
 import json
 import time
 import uuid
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Awaitable, Callable, Iterator, Sequence
 from datetime import UTC, datetime
 from typing import Any
 
@@ -278,12 +278,36 @@ class GameRun:
             await asyncio.gather(*list(self._writes), return_exceptions=True)
 
 
+#: Places among MAX_LIVE held by runs still being set up (`slot`).
+_held = 0
+
+
+def _full(extra: int = 0) -> None:
+    if sum(1 for r in _LIVE.values() if not r.done) + _held + extra >= MAX_LIVE:
+        raise TooManyRuns(f"{MAX_LIVE} games are already running; stop one or wait for it to finish")
+
+
+@contextlib.contextmanager
+def slot() -> Iterator[None]:
+    """A place among MAX_LIVE, held from before a game's `prepare` (which may
+    bill a model) until `start_run` takes it, so a thousand starts at once
+    cannot each prepare and be refused only afterwards. TooManyRuns when
+    there is none. Must be used on the loop's thread."""
+    global _held
+    _full()
+    _held += 1
+    try:
+        yield
+    finally:
+        _held -= 1
+
+
 def start_run(
     *, game: str, players: Sequence[Player], params: dict[str, Any], db_path: str,
-    play: Callable[[GameRun], Awaitable[None]], extra: dict[str, Any] | None = None,
+    play: Callable[[GameRun], Awaitable[None]], extra: dict[str, Any] | None = None, held: bool = False,
 ) -> GameRun:
-    if sum(1 for r in _LIVE.values() if not r.done) >= MAX_LIVE:
-        raise TooManyRuns(f"{MAX_LIVE} games are already running; stop one or wait for it to finish")
+    """Start a run. *held*: inside a `slot()`, whose place this run takes."""
+    _full(-1 if held else 0)
     run = GameRun(game=game, players=players, params=params, db_path=db_path, extra=extra)
     run.start(play)
     return run

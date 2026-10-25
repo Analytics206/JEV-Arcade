@@ -1,9 +1,10 @@
 /* The page's client for the WikiRace server (docs/design.md, "HTTP API").
  *
- * Everything is under /api. The game API is not authenticated — the server binds
- * to localhost — and the admin pages' (/api/admin) session is an HttpOnly cookie
- * the browser sends by itself, so there is no token handling here and none should
- * be added. A
+ * Everything is under /api. There are no accounts, and the admin pages' (/api/admin)
+ * session is an HttpOnly cookie the browser sends by itself. The one token here is
+ * an owner's: on a public site only the browser that started a race or a game run
+ * may stop or delete it, so the answer to a start carries `owner_token`, kept here
+ * and sent back as X-Owner-Token on that race's or run's stop and delete. A
  * failed request throws an ApiError carrying the server's own `detail`, which is
  * written to be read by a person, so the page shows it as it came.
  */
@@ -11,6 +12,45 @@ import { useCallback, useEffect, useState } from 'preact/hooks'
 import { applyEvent, detailOf } from './state.js'
 
 export const API = '/api'
+
+/* What this browser started, id → owner token, newest last. In localStorage so a
+ * reload keeps it; without storage (a private window) it lasts the visit. */
+const OWNED_KEY = 'wikirace.owned'
+const MAX_OWNED = 200
+const OWNED_PATH = /^\/(?:races|games\/runs)\/([^/?]+)(?:\/stop)?$/
+
+function readOwned() {
+  try {
+    const v = JSON.parse(localStorage.getItem(OWNED_KEY) ?? '[]')
+    return Array.isArray(v) ? v.filter((e) => Array.isArray(e) && e.length === 2) : []
+  } catch {
+    return []
+  }
+}
+
+const owned = new Map(readOwned())
+
+function remember(id, token) {
+  owned.delete(id)
+  owned.set(id, token)
+  while (owned.size > MAX_OWNED) owned.delete(owned.keys().next().value)
+  try {
+    localStorage.setItem(OWNED_KEY, JSON.stringify([...owned]))
+  } catch {
+    /* kept for this visit only */
+  }
+}
+
+/** Whether this browser started race or run *id*, so may stop or delete it. */
+export const owns = (id) => owned.has(id)
+
+/** The owner token a stop or delete of *path* carries, when this browser has one. */
+function ownerHeaders(method, path) {
+  if (method !== 'POST' && method !== 'DELETE') return {}
+  const m = OWNED_PATH.exec(path)
+  const token = m && owned.get(decodeURIComponent(m[1]))
+  return token ? { 'X-Owner-Token': token } : {}
+}
 
 export class ApiError extends Error {
   constructor(status, url, message) {
@@ -24,8 +64,9 @@ export class ApiError extends Error {
 async function request(path, init = {}) {
   const url = API + path
   let resp
+  const owner = ownerHeaders(init.method, path)
   try {
-    resp = await fetch(url, { ...init, headers: { Accept: 'application/json', ...(init.headers ?? {}) } })
+    resp = await fetch(url, { ...init, headers: { Accept: 'application/json', ...owner, ...(init.headers ?? {}) } })
   } catch {
     // A dead server and a refused connection look identical here; say so plainly
     // rather than surfacing "Failed to fetch".
@@ -36,7 +77,12 @@ async function request(path, init = {}) {
     throw new ApiError(resp.status, url, detailOf(body, `${resp.status} ${resp.statusText}`))
   }
   if (resp.status === 204) return undefined
-  return resp.json()
+  const body = await resp.json()
+  if (body && typeof body.id === 'string' && typeof body.owner_token === 'string') {
+    remember(body.id, body.owner_token)
+    delete body.owner_token // nothing else on the page needs it
+  }
+  return body
 }
 
 const json = (method, body, signal) => ({

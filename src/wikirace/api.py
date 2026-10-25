@@ -17,11 +17,16 @@ given (an OpenRouter model not in OPENROUTER_MODELS included); TypeSafe races
 only the ones TYPESAFE_MODELS lists. Keys are read on the server, from the
 settings; the page never sees one.
 
-No authentication: the server binds to localhost unless told otherwise.
+No accounts: the server binds to localhost unless told otherwise. A public
+site (WIKIRACE_PUBLIC, config.py) is open to strangers on your keys, so there
+a visitor races only the listed models, within `PUBLIC_LIMITS`, starts
+`starts_per_hour` races and games an hour, and stops or deletes only what their
+own browser started (owners.py).
 """
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import json
 import time
 from collections.abc import AsyncGenerator
@@ -31,8 +36,9 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 
-from . import __version__, store
+from . import __version__, owners, store, traffic
 from .config import THINKING_LEVELS, ProviderConfig, Settings
+from .logins import RateLimit
 from .providers.base import ModelInfo, ProviderError
 from .providers.ollama import tagged
 from .race import engine
@@ -47,6 +53,9 @@ POOLS = ("classic", "trending", "wild")
 _DISCOVER_TIMEOUT_S = 5.0
 #: How long what the providers said is reused as it is (see `discovered`).
 _DISCOVER_FRESH_S = 30.0
+#: On a public site, the most a visitor's race may ask for: every hop is a
+#: model call per lane, and a long clock keeps a race slot from everyone else.
+PUBLIC_LIMITS = {"max_hops": 20, "time_limit_s": 600}
 
 
 def _settings(request: Request) -> Settings:
@@ -59,6 +68,52 @@ def _wiki(request: Request) -> Wiki:
 
 def _providers(request: Request) -> dict[str, Any]:
     return request.app.state.providers
+
+
+def start_limit(settings: Settings) -> RateLimit:
+    """Starts per address an hour on a public site, and ten times that in all."""
+    return RateLimit(settings.starts_per_hour, 3600, settings.starts_per_hour * 10)
+
+
+def _address(request: Request) -> str:
+    """Who is starting, for the limit: the visitor's address, and for IPv6
+    its /64, which one household or one server holds whole."""
+    ip = traffic.client_ip(request.headers, request.client.host if request.client else "")
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return ip
+    return str(ipaddress.ip_network(f"{addr}/64", strict=False)) if addr.version == 6 else ip
+
+
+def admit(request: Request) -> None:
+    """On a public site, count one start (a race, a game) against this
+    visitor; a 429 past the limit. Called once the start is known to be
+    possible, before anything is fetched or billed."""
+    if not _settings(request).public:
+        return
+    limit: RateLimit = request.app.state.start_limit
+    key = _address(request)
+    wait = limit.blocked(key)
+    if wait:
+        minutes = max(1, round(wait / 60))
+        raise HTTPException(
+            status_code=429, headers={"Retry-After": str(int(wait) + 1)},
+            detail=f"That is as many races and games as this site starts for you in an hour; try again in {minutes} min.",
+        )
+    # No await between the check and the count: two starts at once cannot
+    # both slip in under the limit.
+    limit.hit(key)
+
+
+def may_change(request: Request, kind: str, item_id: str) -> None:
+    """Stopping or deleting *item_id*: on a public site only its owner may
+    (owners.py); a 403 for anyone else."""
+    settings = _settings(request)
+    if not settings.public:
+        return
+    if not owners.owns(settings.db_path, kind, item_id, request.headers.get(owners.HEADER, "")):
+        raise HTTPException(status_code=403, detail="Only the browser that started it can stop or delete it.")
 
 
 def _wiki_http(exc: Exception) -> HTTPException:
@@ -182,15 +237,17 @@ async def models(request: Request, fresh: bool = False) -> dict[str, Any]:
             "id": cfg.id, "label": cfg.label, "kind": cfg.kind,
             "configured": cfg.configured, "available": available, "reason": problem,
             "thinking": cfg.thinking if cfg.kind == "text" else None,
-            "custom_models": cfg.kind == "text",
+            # A public site races only what its lists name.
+            "custom_models": cfg.kind == "text" and not settings.public,
             "url": cfg.shown_url if cfg.id == "ollama" else None,
             "key_source": cfg.key_source,
         })
         # Only Ollama is asked what it has, and it lists `llama3.2` as
         # `llama3.2:latest`: both spellings are the same model.
         by_id = {tagged(i.model_id): i for i in infos or []}
-        if infos is not None and not cfg.models_configured:
+        if infos is not None and not cfg.models_configured and not settings.public:
             # Discovered, and nothing configured narrows it: everything it has.
+            # Not on a public site, which offers only what OLLAMA_MODELS names.
             for info in infos:
                 out_models.append(_model(settings, cfg, info.model_id, available=True, reason=None, info=info))
             continue
@@ -205,8 +262,11 @@ async def models(request: Request, fresh: bool = False) -> dict[str, Any]:
     return {
         "providers": out_providers,
         "models": out_models,
-        "thinking_levels": list(THINKING_LEVELS),
+        "thinking_levels": list(settings.thinking_offered()),
         "thinking": settings.thinking,
+        "public": settings.public,
+        #: The most a race may ask for, past what RulesIn allows; None: no more.
+        "limits": dict(PUBLIC_LIMITS) if settings.public else None,
         "warnings": list(settings.warnings),
     }
 
@@ -299,6 +359,9 @@ def _lane_specs(lanes: list[LaneIn], settings: Settings, providers: dict[str, An
             continue
         if len(model_id) > 200 or any(c.isspace() for c in model_id):
             raise HTTPException(status_code=400, detail=f"“{model_id}” is not a model id")
+        refused = settings.visitor_problem(cfg, model_id, ln.thinking)
+        if refused:
+            raise HTTPException(status_code=400, detail=refused)
         thinking = ln.thinking if ln.thinking is not None else settings.thinking_for(cfg.id, model_id)
         specs.append(engine.LaneSpec(
             key=ln.key, label=model_id, provider=cfg.id, model_id=model_id, kind="text",
@@ -333,13 +396,30 @@ async def list_races(request: Request, limit: Annotated[int, Query(ge=1, le=200)
     races = [store.summary(live[r["id"]].state) if r["id"] in live else r for r in races]
     races += [store.summary(r.state) for rid, r in live.items() if rid not in stored]
     races.sort(key=lambda r: r["created_at"], reverse=True)
-    return {"races": races[:limit], "running": [rid for rid, r in live.items() if not r.done]}
+    return {
+        "races": races[:limit], "running": [rid for rid, r in live.items() if not r.done],
+        # On a public site a race is deleted by the browser that started it.
+        "public": _settings(request).public,
+    }
+
+
+def _public_rules(rules: RulesIn) -> None:
+    for k, most in PUBLIC_LIMITS.items():
+        if getattr(rules, k) > most:
+            raise HTTPException(status_code=400, detail=f"this site races {k.replace('_', ' ')} up to {most}")
 
 
 @router.post("/races", status_code=201)
 async def start_race(body: RaceIn, request: Request) -> dict[str, Any]:
     settings = _settings(request)
     specs = _lane_specs(body.lanes, settings, _providers(request))
+    if settings.public:
+        _public_rules(body.rules)
+    # Asked before Wikipedia is: a start that cannot run fetches nothing, and
+    # a full house is not counted against the visitor.
+    if engine.running_count() >= settings.max_races:
+        raise HTTPException(status_code=409, detail=engine.too_many(settings.max_races))
+    admit(request)
     wiki = _wiki(request)
     try:
         start_page = await wiki.page(body.start)
@@ -371,7 +451,8 @@ async def start_race(body: RaceIn, request: Request) -> dict[str, Any]:
         )
     except engine.TooManyRaces as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
-    return race.state
+    # The token rides on this answer alone: never in the race, which anyone may read.
+    return {**race.state, "owner_token": owners.issue(settings.db_path, "race", race.id)}
 
 
 @router.get("/races/{race_id}")
@@ -430,8 +511,8 @@ async def race_events(race_id: str, request: Request) -> StreamingResponse:
     )
 
 
-@router.post("/races/{race_id}/stop", status_code=202)
-async def stop_race(race_id: str) -> dict[str, Any]:
+def stop(race_id: str) -> dict[str, Any]:
+    """Stop a running race, whoever asks: the endpoints decide who may."""
     live = engine.get_live(race_id)
     if live is None or live.done:
         raise HTTPException(status_code=409, detail=f"race {race_id} is not running")
@@ -439,8 +520,20 @@ async def stop_race(race_id: str) -> dict[str, Any]:
     return {"id": race_id, "stopping": True}
 
 
+@router.post("/races/{race_id}/stop", status_code=202)
+async def stop_race(race_id: str, request: Request) -> dict[str, Any]:
+    may_change(request, "race", race_id)
+    return stop(race_id)
+
+
 @router.delete("/races/{race_id}")
 async def delete_race(race_id: str, request: Request) -> dict[str, Any]:
+    may_change(request, "race", race_id)
+    return await remove(race_id, _settings(request).db_path)
+
+
+async def remove(race_id: str, db_path: str) -> dict[str, Any]:
+    """Drop a race that is over, whoever asks: the endpoints decide who may."""
     live = engine.get_live(race_id)
     if live is not None and not live.done:
         raise HTTPException(status_code=409, detail="stop the race before deleting it")
@@ -451,6 +544,7 @@ async def delete_race(race_id: str, request: Request) -> dict[str, Any]:
     # Out of memory too: a race lingering after its finish would otherwise go
     # on being served for two minutes after the delete said it was gone.
     engine.forget(race_id)
-    if not store.delete(_settings(request).db_path, race_id):
+    if not store.delete(db_path, race_id):
         raise HTTPException(status_code=404, detail=f"no race {race_id}")
+    owners.forget(db_path, "race", race_id)
     return {"deleted": race_id}

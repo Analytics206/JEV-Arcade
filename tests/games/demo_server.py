@@ -2,6 +2,7 @@
 
     uv run python tests/games/demo_server.py            # http://127.0.0.1:8002/?tab=arcade
     uv run python tests/games/demo_server.py --port 8010
+    uv run python tests/games/demo_server.py --public    # as a public site is (WIKIRACE_PUBLIC)
 
 The real server and the real page, with these players in place of the real
 providers:
@@ -63,6 +64,7 @@ class DemoText(TextProvider):
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--port", type=int, default=8002)
+    ap.add_argument("--public", action="store_true", help="serve it as a public site: listed models, limits, owners")
     args = ap.parse_args()
     settings = load_settings({
         "OPENROUTER_API_KEY": "sk-or-demo",
@@ -70,6 +72,7 @@ def main() -> None:
         "TYPESAFE_API_KEY": "ts-demo",
         "WIKIRACE_DB": "data/arcade-demo.db",
         "WIKIRACE_PORT": str(args.port),
+        "WIKIRACE_PUBLIC": "on" if args.public else "off",
     }, read_file=False)
     providers = {pid: DemoText(settings.providers[pid]) for pid in ("anthropic", "openai", "openrouter", "ollama")}
     providers["typesafe"] = DemoJev()

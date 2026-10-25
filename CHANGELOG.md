@@ -21,8 +21,17 @@ Versions are the `version` in `pyproject.toml`, which `wikirace --version` and `
   (`POST /api/contact`, rate limited, repeats and a trap field dropped) that the admin pages list,
   with reply by email, mark handled and delete.
 - `docs/traffic.md`: what is kept, where, for how long, and how to delete one person's data.
+- **A public site** (`WIKIRACE_PUBLIC`, on with `WIKIRACE_CANONICAL_HOST`) holds strangers to what
+  the owner chose: only the models the `*_MODELS` lists name (a game's writer or asker included),
+  thinking up to `WIKIRACE_MAX_THINKING` (`medium`), races of at most 20 hops and 10 minutes, and
+  `WIKIRACE_STARTS_PER_HOUR` (20) races and games per address an hour. Only the browser that
+  started a race or run may stop or delete it (an owner token in the start's answer, sent back as
+  `X-Owner-Token`); the admin may stop or delete any at `/api/admin/races/...` and
+  `/api/admin/games/runs/...`.
 
 ### Changed
+- A game's place among the four live runs is held before its round is prepared, and a race's
+  room is checked before Wikipedia is asked, so a start that cannot run fetches and bills nothing.
 - The Docker image runs on Python 3.14 (was 3.12) and uv 0.12.
 - CI also tests Python 3.14, uses current actions (checkout v7, setup-uv v10, setup-node v7),
   cancels a run a newer push supersedes, and checks that the image serves the sitemap.

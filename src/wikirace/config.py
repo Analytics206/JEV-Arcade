@@ -43,6 +43,10 @@ DEFAULT_DB = "data/wikirace.db"
 DEFAULT_MAX_RACES = 2
 #: Days the traffic log and the sign-in log keep a row. Both hold IP addresses.
 DEFAULT_LOG_RETENTION_DAYS = 365
+#: On a public site (WIKIRACE_PUBLIC): the most a visitor may ask a model to
+#: think, and the races and games one address may start in an hour.
+DEFAULT_MAX_THINKING = "medium"
+DEFAULT_STARTS_PER_HOUR = 20
 #: Tokens of context a local Ollama model is given per request. Ollama's own
 #: default is small enough to cut a big article's link list, and the rules with
 #: it, without saying so; see providers/ollama.py.
@@ -166,6 +170,17 @@ class ProviderConfig:
                 return m.thinking
         return self.thinking
 
+    def lists(self, model_id: str) -> bool:
+        """Whether *model_id* is on the roster. Ollama's `llama3.2` is its
+        `llama3.2:latest`, so either spelling of one is the other."""
+        if self.id != "ollama":
+            return any(m.model_id == model_id for m in self.models)
+
+        def tagged(m: str) -> str:  # providers/ollama.py's rule; that module imports this one
+            return m if ":" in m.rsplit("/", 1)[-1] else f"{m}:latest"
+
+        return any(tagged(m.model_id) == tagged(model_id) for m in self.models)
+
 
 @dataclass(frozen=True)
 class Settings:
@@ -196,6 +211,16 @@ class Settings:
     #: password as `wikirace --hash-password` writes it. Either unset: no admin.
     admin_email: str | None = None
     admin_password_hash: str | None = None
+    #: WIKIRACE_PUBLIC: strangers reach this site, on your keys. On by default
+    #: with WIKIRACE_CANONICAL_HOST. A visitor then races only the models the
+    #: *_MODELS lists name, thinks no harder than `max_thinking` (or the
+    #: model's configured level), starts `starts_per_hour` races and games an
+    #: hour, and stops or deletes only what their own browser started.
+    public: bool = False
+    #: WIKIRACE_MAX_THINKING: on a public site, the most a visitor may ask for.
+    max_thinking: str = DEFAULT_MAX_THINKING
+    #: WIKIRACE_STARTS_PER_HOUR: on a public site, per address (ten times it in all).
+    starts_per_hour: int = DEFAULT_STARTS_PER_HOUR
     #: The .env file that was read, or None.
     env_file: str | None = None
     providers: Mapping[str, ProviderConfig] = field(default_factory=dict)
@@ -209,6 +234,30 @@ class Settings:
         """A model's configured level: `@level`, then the provider's, then the global one."""
         cfg = self.providers.get(provider_id)
         return (cfg.thinking_for(model_id) if cfg else None) or self.thinking
+
+    def thinking_offered(self) -> tuple[str, ...]:
+        """The levels a visitor may ask for: all of them, but on a public site
+        none above `max_thinking`."""
+        if not self.public:
+            return THINKING_LEVELS
+        return THINKING_LEVELS[: THINKING_LEVELS.index(self.max_thinking) + 1]
+
+    def visitor_problem(self, cfg: ProviderConfig, model_id: str, thinking: str | None) -> str | None:
+        """Why a visitor may not race or play text model *model_id* at the
+        level *thinking* (None: the configured one), or None when they may.
+
+        Only a public site asks: there an unlisted model id is a bill nobody
+        chose, and a level past `max_thinking` many times one. A model's own
+        configured level is always allowed, even above the cap."""
+        if not self.public:
+            return None
+        if not cfg.lists(model_id):
+            listed = ", ".join(m.model_id for m in cfg.models) or "none"
+            return f"{cfg.label} plays only the models this site lists ({listed}), not “{model_id}”"
+        if thinking is not None and thinking not in self.thinking_offered() \
+                and thinking != self.thinking_for(cfg.id, model_id):
+            return f"thinking: {thinking} is more than this site offers (at most {self.max_thinking})"
+        return None
 
 
 # ── .env ─────────────────────────────────────────────────────────────────────
@@ -460,6 +509,9 @@ def load_settings(
     admin_email, admin_hash = _admin(
         get("WIKIRACE_ADMIN_EMAIL")[0], get("WIKIRACE_ADMIN_PASSWORD_HASH")[0], warnings,
     )
+    public_raw = get("WIKIRACE_PUBLIC")[0]
+    public = _truthy(public_raw) if public_raw else canonical is not None
+    max_thinking = _level(get("WIKIRACE_MAX_THINKING")[0], "WIKIRACE_MAX_THINKING", warnings) or DEFAULT_MAX_THINKING
     return Settings(
         host=get("WIKIRACE_HOST", "127.0.0.1")[0],
         port=_int(get("WIKIRACE_PORT")[0], DEFAULT_PORT, "WIKIRACE_PORT", warnings, 1, 65535),
@@ -475,6 +527,10 @@ def load_settings(
                                 "WIKIRACE_LOG_RETENTION_DAYS", warnings, 1, 3650),
         admin_email=admin_email,
         admin_password_hash=admin_hash,
+        public=public,
+        max_thinking=max_thinking,
+        starts_per_hour=_int(get("WIKIRACE_STARTS_PER_HOUR")[0], DEFAULT_STARTS_PER_HOUR,
+                             "WIKIRACE_STARTS_PER_HOUR", warnings, 1, 10_000),
         in_docker=in_docker,
         env_file=str(path) if path else None,
         providers=providers,

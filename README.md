@@ -179,6 +179,9 @@ OPENAI_THINKING=low
 | `WIKIRACE_PORT` · `WIKIRACE_HOST` | `8000` · `127.0.0.1` | in Docker, the port published on your machine |
 | `WIKIRACE_DB` | `data/wikirace.db` | race history (Docker: the `/data` volume) |
 | `WIKIRACE_MAX_RACES` | `2` | races that may run at once |
+| `WIKIRACE_PUBLIC` | on with `WIKIRACE_CANONICAL_HOST` | strangers reach the site: they race only the listed models, within the limits below, and stop or delete only their own races ([docs/deploy.md](docs/deploy.md)) |
+| `WIKIRACE_MAX_THINKING` | `medium` | on a public site, the most thinking a visitor may ask for |
+| `WIKIRACE_STARTS_PER_HOUR` | `20` | on a public site, races and games one address may start in an hour |
 | `WIKIRACE_ALLOWED_HOSTS` | `localhost`, `127.0.0.1` | other names or addresses the page is opened under (`wikirace.lan, 192.168.1.20`), or `*` |
 | `WIKIRACE_CANONICAL_HOST` | none | the public address (`example.com`); `www.` and plain http redirect to it, see [On your own domain](#on-your-own-domain) |
 | `WIKIRACE_SITE_ROOT` | none | a folder of your site's own files served at its root, such as a search console's verification file (`site-root/` is ignored by git) |

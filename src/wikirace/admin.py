@@ -18,6 +18,10 @@ The admin's only, checked on every request (`require_admin`):
   GET    /api/admin/enquiries               enquiries, newest first
   POST   /api/admin/enquiries/{id}/handled  {handled: true|false}
   DELETE /api/admin/enquiries/{id}
+  POST   /api/admin/races/{id}/stop         stop anyone's race (a public site lets only its owner)
+  DELETE /api/admin/races/{id}              delete anyone's race
+  POST   /api/admin/games/runs/{id}/stop    the same for a game run
+  DELETE /api/admin/games/runs/{id}
 
 Nothing on the public site links to /admin; that is presentation only. Every
 admin endpoint asks for the session itself. Everything these endpoints return
@@ -38,8 +42,9 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, ValidationError
 from starlette.concurrency import run_in_threadpool
 
-from . import enquiries, logins, traffic
+from . import api, enquiries, logins, traffic
 from .config import Settings
+from .games import api as games_api
 
 public = APIRouter(prefix="/api")
 auth = APIRouter(prefix="/api/admin")
@@ -373,3 +378,35 @@ def enquiry_delete(enquiry_id: int, request: Request, admin: Admin) -> dict[str,
     # Not who sent it: a deleted enquiry leaves no email behind.
     logins.audit(db, admin["email"], "enquiry_deleted", f"enquiry {enquiry_id}", f"sent {gone['created_at']}")
     return {"ok": True}
+
+
+# ── Races and game runs ──────────────────────────────────────────────────────
+# A public site lets only a race's own browser stop or delete it (owners.py);
+# the admin may stop or delete any. The admin's cookie reaches /api/admin only,
+# so these are its own addresses rather than a second way into /api/races.
+
+
+@router.post("/races/{race_id}/stop", status_code=202)
+async def race_stop(race_id: str) -> dict[str, Any]:
+    return api.stop(race_id)
+
+
+@router.delete("/races/{race_id}")
+async def race_delete(race_id: str, request: Request, admin: Admin) -> dict[str, Any]:
+    db = _settings(request).db_path
+    out = await api.remove(race_id, db)
+    logins.audit(db, admin["email"], "race_deleted", f"race {race_id}")
+    return out
+
+
+@router.post("/games/runs/{run_id}/stop", status_code=202)
+async def run_stop(run_id: str) -> dict[str, Any]:
+    return games_api.stop(run_id)
+
+
+@router.delete("/games/runs/{run_id}")
+async def run_delete(run_id: str, request: Request, admin: Admin) -> dict[str, Any]:
+    db = _settings(request).db_path
+    out = await games_api.remove(run_id, db)
+    logins.audit(db, admin["email"], "run_deleted", f"run {run_id}")
+    return out

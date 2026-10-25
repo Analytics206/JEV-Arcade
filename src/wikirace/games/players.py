@@ -127,6 +127,9 @@ def resolve_players(
             asked = getattr(ln, "thinking", None)
             if asked is not None and asked not in THINKING_LEVELS:
                 raise BadPlayers(f"thinking must be one of {', '.join(THINKING_LEVELS)}")
+            refused = settings.visitor_problem(cfg, model_id, asked)
+            if refused:
+                raise BadPlayers(refused)
             thinking = asked if asked is not None else settings.thinking_for(cfg.id, model_id)
         out.append(Player(
             index=i, key=ln.key, label=model_id, provider=cfg.id, model_id=model_id,

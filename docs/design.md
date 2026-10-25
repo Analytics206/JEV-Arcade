@@ -185,6 +185,9 @@ One `.env` file (copy `env.example`), read by `wikirace` and passed to the conta
 | `WIKIRACE_DB` | `data/wikirace.db` | SQLite race history (Docker: `/data/wikirace.db` on a volume) |
 | `WIKIRACE_THINKING` | unset | Thinking level for every racer, unless something nearer says |
 | `WIKIRACE_MAX_RACES` | `2` | Races that may run at once |
+| `WIKIRACE_PUBLIC` | `on` with `WIKIRACE_CANONICAL_HOST`, else `off` | Strangers reach the site: visitors race only listed models, within the thinking and start limits below, a race at most 20 hops and 10 minutes, and stop or delete only what their own browser started |
+| `WIKIRACE_MAX_THINKING` | `medium` | On a public site, the most thinking a visitor may ask for (a model's own configured level is always allowed) |
+| `WIKIRACE_STARTS_PER_HOUR` | `20` | On a public site, races and games one address may start in an hour (an IPv6 address by its /64); ten times it in all |
 | `WIKIRACE_ALLOWED_HOSTS` | `localhost`, `127.0.0.1` | Host names the server answers to (a DNS-rebinding guard), or `*` |
 | `WIKIRACE_USER_AGENT` | `wikirace/<version> (repo URL)` | What Wikipedia is told; put your own contact here |
 | `WIKIRACE_ENV_FILE` | `./.env` | Which env file `wikirace` reads (also `--env-file`) |
@@ -210,7 +213,15 @@ level is, first to last: the race setup's choice, the model's `@level`, `<PROVID
 Everything is under `/api`; errors are `{"detail": "..."}` with a 4xx or 5xx status. No
 authentication: the server binds to localhost by default, in Docker it is published on
 `127.0.0.1` only, and it answers only to the host names in `WIKIRACE_ALLOWED_HOSTS` (400
-otherwise), so a page elsewhere cannot reach it through DNS rebinding. Keys never leave the
+otherwise), so a page elsewhere cannot reach it through DNS rebinding.
+
+On a public site (`WIKIRACE_PUBLIC`) a start is refused with 400 for a model not in its
+provider's `*_MODELS`, thinking past `WIKIRACE_MAX_THINKING`, or a race past 20 hops or 10
+minutes, and with 429 (`Retry-After`) past `WIKIRACE_STARTS_PER_HOUR`. The answer to a start
+carries `owner_token`, there and nowhere else; stop and delete then ask for it back as
+`X-Owner-Token` (403 without it). The admin stops and deletes anything at
+`/api/admin/races/{id}` and `/api/admin/games/runs/{id}`. `GET /api/models` says `public` and
+the `limits`, offers only the thinking levels allowed, and no custom model ids. Keys never leave the
 server: a refused key is reported without the provider's words, and URLs are shown without
 credentials.
 
@@ -220,12 +231,12 @@ credentials.
 | GET | `/api/models?fresh=` | who can race (below); `fresh=true` asks the providers again and waits for them |
 | GET | `/api/resolve?q=` | a typed subject as the article a race would use: `{input, title, description, note, candidates: [{title, description}]}` |
 | GET | `/api/random?pool=&count=&exclude=` | `pool` is `classic`, `trending` or `wild`; `count` 1 or 2; `exclude` repeatable: `{pool, subjects: [{title, description}]}` |
-| GET | `/api/races?limit=` | history, newest first: `{races: [race without steps], running: [id]}` |
-| POST | `/api/races` | start a race; 201 with its snapshot |
+| GET | `/api/races?limit=` | history, newest first: `{races: [race without steps], running: [id], public}` |
+| POST | `/api/races` | start a race; 201 with its snapshot and `owner_token`; 409 when `WIKIRACE_MAX_RACES` are running |
 | GET | `/api/races/{id}` | one race, whole |
 | GET | `/api/races/{id}/events` | SSE: snapshot, events, `end` |
-| POST | `/api/races/{id}/stop` | 202 `{id, stopping: true}`; 409 when not running |
-| DELETE | `/api/races/{id}` | `{deleted: id}`; 409 while running, 404 unknown |
+| POST | `/api/races/{id}/stop` | 202 `{id, stopping: true}`; 409 when not running; on a public site 403 without its `X-Owner-Token` |
+| DELETE | `/api/races/{id}` | `{deleted: id}`; 409 while running, 404 unknown; on a public site 403 without its `X-Owner-Token` |
 
 ### `GET /api/models`
 
@@ -301,12 +312,12 @@ Players are named as racers are, `provider:model_id`.
 | Method | Path | |
 |---|---|---|
 | GET | `/api/games` | every game: `{games: [{id, title, tagline, use_case, lanes: {min, max}, kinds, needs_jev, ready, params}]}`, `params` being the JSON Schema of what the setup may choose |
-| POST | `/api/games/{game}/runs` | start a run: `{"lanes": [{key, thinking}], "params": {...}}`; 201 with its snapshot. 400 for the wrong number of players, a player the game does not take, or a round that cannot be set up as asked; 422 naming a bad param; 409 when the game is not built yet or four runs are already live; 502 when Wikipedia could not supply the round |
+| POST | `/api/games/{game}/runs` | start a run: `{"lanes": [{key, thinking}], "params": {...}}`; 201 with its snapshot. 400 for the wrong number of players, a player the game does not take, or a round that cannot be set up as asked; 422 naming a bad param; 409 when the game is not built yet or four runs are already live; 502 when Wikipedia could not supply the round. The place among the four is held before the round is set up, so a start that finds none bills nothing. 201 carries `owner_token` |
 | GET | `/api/games/runs?game=&limit=` | recent runs, newest first, without their lists: `{runs: [...], running: [id]}` |
 | GET | `/api/games/runs/{id}` | one run, whole |
 | GET | `/api/games/runs/{id}/events` | SSE: snapshot, events, `end` |
-| POST | `/api/games/runs/{id}/stop` | 202 `{id, stopping: true}`; 409 when not running |
-| DELETE | `/api/games/runs/{id}` | `{deleted: id}`; 409 while running, 404 unknown |
+| POST | `/api/games/runs/{id}/stop` | 202 `{id, stopping: true}`; 409 when not running; on a public site 403 without its `X-Owner-Token` |
+| DELETE | `/api/games/runs/{id}` | `{deleted: id}`; 409 while running, 404 unknown; on a public site 403 without its `X-Owner-Token` |
 
 A run:
 

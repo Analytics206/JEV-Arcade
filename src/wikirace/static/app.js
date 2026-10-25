@@ -15,7 +15,7 @@
 import { h } from 'preact'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import htm from 'htm'
-import { ApiError, api, useEndpoint, useRaceStream } from './api.js'
+import { ApiError, api, owns, useEndpoint, useRaceStream } from './api.js'
 import { navigate } from './games/route.js'
 import { SCENES } from './games/attract.js'
 import { RaceTrace } from './trace.js'
@@ -40,7 +40,7 @@ import {
   DEFAULT_RULES,
   MAX_LANES,
   POOLS,
-  RULE_RANGE,
+  ruleRange,
   STATUS_LABEL,
   VERDICT,
   ago,
@@ -365,6 +365,14 @@ function SetupPanel(p) {
   const hasJudge = models.some((m) => m.kind === 'judgment')
   const canAdd = models.length > 0 || (info?.providers ?? []).some(takesCustom)
   const rollingPair = p.startState.status === 'pending' && p.targetState.status === 'pending'
+  // A public site races within limits of its own: rules past them (a saved
+  // setup, a rematch) are brought inside as soon as the limits are known.
+  const limits = info?.limits ?? null
+  useEffect(() => {
+    if (!limits) return
+    const fitted = sanitizeRules(p.rules, limits)
+    if (Object.keys(fitted).some((k) => fitted[k] !== p.rules[k])) p.setRules(fitted)
+  }, [limits, p.rules])
 
   // A number is clamped as it is typed, and written back when the clamp changed
   // it — but an emptied box is left empty until it loses focus, so a number can
@@ -372,20 +380,20 @@ function SetupPanel(p) {
   const onRule = (k) => (e) => {
     const el = e.currentTarget
     if (el.value.trim() === '') return
-    const v = clampRule(k, el.value)
+    const v = clampRule(k, el.value, limits)
     if (String(v) !== el.value) el.value = String(v)
     p.setRules({ ...p.rules, [k]: v })
   }
   const settle = (k) => (e) => {
     e.currentTarget.value = String(p.rules[k])
   }
-  const setRule = (k, v) => p.setRules({ ...p.rules, [k]: clampRule(k, v) })
+  const setRule = (k, v) => p.setRules({ ...p.rules, [k]: clampRule(k, v, limits) })
 
   /** A number rule as a control-panel dial: − the value +, the value typed or
    *  nudged, clamped the same way either way. */
   const numberRule = (k, id, label, min, max) => {
     const v = p.rules[k]
-    const [lo, hi] = RULE_RANGE[k]
+    const [lo, hi] = ruleRange(k, limits)
     const nudge = (d) => {
       sfx.hover()
       setRule(k, v + d)
@@ -395,7 +403,7 @@ function SetupPanel(p) {
         <label class="wr-rule__k" for=${id}>${label}</label>
         <div class="wr-dial">
           <button type="button" class="wr-nudge" onClick=${() => nudge(-1)} disabled=${v <= lo} aria-label=${`${label}: one fewer`}>−</button>
-          <input id=${id} class="wr-in wr-dial__n tnum" type="number" min=${min} max=${max} value=${v} onInput=${onRule(k)} onBlur=${settle(k)} />
+          <input id=${id} class="wr-in wr-dial__n tnum" type="number" min=${min} max=${Math.min(max, hi)} value=${v} onInput=${onRule(k)} onBlur=${settle(k)} />
           <button type="button" class="wr-nudge" onClick=${() => nudge(1)} disabled=${v >= hi} aria-label=${`${label}: one more`}>+</button>
         </div>
       </div>
@@ -516,7 +524,7 @@ function SetupPanel(p) {
           <div class="wr-rule">
             <label class="wr-rule__k" for="wr-rule-time">Time limit</label>
             <select id="wr-rule-time" class="wr-sel" value=${p.rules.time_limit_s} onChange=${(e) => setRule('time_limit_s', e.currentTarget.value)}>
-              ${withValue(TIME_LIMITS, p.rules.time_limit_s).map((s) => html`<option key=${s} value=${s}>${timeLabel(s)}</option>`)}
+              ${withValue(TIME_LIMITS.filter((s) => s <= ruleRange('time_limit_s', limits)[1]), p.rules.time_limit_s).map((s) => html`<option key=${s} value=${s}>${timeLabel(s)}</option>`)}
             </select>
           </div>
           <div class="wr-rule">
@@ -1104,6 +1112,7 @@ function History({ onOpen }) {
                     ${r.status === 'running' ? 'Watch' : 'Replay'}
                   <//>
                   ${r.status !== 'running' &&
+                  (!data?.public || owns(r.id)) &&
                   html`
                     <${Button}
                       size="sm"

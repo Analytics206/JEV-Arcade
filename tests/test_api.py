@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+import sqlite3
 import threading
 import time
 
@@ -20,6 +21,7 @@ from wikirace import api as api_module
 from wikirace import store
 from wikirace.app import begin_closing, create_app, fingerprint
 from wikirace.config import load_settings
+from wikirace.logins import hash_password
 from wikirace.providers.base import (
     Completion,
     ModelInfo,
@@ -211,6 +213,8 @@ def race_env(monkeypatch, tmp_path):
         yield {"client": client, "seen": seen, "settings": settings, "providers": providers, "app": app}
         # Through the API: a race lives on the app's event loop, and stopping it
         # from this thread is exactly the bug the async handlers exist to avoid.
+        # As a site that is not public, where stopping needs no owner's token.
+        app.state.settings = settings
         for race in engine.live_races():
             if not race.done:
                 client.post(f"/api/races/{race.id}/stop")
@@ -854,3 +858,153 @@ def test_a_busy_database_does_not_lose_the_final_result(race_env, monkeypatch):
     assert failures["left"] == 0
     # It left memory only after the write landed; until then it stayed live.
     assert engine.get_live(rid) is not None
+
+
+# ── A public site ─────────────────────────────────────────────────────────────
+# Strangers reach it on your keys: they race only the listed models, think no
+# harder than the cap, start so many races an hour, and stop or delete only
+# what their own browser started.
+
+
+def _public(race_env, tmp_path, **extra):
+    """Make race_env's server a public site, with *extra* settings."""
+    settings = _settings(tmp_path, WIKIRACE_PUBLIC="on", **extra)
+    app = race_env["app"]
+    app.state.settings = settings
+    app.state.start_limit = api_module.start_limit(settings)
+    return settings
+
+
+def test_a_canonical_host_makes_the_site_public_unless_told_otherwise(tmp_path):
+    assert not _settings(tmp_path).public
+    assert _settings(tmp_path, WIKIRACE_CANONICAL_HOST="jev-arcade.com").public
+    assert not _settings(tmp_path, WIKIRACE_CANONICAL_HOST="jev-arcade.com", WIKIRACE_PUBLIC="off").public
+    assert _settings(tmp_path, WIKIRACE_PUBLIC="on").max_thinking == "medium"
+    odd = _settings(tmp_path, WIKIRACE_MAX_THINKING="ludicrous")
+    assert odd.max_thinking == "medium" and any("WIKIRACE_MAX_THINKING" in w for w in odd.warnings)
+
+
+def test_a_public_site_races_only_the_models_it_lists(race_env, tmp_path):
+    client = race_env["client"]
+    _public(race_env, tmp_path)
+    unlisted = _start(client, ["test/expensive-unlisted"])
+    assert unlisted.status_code == 400 and "only the models this site lists" in unlisted.json()["detail"]
+    assert _start(client, [{"key": "ollama:qwen3.5:9b"}]).status_code == 400
+    # Ollama's two spellings of one model are one model.
+    assert _start(client, [{"key": "ollama:llama3.2:latest"}]).status_code == 201
+    assert all(s["model"] != "test/expensive-unlisted" for s in race_env["seen"])
+    # And the page is offered only what is listed: not Ollama's tiny:1b, and no typed ids.
+    info = client.get("/api/models").json()
+    assert "ollama:tiny:1b" not in {m["key"] for m in info["models"]}
+    assert not any(p["custom_models"] for p in info["providers"])
+
+
+def test_a_public_site_caps_the_thinking_a_visitor_asks_for(race_env, tmp_path):
+    client = race_env["client"]
+    _public(race_env, tmp_path, WIKIRACE_MAX_THINKING="low")
+    high = _start(client, [{"key": "openrouter:test/good", "thinking": "max"}])
+    assert high.status_code == 400 and "at most low" in high.json()["detail"]
+    # Under the cap, and the model's own configured level (medium), both race.
+    r = _start(client, [{"key": "openrouter:test/good", "thinking": "low"},
+                        {"key": "openrouter:test/good", "thinking": "medium"}])
+    assert r.status_code == 201, r.text
+    info = client.get("/api/models").json()
+    assert info["thinking_levels"] == ["none", "low"]
+    assert info["public"] is True and info["limits"] == api_module.PUBLIC_LIMITS
+
+
+def test_a_public_site_caps_how_long_a_race_may_run(race_env, tmp_path):
+    client = race_env["client"]
+    _public(race_env, tmp_path)
+    for rules in ({"max_hops": 40}, {"time_limit_s": 3600}):
+        r = _start(client, ["test/good"], rules=rules)
+        assert r.status_code == 400 and "this site races" in r.json()["detail"], rules
+    assert _start(client, ["test/good"], rules={"max_hops": 20, "time_limit_s": 600}).status_code == 201
+
+
+def test_a_public_site_limits_the_races_one_address_starts_an_hour(race_env, tmp_path):
+    client = race_env["client"]
+    _public(race_env, tmp_path, WIKIRACE_STARTS_PER_HOUR="2", WIKIRACE_MAX_RACES="4")
+    me = {"CF-Connecting-IP": "203.0.113.9"}
+    for _ in range(2):
+        _wait_done(client, _start(client, ["test/good"], headers=me).json()["id"])
+    third = _start(client, ["test/good"], headers=me)
+    assert third.status_code == 429 and "in an hour" in third.json()["detail"]
+    assert int(third.headers["retry-after"]) > 0
+    # Another address has its own allowance; one IPv6 /64 is one address.
+    assert _start(client, ["test/good"], headers={"CF-Connecting-IP": "198.51.100.7"}).status_code == 201
+    v6 = [{"CF-Connecting-IP": f"2001:db8:1:2::{n}"} for n in (1, 2, 3)]
+    assert [_start(client, ["test/good"], headers=h).status_code for h in v6] == [201, 201, 429]
+
+
+def test_a_full_house_is_refused_before_wikipedia_and_costs_no_start(race_env, tmp_path, monkeypatch):
+    client = race_env["client"]
+    _public(race_env, tmp_path, WIKIRACE_STARTS_PER_HOUR="1", WIKIRACE_MAX_RACES="1")
+    slow = _start(client, ["test/slow"], headers={"CF-Connecting-IP": "203.0.113.1"}).json()
+    fetched = []
+
+    async def counting(url, params):
+        fetched.append(params)
+        return await fake_wikipedia(url, params)
+
+    monkeypatch.setattr(race_env["app"].state.wiki, "_get", counting)
+    them = {"CF-Connecting-IP": "203.0.113.2"}
+    full = _start(client, ["test/good"], start="Hub", target="Beta", headers=them)
+    assert full.status_code == 409 and fetched == []
+    client.post(f"/api/races/{slow['id']}/stop", headers={"X-Owner-Token": slow["owner_token"]})
+    _wait_done(client, slow["id"])
+    # The refused start was not counted: that address still has its one.
+    assert _start(client, ["test/good"], start="Hub", target="Beta", headers=them).status_code == 201
+
+
+def test_on_a_public_site_only_the_starter_stops_or_deletes_a_race(race_env, tmp_path):
+    client = race_env["client"]
+    settings = _public(race_env, tmp_path)
+    started = _start(client, ["test/slow"]).json()
+    rid, token = started["id"], started["owner_token"]
+    # The token is in the start's answer and nowhere anyone else can read.
+    assert token not in json.dumps(client.get(f"/api/races/{rid}").json())
+    assert token not in json.dumps(client.get("/api/races").json())
+    assert client.get("/api/races").json()["public"] is True
+    for headers in ({}, {"X-Owner-Token": "guessed"}, {"X-Owner-Token": rid}):
+        assert client.post(f"/api/races/{rid}/stop", headers=headers).status_code == 403
+    mine = {"X-Owner-Token": token}
+    assert client.post(f"/api/races/{rid}/stop", headers=mine).status_code == 202
+    _wait_done(client, rid)
+    assert client.delete(f"/api/races/{rid}").status_code == 403
+    assert client.get(f"/api/races/{rid}").status_code == 200
+    # Another race's token is not this one's.
+    other = _start(client, ["test/good"]).json()
+    _wait_done(client, other["id"])
+    assert client.delete(f"/api/races/{rid}", headers={"X-Owner-Token": other["owner_token"]}).status_code == 403
+    assert client.delete(f"/api/races/{rid}", headers=mine).status_code == 200
+    assert client.get(f"/api/races/{rid}").status_code == 404
+    # Only a hash was kept, and it went with its race.
+    with sqlite3.connect(settings.db_path) as conn:
+        hashes = [r[0] for r in conn.execute("SELECT token_hash FROM owners WHERE kind = 'race'")]
+    assert token not in hashes and len(hashes) == 1
+
+
+def test_off_a_public_site_anyone_at_the_page_stops_and_deletes_as_before(race_env):
+    client = race_env["client"]
+    rid = _start(client, ["test/slow"]).json()["id"]
+    assert client.post(f"/api/races/{rid}/stop").status_code == 202
+    _wait_done(client, rid)
+    assert client.delete(f"/api/races/{rid}").status_code == 200
+
+
+def test_the_admin_stops_and_deletes_anyones_race(race_env, tmp_path):
+    client = race_env["client"]
+    password = "a long test password"
+    _public(race_env, tmp_path, WIKIRACE_ADMIN_EMAIL="admin@example.com",
+            WIKIRACE_ADMIN_PASSWORD_HASH=hash_password(password, n=2**10))
+    rid = _start(client, ["test/slow"]).json()["id"]
+    assert client.post(f"/api/admin/races/{rid}/stop").status_code == 401
+    signed = client.post("/api/admin/login", json={"email": "admin@example.com", "password": password})
+    assert signed.status_code == 200
+    assert client.post(f"/api/admin/races/{rid}/stop").status_code == 202
+    _wait_done(client, rid)
+    assert client.delete(f"/api/admin/races/{rid}").status_code == 200
+    assert client.get(f"/api/races/{rid}").status_code == 404
+    audit = client.get("/api/admin/audit").json()["rows"]
+    assert audit[0]["action"] == "race_deleted" and rid in audit[0]["subject"]

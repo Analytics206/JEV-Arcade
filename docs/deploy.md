@@ -89,16 +89,24 @@ what to tell visitors about it, is in [traffic.md](traffic.md).
 There is no login: everyone who reaches the page plays on the keys in `.env`. What keeps a public
 site affordable:
 
+- **A public site** (`WIKIRACE_PUBLIC`, on by itself once `WIKIRACE_CANONICAL_HOST` is set)
+  holds visitors to what you chose:
+  - they race and play only the models the `*_MODELS` lists name (typed model ids are refused,
+    and an Ollama offers only what `OLLAMA_MODELS` names), a game's writer or asker included;
+  - they ask for no more thinking than `WIKIRACE_MAX_THINKING` (`medium`), or the level you set
+    for that model;
+  - a race runs at most 20 hops and 10 minutes;
+  - one address starts at most `WIKIRACE_STARTS_PER_HOUR` (20) races and games an hour (an IPv6
+    address by its /64), and all visitors together ten times that;
+  - a race or a game run is stopped or deleted only by the browser that started it, or by the
+    admin (`/api/admin/races/{id}`, `/api/admin/games/runs/{id}`).
 - **Only the providers you mean to pay for** in `.env`. The public site offers Jev and one free
-  OpenRouter model. A visitor can still type any other model id of a text provider you have a key
-  for, so set a spending limit at the provider too.
+  OpenRouter model.
 - `WIKIRACE_MAX_RACES` (default 2) caps the races running at once; the Arcade allows four runs at
-  once across every game. A race is bounded by its hop and time limits (12 hops and one minute by
-  default; a visitor may raise them to 40 hops and an hour).
-- Spending limits at the providers themselves: every one of them offers a monthly cap.
-- Nothing rate-limits a visitor's games (only the admin sign-in and the Contact form are). If a
-  public site draws abuse, put the limit in the proxy in front
-  (Cloudflare's rate-limiting rules, say), not in the arcade.
+  once across every game. A start that finds no room is refused before it fetches or bills
+  anything, and is not counted against the visitor.
+- Spending limits at the providers themselves: every one of them offers a monthly cap. Set one:
+  the limits above bound what one visitor costs, not what many do.
 
 ## Your own domain
 

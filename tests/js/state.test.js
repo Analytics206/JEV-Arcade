@@ -43,6 +43,7 @@ import {
   raceFinale,
   reconcileLanes,
   rematchLanes,
+  ruleRange,
   sanitizeRules,
   saveSaved,
   setupProblem,
@@ -343,6 +344,18 @@ describe('the setup form', () => {
     // A rematch's own value joins the presets rather than showing as another one.
     assert.deepEqual(withValue([120, 300], 450), [120, 300, 450])
     assert.deepEqual(withValue([120, 300], 300), [120, 300])
+  })
+
+  it("rules stay inside a public site's own limits, when it has them", () => {
+    const limits = { max_hops: 20, time_limit_s: 600 }
+    assert.deepEqual(ruleRange('max_hops', limits), [1, 20])
+    assert.deepEqual(ruleRange('max_hops', null), [1, 40])
+    assert.deepEqual(ruleRange('strikes', limits), [1, 10])
+    assert.equal(clampRule('max_hops', 40, limits), 20)
+    assert.equal(clampRule('time_limit_s', 3600, limits), 600)
+    assert.deepEqual(sanitizeRules({ max_hops: 40, time_limit_s: 3600 }, limits), { ...DEFAULT_RULES, max_hops: 20, time_limit_s: 600 })
+    // A limit below a default brings the default down with it.
+    assert.equal(sanitizeRules({}, { max_hops: 5 }).max_hops, 5)
   })
 })
 

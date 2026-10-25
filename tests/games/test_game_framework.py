@@ -6,10 +6,13 @@ question (Jev a choice, a text model an ANSWER line) and the run keeps a list.
 from __future__ import annotations
 
 import asyncio
+import threading
 
 import pytest
 from pydantic import BaseModel, Field, field_validator
 
+from wikirace.api import start_limit as api_start_limit
+from wikirace.config import load_settings
 from wikirace.games import core, runs
 from wikirace.games import registry as R
 from wikirace.games.players import BadPlayers, PlayError, ask_jev, ask_text, resolve_players
@@ -276,6 +279,107 @@ def test_only_so_many_runs_at_once(arcade, monkeypatch):
         assert arcade.start("echo", ["jev"]).status_code == 201
     r = arcade.start("echo", ["jev"])
     assert r.status_code == 409 and "already running" in r.json()["detail"]
+
+
+def _counted_prepare(monkeypatch, wait_s: float = 0.0) -> list[int]:
+    """An echo game whose `prepare` (where a real game may bill a model) is
+    counted and takes *wait_s*, and whose play runs until stopped."""
+    prepared: list[int] = []
+
+    async def prepare(ctx):
+        prepared.append(1)
+        await asyncio.sleep(wait_s)
+        return {}
+
+    async def forever(run, ctx):
+        await asyncio.sleep(60)
+
+    monkeypatch.setitem(R.GAMES, "echo", R.Game(id="echo", title="E", tagline="t", use_case="u",
+                                                 play=forever, prepare=prepare))
+    return prepared
+
+
+def test_a_full_house_is_refused_before_prepare_spends_anything(arcade, monkeypatch):
+    prepared = _counted_prepare(monkeypatch)
+    for _ in range(runs.MAX_LIVE):
+        assert arcade.start("echo", ["jev"]).status_code == 201
+    assert len(prepared) == runs.MAX_LIVE
+    r = arcade.start("echo", ["jev"])
+    assert r.status_code == 409 and len(prepared) == runs.MAX_LIVE
+
+
+def test_starts_at_once_hold_their_places_while_they_prepare(arcade, monkeypatch):
+    monkeypatch.setattr(runs, "MAX_LIVE", 1)
+    prepared = _counted_prepare(monkeypatch, wait_s=0.3)
+    codes: list[int] = []
+    starts = [threading.Thread(target=lambda: codes.append(arcade.start("echo", ["jev"]).status_code))
+              for _ in range(3)]
+    for t in starts:
+        t.start()
+    for t in starts:
+        t.join()
+    # One prepared and ran; the others were refused without preparing.
+    assert sorted(codes) == [201, 409, 409] and len(prepared) == 1
+    assert runs._held == 0
+
+
+def test_a_slot_is_given_back_when_a_start_fails(arcade, monkeypatch):
+    monkeypatch.setattr(runs, "MAX_LIVE", 1)
+    async def boom(ctx):
+        raise R.GameInputError("no round today")
+
+    monkeypatch.setitem(R.GAMES, "echo", R.Game(id="echo", title="E", tagline="t", use_case="u",
+                                                 play=_echo_play, prepare=boom))
+    for _ in range(3):
+        assert arcade.start("echo", ["jev"]).status_code == 400
+    assert runs._held == 0
+
+
+def _public(arcade, **extra):
+    settings = load_settings({
+        "OPENROUTER_API_KEY": "sk-or-test", "OPENROUTER_MODELS": "test/a, test/b, test/c, test/d",
+        "TYPESAFE_API_KEY": "ts-test", "WIKIRACE_DB": arcade.settings.db_path, "WIKIRACE_PUBLIC": "on", **extra,
+    }, read_file=False)
+    arcade.app.state.settings = settings
+    arcade.app.state.start_limit = api_start_limit(settings)
+    return settings
+
+
+def test_a_public_site_seats_only_listed_models_writers_included(arcade, echo):
+    _public(arcade)
+    r = arcade.start("echo", ["jev", "test/unlisted"])
+    assert r.status_code == 400 and "only the models this site lists" in r.json()["detail"]
+    r = arcade.start("twotruths", ["jev"], {"writer": "openrouter:test/unlisted", "title": "Axolotl"})
+    assert r.status_code == 400 and "only the models this site lists" in r.json()["detail"]
+    assert arcade.text.prompts == []
+
+
+def test_a_public_site_limits_the_games_one_address_starts_an_hour(arcade, echo):
+    _public(arcade, WIKIRACE_STARTS_PER_HOUR="2")
+    arcade.text.responder = lambda m, s, p: "ANSWER: yes"
+    me = {"CF-Connecting-IP": "203.0.113.9"}
+    body = {"lanes": [{"key": key("jev")}], "params": {}}
+    for _ in range(2):
+        assert arcade.client.post("/api/games/echo/runs", json=body, headers=me).status_code == 201
+    r = arcade.client.post("/api/games/echo/runs", json=body, headers=me)
+    assert r.status_code == 429
+    # Refused before the round was prepared, and with its place given back.
+    assert runs._held == 0
+
+
+def test_on_a_public_site_only_the_starter_stops_or_deletes_a_run(arcade, monkeypatch):
+    _counted_prepare(monkeypatch)
+    _public(arcade)
+    started = arcade.start("echo", ["jev"]).json()
+    rid, mine = started["id"], {"X-Owner-Token": started["owner_token"]}
+    assert started["owner_token"] not in arcade.client.get(f"/api/games/runs/{rid}").text
+    assert arcade.client.post(f"/api/games/runs/{rid}/stop").status_code == 403
+    assert arcade.client.post(f"/api/games/runs/{rid}/stop", headers=mine).status_code == 202
+    arcade.wait(rid)
+    assert arcade.client.delete(f"/api/games/runs/{rid}", headers={"X-Owner-Token": "nope"}).status_code == 403
+    assert arcade.client.delete(f"/api/games/runs/{rid}", headers=mine).status_code == 200
+    assert arcade.client.get(f"/api/games/runs/{rid}").status_code == 404
+    arcade.app.state.settings = arcade.settings  # the fixture stops what is left, with no token
 
 
 def test_a_play_that_raises_ends_the_run_in_its_words(arcade, monkeypatch):
