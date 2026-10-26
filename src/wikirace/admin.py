@@ -52,6 +52,8 @@ auth = APIRouter(prefix="/api/admin")
 M = TypeVar("M", bound=BaseModel)
 _EMAIL = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
 _TZ = re.compile(r"[A-Za-z0-9_+\-/]{1,64}")
+#: navigator.connection.effectiveType: slow-2g, 2g, 3g, 4g (and whatever comes next).
+_NET = re.compile(r"[a-z0-9\-]{1,16}")
 
 
 def _settings(request: Request) -> Settings:
@@ -136,6 +138,12 @@ class BeaconIn(BaseModel):
     tz: str = Field("", max_length=64)
     load_ms: int | None = Field(None, ge=0, le=600_000)
     view: str = Field("", max_length=300)
+    #: prefers-color-scheme: dark or light.
+    cs: str = Field("", max_length=16)
+    #: navigator.connection.effectiveType, where the browser has it.
+    net: str = Field("", max_length=16)
+    #: A touch screen: "1" or "0".
+    touch: str = Field("", max_length=4)
 
 
 @public.post("/beacon", status_code=204)
@@ -146,6 +154,7 @@ async def beacon(request: Request) -> Response:
     b = _parse(BeaconIn, await _body(request, 2_000))
     extra = request.scope.get(traffic.EXTRA)
     if extra is not None:
+        cs, net, touch = b.cs.strip().lower(), b.net.strip().lower(), b.touch.strip()
         extra.update({
             "screen": f"{b.sw}x{b.sh}" if b.sw and b.sh else "",
             "viewport": f"{b.vw}x{b.vh}" if b.vw and b.vh else "",
@@ -153,6 +162,9 @@ async def beacon(request: Request) -> Response:
             "timezone": b.tz if _TZ.fullmatch(b.tz) else "",
             "load_ms": b.load_ms,
             "view": traffic.redact_query(b.view.removeprefix("?"))[:300],
+            "color_scheme": cs if cs in ("dark", "light") else "",
+            "connection": net if _NET.fullmatch(net) else "",
+            "touch": touch if touch in ("0", "1") else "",
         })
     return Response(status_code=204)
 

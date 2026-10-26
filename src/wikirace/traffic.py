@@ -22,14 +22,22 @@ What is kept, and what is not:
   location headers" transform is on.
 - Browser, OS, device and bot-or-not, read from the user agent as the row is
   written, with the user agent itself beside them.
+- The request's scheme (X-Forwarded-Proto, else the connection's), the size
+  of its body (Content-Length), the answer's Content-Type, the privacy
+  signals DNT and Sec-GPC as sent, and a random 32-hex request ID per row.
 - Never `Authorization` or `Cookie`, and no secret in a query string or a
   referrer: a parameter whose name says it is a credential (`token`, `key`,
   `code`, `password`…) keeps its name and loses its value.
 - Not the container's own healthcheck, which would be thousands of fake visits a day.
 
 The page's beacon (`POST /api/beacon`) adds what only the browser knows to its
-own row: screen and window size, time zone, load time. A beacon row describes
-a page view already counted, so every total leaves beacon rows out.
+own row: screen and window size, time zone, load time, colour scheme,
+connection type, touch. A beacon row describes a page view already counted,
+so every total leaves beacon rows out.
+
+The table's columns and their meanings match the other sites' request logs,
+which one warehouse reads together. Columns added since the table was first
+made are added to an older traffic.db at start-up (`migrate`).
 
 Rows older than WIKIRACE_LOG_RETENTION_DAYS (365 by default) are deleted, at
 start-up and every few hours after: the log holds IP addresses.
@@ -40,8 +48,10 @@ import contextlib
 import ipaddress
 import queue
 import re
+import sqlite3
 import threading
 import time
+import uuid
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -63,6 +73,8 @@ _BATCH_WAIT_S = 1.0
 _PRUNE_EVERY_S = 6 * 3600
 REDACTED = "REDACTED"
 
+#: The table as it was first made. Never edited: a traffic.db made by an older
+#: version has exactly this, and a column added since goes in `_ADDED` instead.
 _DDL = """
 CREATE TABLE IF NOT EXISTS requests (
     id            INTEGER PRIMARY KEY,
@@ -118,6 +130,22 @@ CREATE INDEX IF NOT EXISTS requests_ip ON requests (ip, ts);
 CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT NOT NULL);
 """
 
+#: Columns added since `_DDL`, in the order they are added: to a new file just
+#: after it is made, to an older one at its next start (`migrate`), so both end
+#: with the same table. Only ever appended to; each needs a default, which the
+#: rows written before it get. Names and meanings as in the other sites' logs.
+_ADDED: tuple[tuple[str, str], ...] = (
+    ("scheme", "TEXT NOT NULL DEFAULT ''"),          # http or https, as the visitor asked
+    ("request_id", "TEXT NOT NULL DEFAULT ''"),      # 32 hex characters, random per row
+    ("request_bytes", "INTEGER NOT NULL DEFAULT 0"),  # the request's Content-Length
+    ("content_type", "TEXT NOT NULL DEFAULT ''"),    # the answer's Content-Type
+    ("dnt", "TEXT NOT NULL DEFAULT ''"),             # DNT, as sent
+    ("gpc", "TEXT NOT NULL DEFAULT ''"),             # Sec-GPC, as sent
+    ("color_scheme", "TEXT NOT NULL DEFAULT ''"),    # beacon: dark or light
+    ("connection", "TEXT NOT NULL DEFAULT ''"),      # beacon: slow-2g, 2g, 3g or 4g
+    ("touch", "TEXT NOT NULL DEFAULT ''"),           # beacon: 1 or 0
+)
+
 COLUMNS: tuple[str, ...] = (
     "ts", "kind", "method", "host", "path", "query", "protocol", "status", "bytes", "duration_ms",
     "ip", "peer", "forwarded_for", "country", "colo", "ray", "city", "region", "region_code",
@@ -125,7 +153,11 @@ COLUMNS: tuple[str, ...] = (
     "user_agent", "browser", "browser_version", "os", "device", "is_bot", "bot_name", "language",
     "ch_ua", "ch_mobile", "ch_platform", "fetch_site", "fetch_mode", "fetch_dest",
     "screen", "viewport", "pixel_ratio", "timezone", "load_ms", "view",
+    *(name for name, _ in _ADDED),
 )
+#: What the beacon may write into its own row (admin.beacon).
+BEACON_FIELDS = ("screen", "viewport", "pixel_ratio", "timezone", "load_ms", "view",
+                 "color_scheme", "connection", "touch")
 
 
 def iso(dt: datetime) -> str:
@@ -299,6 +331,20 @@ def _float(value: str) -> float | None:
     return f if -1000 < f < 1000 else None
 
 
+def _scheme(headers: Mapping[str, str], scope: Scope) -> str:
+    """http or https as the visitor asked: the first X-Forwarded-Proto entry
+    (behind the tunnel the connection itself is always http), else the
+    connection's own."""
+    proto = headers.get("x-forwarded-proto", "").split(",")[0].strip().lower()
+    return _clip(proto or scope.get("scheme", ""), 16)
+
+
+def _length(value: str) -> int:
+    """A Content-Length as a number of bytes; 0 when there is none, or it is not one."""
+    value = value.strip()
+    return int(value) if re.fullmatch(r"[0-9]{1,15}", value) else 0
+
+
 def visitor(headers: Mapping[str, str], peer: str) -> dict[str, Any]:
     """Who sent a request, as the sign-in log and the enquiries keep it."""
     ua = _clip(headers.get("user-agent"), 1000)
@@ -329,8 +375,9 @@ def _kind(method: str, path: str) -> str:
 
 
 def build_row(scope: Scope, status: int, size: int, duration_ms: float, extra: Mapping[str, Any],
-              started: datetime) -> dict[str, Any]:
-    """The row for one request, every field bounded, no secret in it."""
+              started: datetime, content_type: str = "") -> dict[str, Any]:
+    """The row for one request, every field bounded, no secret in it.
+    *content_type* is the answer's Content-Type header."""
     headers = Headers(scope=scope)
     peer = (scope.get("client") or ("", 0))[0] or ""
     ua = _clip(headers.get("user-agent"), 1000)
@@ -381,8 +428,15 @@ def build_row(scope: Scope, status: int, size: int, duration_ms: float, extra: M
         "fetch_mode": _clip(headers.get("sec-fetch-mode"), 20),
         "fetch_dest": _clip(headers.get("sec-fetch-dest"), 20),
         "screen": "", "viewport": "", "pixel_ratio": None, "timezone": "", "load_ms": None, "view": "",
+        "scheme": _scheme(headers, scope),
+        "request_id": uuid.uuid4().hex,
+        "request_bytes": _length(headers.get("content-length", "")),
+        "content_type": _clip(content_type, 200),
+        "dnt": _clip(headers.get("dnt"), 4),
+        "gpc": _clip(headers.get("sec-gpc"), 4),
+        "color_scheme": "", "connection": "", "touch": "",
     }
-    for k in ("screen", "viewport", "pixel_ratio", "timezone", "load_ms", "view"):
+    for k in BEACON_FIELDS:
         if k in extra:
             row[k] = extra[k]
     return row
@@ -401,12 +455,37 @@ def _healthcheck(scope: Scope) -> bool:
 # ── Writing ──────────────────────────────────────────────────────────────────
 
 
-def init(db_path: str) -> None:
+def migrate(conn: Any) -> list[str]:
+    """Add each column of `_ADDED` the table lacks; the names added. Run at
+    every start: a column already there is left alone, and every row already
+    written keeps its values and takes the new column's default."""
+    have = {r[1] for r in conn.execute("PRAGMA table_info(requests)")}
+    added = []
+    for name, decl in _ADDED:
+        if name in have:
+            continue
+        try:
+            conn.execute(f"ALTER TABLE requests ADD COLUMN {name} {decl}")
+        except sqlite3.OperationalError as exc:
+            # Another process added it between the look and the change.
+            if "duplicate column" not in str(exc).lower():
+                raise
+            continue
+        added.append(name)
+    return added
+
+
+def init(db_path: str) -> list[str]:
+    """Make the file and its table, or bring an older one up to date; the
+    columns an older one had to be given ([] for a new file)."""
     with connect(db_path) as conn:
         # Before the first table: pages freed by the retention sweep can then be
         # handed back to the disk.
         conn.execute("PRAGMA auto_vacuum=INCREMENTAL")
+        existed = conn.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'requests'").fetchone()
         conn.executescript(_DDL)
+        added = migrate(conn)
+    return added if existed else []
 
 
 def insert(conn: Any, rows: list[dict[str, Any]]) -> None:
@@ -449,11 +528,13 @@ class Traffic:
         if self._thread is not None:
             return
         try:
-            init(self.db_path)
+            added = init(self.db_path)
         except Exception as exc:  # noqa: BLE001
             self.problem = f"{self.db_path}: {exc}"
             print(f"traffic log: off, cannot open {self.problem}", flush=True)
             return
+        if added:
+            print(f"traffic log: added {', '.join(added)} to {self.db_path}", flush=True)
         self._thread = threading.Thread(target=self._run, name="traffic-log", daemon=True)
         self._thread.start()
 
@@ -536,13 +617,17 @@ class TrafficLog:
             await self.app(scope, receive, send)
             return
         started, t0 = datetime.now(UTC), time.perf_counter()
-        seen = {"status": 0, "bytes": 0}
+        seen: dict[str, Any] = {"status": 0, "bytes": 0, "type": ""}
         extra: dict[str, Any] = {}
         scope[EXTRA] = extra
 
         async def counted(message: Message) -> None:
             if message["type"] == "http.response.start":
                 seen["status"] = message["status"]
+                for name, value in message.get("headers", ()):
+                    if name.lower() == b"content-type":
+                        seen["type"] = value.decode("latin-1")
+                        break
             elif message["type"] == "http.response.body":
                 seen["bytes"] += len(message.get("body", b""))
             await send(message)
@@ -555,7 +640,8 @@ class TrafficLog:
         finally:
             with contextlib.suppress(Exception):
                 self.log.put(build_row(
-                    scope, seen["status"], seen["bytes"], (time.perf_counter() - t0) * 1000, extra, started))
+                    scope, seen["status"], seen["bytes"], (time.perf_counter() - t0) * 1000, extra, started,
+                    seen["type"]))
 
 
 # ── Reading: the report ──────────────────────────────────────────────────────

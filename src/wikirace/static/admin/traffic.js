@@ -54,7 +54,9 @@ function Addresses({ rows, onPick }) {
 
 const DETAIL = [
   ['ts', 'Time (UTC)'], ['kind', 'Kind'], ['method', 'Method'], ['host', 'Host'], ['path', 'Path'], ['query', 'Query'],
-  ['protocol', 'Protocol'], ['status', 'Status'], ['bytes', 'Bytes'], ['duration_ms', 'Time to answer (ms)'],
+  ['scheme', 'Scheme'], ['protocol', 'Protocol'], ['status', 'Status'], ['content_type', 'Content type'],
+  ['bytes', 'Bytes'], ['request_bytes', 'Request body, bytes'], ['duration_ms', 'Time to answer (ms)'],
+  ['request_id', 'Request ID'],
   ['ip', 'Address'], ['peer', 'Connected from'], ['forwarded_for', 'X-Forwarded-For'], ['country', 'Country'],
   ['continent', 'Continent'], ['region', 'Region'], ['region_code', 'Region code'], ['city', 'City'],
   ['postal_code', 'Postcode'], ['latitude', 'Latitude'], ['longitude', 'Longitude'], ['geo_timezone', 'Time zone (Cloudflare)'],
@@ -62,8 +64,10 @@ const DETAIL = [
   ['browser', 'Browser'], ['browser_version', 'Browser version'], ['os', 'System'], ['device', 'Device'],
   ['bot_name', 'Bot'], ['language', 'Languages'], ['ch_ua', 'Sec-CH-UA'], ['ch_mobile', 'Sec-CH-UA-Mobile'],
   ['ch_platform', 'Sec-CH-UA-Platform'], ['fetch_site', 'Sec-Fetch-Site'], ['fetch_mode', 'Sec-Fetch-Mode'],
-  ['fetch_dest', 'Sec-Fetch-Dest'], ['view', 'View (beacon)'], ['screen', 'Screen (beacon)'], ['viewport', 'Window (beacon)'],
+  ['fetch_dest', 'Sec-Fetch-Dest'], ['dnt', 'DNT'], ['gpc', 'Sec-GPC'],
+  ['view', 'View (beacon)'], ['screen', 'Screen (beacon)'], ['viewport', 'Window (beacon)'],
   ['pixel_ratio', 'Pixel ratio (beacon)'], ['timezone', 'Time zone (beacon)'], ['load_ms', 'Load time, ms (beacon)'],
+  ['color_scheme', 'Colour scheme (beacon)'], ['connection', 'Connection (beacon)'], ['touch', 'Touch screen (beacon)'],
 ]
 
 function Row({ r, open, onToggle }) {

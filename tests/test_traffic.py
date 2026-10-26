@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+import re
 import sqlite3
 from datetime import UTC, datetime, timedelta
 
@@ -185,6 +186,113 @@ def test_the_beacon_adds_to_its_own_row_and_is_bounded(app_env):
     assert b[1]["timezone"] == ""
 
 
+def test_a_request_keeps_its_scheme_size_answer_type_id_and_privacy_signals(app_env):
+    c, app, settings = app_env
+    c.get("/", headers={"user-agent": CHROME, "x-forwarded-proto": "HTTPS, http", "dnt": "1", "sec-gpc": "1"})
+    c.get("/api/health", headers={"user-agent": CHROME})
+    body = json.dumps({"email": "not an address", "message": "hi"}).encode()
+    assert c.post("/api/contact", content=body, headers={"content-type": "application/json"}).status_code == 422
+    c.get("/api/health", headers={"content-length": "-5", "dnt": "x" * 50})
+    page, health, contact, odd = rows(app, settings)
+    assert (page["scheme"], page["dnt"], page["gpc"], page["request_bytes"]) == ("https", "1", "1", 0)
+    assert page["content_type"] == "text/html; charset=utf-8"
+    # Without the edge's header, the connection's own scheme.
+    assert (health["scheme"], health["dnt"], health["gpc"], health["content_type"]) == ("http", "", "", "application/json")
+    assert (contact["request_bytes"], contact["status"], contact["content_type"]) == (len(body), 422, "application/json")
+    # A Content-Length that is no number is 0; a header is bounded.
+    assert odd["request_bytes"] == 0 and odd["dnt"] == "xxxx"
+    ids = [r["request_id"] for r in (page, health, contact, odd)]
+    assert all(re.fullmatch(r"[0-9a-f]{32}", i) for i in ids) and len(set(ids)) == 4
+    # What only a beacon says is empty on every other row.
+    assert all((r["color_scheme"], r["connection"], r["touch"]) == ("", "", "") for r in (page, health, contact, odd))
+
+
+def test_the_beacon_keeps_colour_scheme_connection_and_touch(app_env):
+    c, app, settings = app_env
+    good = {"sw": 390, "sh": 844, "tz": "Europe/Berlin", "cs": "dark", "net": "4g", "touch": "1"}
+    assert c.post("/api/beacon", content=json.dumps(good), headers={"content-type": "text/plain"}).status_code == 204
+    assert c.post("/api/beacon", json={"cs": " Light ", "net": "slow-2g", "touch": "0"}).status_code == 204
+    # Anything else is kept as nothing; too long is refused.
+    assert c.post("/api/beacon", json={"cs": "<b>", "net": "4G; DROP", "touch": "yes"}).status_code == 204
+    assert c.post("/api/beacon", json={"cs": "x" * 17}).status_code == 422
+    b = [r for r in rows(app, settings) if r["kind"] == "beacon"]
+    assert [(r["color_scheme"], r["connection"], r["touch"]) for r in b] == [
+        ("dark", "4g", "1"), ("light", "slow-2g", "0"), ("", "", ""), ("", "", "")]
+    assert b[0]["request_bytes"] == len(json.dumps(good)) and b[0]["screen"] == "390x844"
+
+
+# ── An older log ─────────────────────────────────────────────────────────────
+
+
+def _old_log(db: str, n: int = 3) -> list[tuple]:
+    """A traffic.db as the first version left it, with *n* rows; those rows."""
+    added = {name for name, _ in traffic._ADDED}
+    old = [c for c in traffic.COLUMNS if c not in added]
+    with connect(db) as conn:
+        conn.executescript(traffic._DDL)
+        assert not added & {r[1] for r in conn.execute("PRAGMA table_info(requests)")}
+        conn.executemany(
+            f"INSERT INTO requests ({', '.join(old)}) VALUES ({', '.join('?' * len(old))})",
+            [tuple(_row(path=f"/old/{i}", ip=f"203.0.113.{i}", screen="1x1")[c] for c in old) for i in range(n)],
+        )
+        return conn.execute(f"SELECT id, {', '.join(old)} FROM requests ORDER BY id").fetchall()
+
+
+def test_an_older_log_gains_the_new_columns_once_and_keeps_every_row(tmp_path):
+    db = str(tmp_path / "t.db")
+    before = _old_log(db)
+    assert traffic.init(db) == [name for name, _ in traffic._ADDED]
+    with connect(db) as conn:
+        info = {r[1]: r for r in conn.execute("PRAGMA table_info(requests)")}
+        old = [c for c in traffic.COLUMNS if c not in {n for n, _ in traffic._ADDED}]
+        after = conn.execute(f"SELECT id, {', '.join(old)} FROM requests ORDER BY id").fetchall()
+        new = conn.execute("SELECT scheme, request_id, request_bytes, content_type, dnt, gpc, color_scheme, "
+                           "connection, touch FROM requests").fetchall()
+    assert after == before
+    assert new == [("", "", 0, "", "", "", "", "", "")] * 3
+    # Every column the standard schema declares, as it declares it.
+    for name, decl in traffic._ADDED:
+        _, _, typ, notnull, default, _ = info[name]
+        assert (typ, notnull) == (decl.split()[0], 1) and default in ("''", "0"), name
+    assert list(info) == ["id", *traffic.COLUMNS]
+    # A second start changes nothing; a new file is made whole at once.
+    assert traffic.init(db) == []
+    assert traffic.init(str(tmp_path / "new.db")) == []
+    with connect(str(tmp_path / "new.db")) as conn:
+        assert [r[1] for r in conn.execute("PRAGMA table_info(requests)")] == ["id", *traffic.COLUMNS]
+
+
+def test_the_site_starts_on_an_older_log_and_the_admin_reads_it_whole(tmp_path):
+    settings = load_settings({
+        "WIKIRACE_DB": str(tmp_path / "w.db"), "WIKIRACE_ADMIN_EMAIL": "admin@example.com",
+        "WIKIRACE_ADMIN_PASSWORD_HASH": HASH,
+    }, read_file=False)
+    _old_log(settings.traffic_db, n=2)
+    app = create_app(settings, providers={})
+    with TestClient(app, base_url="http://localhost") as c:
+        c.get("/", headers={"user-agent": CHROME, "x-forwarded-proto": "https", "sec-gpc": "1",
+                            "cf-connecting-ip": "198.51.100.7"})
+        c.post("/api/beacon", json={"sw": 1, "sh": 1, "cs": "light", "touch": "0"})
+        c.post("/api/admin/login", json={"email": "admin@example.com", "password": PASSWORD})
+        listing = c.get("/api/admin/traffic/requests?period=all&who=all&per=200").json()
+        table = list(csv.reader(io.StringIO(c.get("/api/admin/traffic/requests.csv?period=all&who=all").text)))
+        report = c.get("/api/admin/traffic?period=all&who=all")
+    assert report.status_code == 200
+    assert app.state.traffic.problem is None
+    by_path = {r["path"]: r for r in listing["rows"]}
+    assert {"/old/0", "/old/1", "/", "/api/beacon"} <= set(by_path)
+    assert by_path["/old/0"]["scheme"] == "" and by_path["/old/0"]["ip"] == "203.0.113.0"
+    assert (by_path["/"]["scheme"], by_path["/"]["gpc"], by_path["/"]["ip"]) == ("https", "1", "198.51.100.7")
+    assert (by_path["/api/beacon"]["color_scheme"], by_path["/api/beacon"]["touch"]) == ("light", "0")
+    assert table[0] == ["id", *traffic.COLUMNS]
+    assert table[0][-9:] == ["scheme", "request_id", "request_bytes", "content_type", "dnt", "gpc",
+                             "color_scheme", "connection", "touch"]
+    cols = {name: table[0].index(name) for name in ("path", "scheme", "request_id")}
+    csv_rows = {row[cols["path"]]: row for row in table[1:]}
+    assert csv_rows["/"][cols["scheme"]] == "https" and len(csv_rows["/"][cols["request_id"]]) == 32
+    assert csv_rows["/old/1"][cols["scheme"]] == ""
+
+
 def test_a_log_that_cannot_be_opened_never_stops_the_site(tmp_path):
     # A file where the log's folder should be: it can never be created.
     (tmp_path / "blocked").write_text("not a folder")
@@ -251,7 +359,7 @@ def _row(**kw) -> dict:
         "ts": traffic.iso(ts), "kind": "page", "method": "GET", "host": "jev-arcade.com", "path": "/",
         "protocol": "HTTP/1.1", "status": 200, "bytes": 1000, "duration_ms": 10.0, "ip": "203.0.113.1",
         "is_bot": 0, "latitude": None, "longitude": None, "pixel_ratio": None, "load_ms": None,
-        "browser": "Chrome", "os": "Windows", "device": "desktop", "country": "US",
+        "browser": "Chrome", "os": "Windows", "device": "desktop", "country": "US", "request_bytes": 0,
     })
     base.update(kw)
     return base

@@ -21,6 +21,10 @@ Versions are the `version` in `pyproject.toml`, which `wikirace --version` and `
   (`POST /api/contact`, rate limited, repeats and a trap field dropped) that the admin pages list,
   with reply by email, mark handled and delete.
 - `docs/traffic.md`: what is kept, where, for how long, and how to delete one person's data.
+- The traffic log keeps the fields the other sites' logs keep: the scheme (`X-Forwarded-Proto`),
+  a random request ID, the request's `Content-Length`, the answer's `Content-Type`, `DNT` and
+  `Sec-GPC`; the beacon adds the colour scheme, connection type and touch. The columns are added
+  to an existing `traffic.db` at start-up, its rows untouched.
 - **A public site** (`WIKIRACE_PUBLIC`, on with `WIKIRACE_CANONICAL_HOST`) holds strangers to what
   the owner chose: only the models the `*_MODELS` lists name (a game's writer or asker included),
   thinking up to `WIKIRACE_MAX_THINKING` (`medium`), races of at most 20 hops and 10 minutes, and

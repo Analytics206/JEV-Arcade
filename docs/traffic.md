@@ -78,11 +78,20 @@ fails a request.
 
 | | Fields |
 |---|---|
-| The request | time, method, host, path, query, protocol, status, bytes sent, time to answer |
+| The request | time, method, scheme (`http` or `https`, below), host, path, query, protocol, the request body's size (`Content-Length`, 0 without one), a request ID (32 random hex characters, one per row) |
+| The answer | status, its `Content-Type`, bytes sent, time to answer |
 | Who | the address (below), the connection's own peer, `X-Forwarded-For` as sent |
 | Cloudflare | country, continent, data centre (from the ray ID), ray ID; with visitor location headers on (below): city, region, region code, postcode, latitude, longitude, time zone |
-| The browser | user agent, and read from it: browser, version, system, device (desktop, mobile, tablet, bot), bot or not, bot name; `Accept-Language`; the client hints `Sec-CH-UA`, `-Mobile`, `-Platform`; `Sec-Fetch-Site`, `-Mode`, `-Dest`; the referrer and its host |
-| The beacon | screen size, window size, pixel ratio, time zone, page load time, view |
+| The browser | user agent, and read from it: browser, version, system, device (desktop, mobile, tablet, bot), bot or not, bot name; `Accept-Language`; the client hints `Sec-CH-UA`, `-Mobile`, `-Platform`; `Sec-Fetch-Site`, `-Mode`, `-Dest`; the privacy signals `DNT` and `Sec-GPC` as sent; the referrer and its host |
+| The beacon | screen size, window size, pixel ratio, time zone, page load time, view, colour scheme (`dark` or `light`), connection type (`slow-2g` to `4g`, from browsers that say), touch screen (`1` or `0`) |
+
+**The scheme** is the first `X-Forwarded-Proto` entry, else the connection's own. Behind the
+Cloudflare tunnel the connection to the server is always `http`, so the header is what says the
+visitor used `https`.
+
+**The request ID** is made up by the server for the row, not read from the request: it ties
+nothing to a visitor, and only names the row (a warehouse that reads this log with others keys on
+it).
 
 **The address** is Cloudflare's `CF-Connecting-IP` (which Cloudflare overwrites, so a visitor
 cannot forge it), else the rightmost `X-Forwarded-For` entry (the one the nearest proxy added; the
@@ -130,6 +139,14 @@ small and worth a backup, and a burst of log writes never holds the history's lo
 
 Rows older than `WIKIRACE_LOG_RETENTION_DAYS` (365) are deleted at start-up and every six hours,
 and the space goes back to the disk.
+
+**Its columns** keep the names and meanings the other sites' request logs use, so one warehouse
+can read them all; `id`, then the rest in the order of `traffic.COLUMNS`, which is also the CSV's
+order. A column added in a later version is appended, and added to an older `traffic.db` when the
+server starts (the start-up output says `traffic log: added …` once). Nothing is renamed or
+dropped, the rows already there keep their values, and the new column is empty (or 0) on them.
+The scheme, request ID, request size, content type, `DNT`, `Sec-GPC`, colour scheme, connection
+and touch columns came this way, so rows written before them have them empty.
 
 ## The sign-in log
 

@@ -59,10 +59,23 @@ describe('the beacon', () => {
       performance: { getEntriesByType: () => [{ loadEventEnd: 812.6 }] },
     }
     const b = beaconPayload(w)
-    assert.deepEqual({ ...b, tz: '' }, { sw: 1920, sh: 1080, vw: 1280, vh: 720, dpr: 1.25, tz: '', load_ms: 813, view: '?tab=race' })
+    assert.deepEqual({ ...b, tz: '' }, {
+      sw: 1920, sh: 1080, vw: 1280, vh: 720, dpr: 1.25, tz: '', load_ms: 813, view: '?tab=race', cs: '', net: '', touch: '0',
+    })
     assert.equal(typeof b.tz, 'string')
-    assert.deepEqual(Object.keys(b).sort(), ['dpr', 'load_ms', 'sh', 'sw', 'tz', 'vh', 'view', 'vw'])
+    assert.deepEqual(Object.keys(b).sort(), ['cs', 'dpr', 'load_ms', 'net', 'sh', 'sw', 'touch', 'tz', 'vh', 'view', 'vw'])
     assert.equal(beaconPayload({}).load_ms, null)
+  })
+
+  it('says the colour scheme, the connection and touch as the other sites do', () => {
+    const media = (dark) => (q) => ({ matches: q === '(prefers-color-scheme: dark)' && dark })
+    const phone = beaconPayload({ matchMedia: media(true), navigator: { maxTouchPoints: 5, connection: { effectiveType: '4g' } } })
+    assert.deepEqual([phone.cs, phone.net, phone.touch], ['dark', '4g', '1'])
+    const desk = beaconPayload({ matchMedia: media(false), navigator: { maxTouchPoints: 0 } })
+    assert.deepEqual([desk.cs, desk.net, desk.touch], ['light', '', '0'])
+    // An older touch browser has ontouchstart and no maxTouchPoints.
+    assert.equal(beaconPayload({ ontouchstart: null }).touch, '1')
+    assert.equal(beaconPayload({ matchMedia: () => { throw new Error('no') } }).cs, '')
   })
 })
 
