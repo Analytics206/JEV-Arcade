@@ -1,5 +1,5 @@
 # WikiRace: one small image. The page has no build step, so this is Python only.
-FROM python:3.14-slim
+FROM python:3.15-slim
 
 COPY --from=ghcr.io/astral-sh/uv:0.12 /uv /bin/uv
 ENV UV_COMPILE_BYTECODE=1 \
